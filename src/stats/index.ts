@@ -2,6 +2,7 @@ import { type History, type PlayerDataPIT } from "#queries/history.ts";
 import { type GamemodeKey, type StatKey, type VariantKey } from "./keys.ts";
 import { bedwarsLevelFromExp } from "./stars.ts";
 
+// TODO: ONE MORE OVERLOAD FOR TYPE SAGETY?=??
 export function getStat(
     playerData: PlayerDataPIT,
     gamemode: GamemodeKey,

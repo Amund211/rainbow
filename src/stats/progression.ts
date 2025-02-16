@@ -15,17 +15,149 @@ interface BaseStatProgression {
     error?: undefined;
 }
 
-type FKDRProgression = BaseStatProgression & {
-    stat: "fkdr";
-    sessionFKDR: number;
-    finalKillsPerDay: number;
-    finalDeathsPerDay: number;
+type QuotientProgression = BaseStatProgression & {
+    stat: "fkdr" | "kdr";
+    sessionQuotient: number;
+    dividendPerDay: number;
+    divisorPerDay: number;
 };
 
 export type StatProgression =
-    | (BaseStatProgression & { stat: Exclude<StatKey, "fkdr"> })
-    | FKDRProgression;
+    | (BaseStatProgression & { stat: Exclude<StatKey, "fkdr" | "kdr"> })
+    | QuotientProgression;
 
+const computeQuotientProgression = (
+    trackingHistory: History,
+    currentStats: PlayerDataPIT,
+    referenceDate: Date,
+    stat: QuotientProgression["stat"],
+    dividendStat: Exclude<StatKey, "winstreak">,
+    divisorStat: Exclude<StatKey, "winstreak">,
+    gamemode: GamemodeKey,
+): QuotientProgression | { error: true; reason: string } => {
+    const [start, end] = trackingHistory;
+    const startDate = start.queriedAt;
+    const endDate = end.queriedAt;
+    const daysElapsed =
+        (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000);
+
+    const startDividend = getStat(start, gamemode, dividendStat);
+    const startDivisor = getStat(start, gamemode, divisorStat);
+    const endDividend = getStat(end, gamemode, dividendStat);
+    const endDivisor = getStat(end, gamemode, divisorStat);
+    const currentDividend = getStat(currentStats, gamemode, dividendStat);
+    const currentDivisor = getStat(currentStats, gamemode, divisorStat);
+
+    const sessionDividend = endDividend - startDividend;
+    const sessionDivisor = endDivisor - startDivisor;
+
+    const sessionQuotient =
+        sessionDivisor === 0
+            ? sessionDividend
+            : sessionDividend / sessionDivisor;
+
+    const currentQuotient =
+        currentDivisor === 0
+            ? currentDividend
+            : currentDividend / currentDivisor;
+
+    const dividendPerDay = sessionDividend / daysElapsed;
+    const divisorPerDay = sessionDivisor / daysElapsed;
+
+    if (currentDivisor === 0 && sessionDivisor === 0) {
+        // Currently have "infinite" ratio -> ratio is computed as just dividend
+        // TODO:
+        const dividendProgression = computeStatProgression(
+            trackingHistory,
+            currentStats,
+            referenceDate,
+            dividendStat,
+            gamemode,
+        );
+        if (dividendProgression.error) {
+            return dividendProgression;
+        }
+        return {
+            ...dividendProgression,
+            stat,
+            dividendPerDay,
+            divisorPerDay, // 0
+            sessionQuotient,
+        };
+    }
+
+    if (sessionQuotient === currentQuotient) {
+        // Will make no progress
+        // TODO: Display upward milestone and infinite time
+        return {
+            error: true,
+            reason: "No progress",
+        };
+    }
+
+    const nextMilestoneValue =
+        sessionQuotient >= currentQuotient
+            ? Math.floor(currentQuotient) + 1
+            : Math.ceil(currentQuotient) - 1;
+
+    // Variables:
+    // k0 = currentDividend
+    // k  = dividendPerDay
+    // d0 = currentDivisor
+    // d  = divisorPerDay
+    // t  = daysToNextMilestone
+    // M  = nextMilestoneValue
+    //
+    // Solve for t:
+    // (k0 + kt) / (d0 + dt) = M
+    // k0 + kt = Md0 + Mdt         ((d0 + dt > 0) d0 + d > 0 validated above, t chosen to be non-negative by choosing M appropriately)
+    // (k - Md) t = Md0 - k0
+    // t = (Md0 - k0) / (k - Md)
+
+    if (nextMilestoneValue === sessionQuotient) {
+        // (k - Md) = 0
+        // k = Md
+        // M = k / d (= sessionQuotient)
+        // Will approach but never reach milestone
+        // TODO: Display upward milestone and infinite time
+        return {
+            error: true,
+            reason: "No progress",
+        };
+    }
+
+    // t = (Md0 - k0) / (k - Md)
+    const daysUntilMilestone =
+        (nextMilestoneValue * currentDivisor - currentDividend) /
+        (dividendPerDay - nextMilestoneValue * divisorPerDay);
+
+    if (!Number.isFinite(daysUntilMilestone)) {
+        // Infinite time to reach milestone
+        // TODO: Display milestone and infinite time
+        return {
+            error: true,
+            reason: "Infinite time",
+        };
+    }
+
+    const projectedMilestoneDate = new Date(
+        referenceDate.getTime() + daysUntilMilestone * 24 * 60 * 60 * 1000,
+    );
+    return {
+        stat,
+        trackingDataTimeInterval: { start: startDate, end: endDate },
+        currentValue: currentQuotient,
+        nextMilestoneValue,
+        projectedMilestoneDate,
+        referenceDate,
+        // TODO: Fix progress per day (changes over time)
+        progressPerDay:
+            (nextMilestoneValue - currentQuotient) / daysUntilMilestone,
+        sessionFKDR: sessionQuotient,
+        finalKillsPerDay: dividendPerDay,
+        finalDeathsPerDay: divisorPerDay,
+    };
+};
 export const computeStatProgression = (
     trackingHistory: History | undefined,
     currentStats: PlayerDataPIT | undefined,
