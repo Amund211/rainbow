@@ -23,6 +23,7 @@
 
         /* Linting */
         "strict": true,
+        "erasableSyntaxOnly": true, // Currently run tests in node with type-stripping
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
