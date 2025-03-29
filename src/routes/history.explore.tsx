@@ -50,6 +50,8 @@ import {
     startOfYear,
 } from "#intervals.ts";
 import { QueryStats } from "@mui/icons-material";
+import { visitPlayer } from "#hooks/useFavoritePlayers.ts";
+import React from "react";
 
 const defaultStart = new Date();
 defaultStart.setHours(0, 0, 0, 0);
@@ -108,6 +110,14 @@ function Index() {
     const { uuids, stats, gamemodes, variantSelection, start, end, limit } =
         Route.useSearch();
     const navigate = Route.useNavigate();
+
+    // Register visits for all players on page load
+    const [initialUUIDs] = React.useState(uuids);
+    React.useEffect(() => {
+        initialUUIDs.forEach((uuid) => {
+            visitPlayer(uuid);
+        });
+    }, [initialUUIDs]);
 
     const variants =
         variantSelection === "both"
@@ -206,6 +216,7 @@ function Index() {
             <UserSearch
                 placeholder="Add user..."
                 onSubmit={(uuid) => {
+                    visitPlayer(uuid);
                     navigate({
                         search: (oldSearch) => {
                             if (oldSearch.uuids.includes(uuid)) {
@@ -252,6 +263,7 @@ function Index() {
                                 style={{ backgroundColor: "rgba(0, 0, 0, 0)" }}
                                 // TODO: Attribution - https://crafatar.com/#meta-attribution
                                 src={`https://crafatar.com/renders/head/${uuid}?overlay`}
+                                alt={`Player head of ${uuidToUsername[uuid] ?? "unknown"}`}
                             />
                         }
                         onDelete={() => {
@@ -425,10 +437,14 @@ function Index() {
                         stats={stats}
                         variants={variants}
                     />
-                    <Tooltip title={goToSessionPageTooltip}>
+                    <Tooltip
+                        id="go-to-session-page-tooltip"
+                        title={goToSessionPageTooltip}
+                    >
                         {/* Make the span tabbable when the button is disabled so you can get to it and see the tooltip */}
                         <span tabIndex={canGoToSessionPage ? undefined : 0}>
                             <RouterLinkIconButton
+                                aria-labelledby="go-to-session-page-tooltip"
                                 disabled={!canGoToSessionPage}
                                 size="small"
                                 color="primary"
