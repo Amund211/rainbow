@@ -106,30 +106,41 @@ export const getUsernameQueryOptions = (
                 throw new Error("Invalid response from flashlight api");
             }
             if (!("username" in data)) {
-                captureMessage("Failed to get username: no username in response", {
-                    level: "error",
-                    extra: {
-                        uuid,
-                        data,
+                captureMessage(
+                    "Failed to get username: no username in response",
+                    {
+                        level: "error",
+                        extra: {
+                            uuid,
+                            data,
+                        },
                     },
-                });
+                );
                 throw new Error("No username in response from flashlight api");
             }
             if (typeof data.username !== "string") {
-                captureMessage("Failed to get username: username is not a string", {
-                    level: "error",
-                    extra: {
-                        uuid,
-                        data,
+                captureMessage(
+                    "Failed to get username: username is not a string",
+                    {
+                        level: "error",
+                        extra: {
+                            uuid,
+                            data,
+                        },
                     },
-                });
-                throw new Error("Invalid username in response from flashlight api");
+                );
+                throw new Error(
+                    "Invalid username in response from flashlight api",
+                );
             }
 
             if (addKnownAlias) {
                 addKnownAlias({ uuid, username: data.username });
             } else {
-                addKnownAliasWithoutRerendering({ uuid, username: data.username });
+                addKnownAliasWithoutRerendering({
+                    uuid,
+                    username: data.username,
+                });
             }
 
             return { uuid, username: data.username };
