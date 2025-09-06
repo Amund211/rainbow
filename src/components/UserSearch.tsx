@@ -301,8 +301,12 @@ export const UserSearch: React.FC<UserSearchProps> = ({
             size={size}
             // TODO: Clear the input when the user selects an option
             blurOnSelect
+            clearOnBlur
+            clearOnEscape
+            handleHomeEndKeys
             selectOnFocus
             autoHighlight
+            disablePortal
             filterOptions={filterOptions}
             renderOption={renderOption}
             getOptionLabel={getOptionLabel}
@@ -392,6 +396,10 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
             fullWidth
             size={size}
             autoHighlight
+            clearOnBlur
+            clearOnEscape
+            handleHomeEndKeys
+            disablePortal
             filterOptions={filterOptions}
             renderOption={renderOption}
             getOptionLabel={getOptionLabel}
