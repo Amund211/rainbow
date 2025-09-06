@@ -82,7 +82,7 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
                 return { names: [name, ...names], option };
             });
 
-            return orderUUIDsByScore(
+            const filteredOptions = orderUUIDsByScore(
                 namesForOptions
                     .filter(({ names }) => {
                         return names.some((name) =>
@@ -94,9 +94,82 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
                     .map(({ option }) => option),
                 currentUser ?? undefined,
             );
+
+            // Add an option for the current search term if:
+            // 1. There's an input value
+            // 2. There's no exact match already in the filtered results
+            if (inputValue.trim()) {
+                const hasExactMatch = namesForOptions.some(
+                    ({ names, option }) => {
+                        return (
+                            filteredOptions.includes(option) &&
+                            names.some(
+                                (name) =>
+                                    name.toLowerCase() ===
+                                    inputValue.toLowerCase(),
+                            )
+                        );
+                    },
+                );
+
+                if (!hasExactMatch) {
+                    // Use a special prefix to identify this as a search term option
+                    filteredOptions.push(`__search_term__${inputValue}`);
+                }
+            }
+
+            return filteredOptions;
         },
         renderOption: (props, option) => {
             const { key, ...optionProps } = props; // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+
+            // Handle special search term option
+            if (option.startsWith("__search_term__")) {
+                const searchTerm = option.replace("__search_term__", "");
+                const normalizedUUID = normalizeUUID(searchTerm);
+
+                if (normalizedUUID) {
+                    // If search term is a UUID, try to render with player name and head
+                    const playerName = uuidToUsername[normalizedUUID];
+                    return (
+                        <Stack
+                            component="li"
+                            key={key} // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+                            direction="row"
+                            gap={2}
+                            alignItems="center"
+                            {...optionProps}
+                        >
+                            <Avatar
+                                src={`https://crafatar.com/renders/head/${normalizedUUID}?overlay`}
+                                alt={`Player head of ${playerName ?? "unknown"}`}
+                            />
+                            <Typography variant="body1">
+                                {playerName ?? searchTerm}
+                            </Typography>
+                        </Stack>
+                    );
+                } else {
+                    // Regular search term
+                    return (
+                        <Stack
+                            component="li"
+                            key={key} // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+                            direction="row"
+                            gap={2}
+                            alignItems="center"
+                            {...optionProps}
+                        >
+                            <Search fontSize="small" />
+                            <Typography variant="body1">
+                                Search for &ldquo;{searchTerm}&rdquo;
+                            </Typography>
+                        </Stack>
+                    );
+                }
+            }
+
+            // Normal UUID option
             const uuid = option;
             return (
                 <Stack
@@ -118,6 +191,9 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
             );
         },
         getOptionLabel: (option) => {
+            if (option.startsWith("__search_term__")) {
+                return option.replace("__search_term__", "");
+            }
             return uuidToUsername[option] ?? option;
         },
         isOptionEqualToValue: (option, value) => {
@@ -171,31 +247,6 @@ export const UserSearch: React.FC<UserSearchProps> = ({
         isOptionEqualToValue,
     } = useUserSearchOptions();
     const [loading, setLoading] = React.useState(false);
-    const [inputValue, setInputValue] = React.useState("");
-
-    const handleSubmit = (value: string) => {
-        if (!value) return;
-
-        // Allow UUIDs to be entered directly
-        const valueAsNormalizedUUID = normalizeUUID(value);
-        if (valueAsNormalizedUUID) {
-            onSubmit(valueAsNormalizedUUID);
-            return;
-        }
-
-        setLoading(true);
-        queryClient
-            .fetchQuery(getUUIDQueryOptions(value, addKnownAlias))
-            .then(({ uuid }) => {
-                onSubmit(uuid);
-            })
-            .catch((error: unknown) => {
-                console.error("Failed to fetch username", error);
-            })
-            .finally(() => {
-                setLoading(false);
-            });
-    };
 
     return (
         <Autocomplete
@@ -207,25 +258,39 @@ export const UserSearch: React.FC<UserSearchProps> = ({
             blurOnSelect
             selectOnFocus
             autoHighlight
-            inputValue={inputValue}
-            onInputChange={(_, newInputValue) => {
-                setInputValue(newInputValue);
-            }}
             filterOptions={filterOptions}
             renderOption={renderOption}
             getOptionLabel={getOptionLabel}
             isOptionEqualToValue={isOptionEqualToValue}
             onChange={(_, value) => {
                 if (!value) return; // Ignore clearing the input
-                handleSubmit(value);
-            }}
-            onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                    // Prevent the default behavior of selecting the highlighted option
-                    event.preventDefault();
-                    // Use the actual input value instead of the highlighted option
-                    handleSubmit(inputValue);
+
+                let actualValue = value;
+
+                // Handle special search term option
+                if (value.startsWith("__search_term__")) {
+                    actualValue = value.replace("__search_term__", "");
                 }
+
+                // Allow UUIDs to be entered directly
+                const valueAsNormalizedUUID = normalizeUUID(actualValue);
+                if (valueAsNormalizedUUID) {
+                    onSubmit(valueAsNormalizedUUID);
+                    return;
+                }
+
+                setLoading(true);
+                queryClient
+                    .fetchQuery(getUUIDQueryOptions(actualValue, addKnownAlias))
+                    .then(({ uuid }) => {
+                        onSubmit(uuid);
+                    })
+                    .catch((error: unknown) => {
+                        console.error("Failed to fetch username", error);
+                    })
+                    .finally(() => {
+                        setLoading(false);
+                    });
             }}
             renderInput={(params) => {
                 return (
