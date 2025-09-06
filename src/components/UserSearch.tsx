@@ -171,6 +171,31 @@ export const UserSearch: React.FC<UserSearchProps> = ({
         isOptionEqualToValue,
     } = useUserSearchOptions();
     const [loading, setLoading] = React.useState(false);
+    const [inputValue, setInputValue] = React.useState("");
+
+    const handleSubmit = (value: string) => {
+        if (!value) return;
+
+        // Allow UUIDs to be entered directly
+        const valueAsNormalizedUUID = normalizeUUID(value);
+        if (valueAsNormalizedUUID) {
+            onSubmit(valueAsNormalizedUUID);
+            return;
+        }
+
+        setLoading(true);
+        queryClient
+            .fetchQuery(getUUIDQueryOptions(value, addKnownAlias))
+            .then(({ uuid }) => {
+                onSubmit(uuid);
+            })
+            .catch((error: unknown) => {
+                console.error("Failed to fetch username", error);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    };
 
     return (
         <Autocomplete
@@ -182,32 +207,25 @@ export const UserSearch: React.FC<UserSearchProps> = ({
             blurOnSelect
             selectOnFocus
             autoHighlight
+            inputValue={inputValue}
+            onInputChange={(_, newInputValue) => {
+                setInputValue(newInputValue);
+            }}
             filterOptions={filterOptions}
             renderOption={renderOption}
             getOptionLabel={getOptionLabel}
             isOptionEqualToValue={isOptionEqualToValue}
             onChange={(_, value) => {
                 if (!value) return; // Ignore clearing the input
-
-                // Allow UUIDs to be entered directly
-                const valueAsNormalizedUUID = normalizeUUID(value);
-                if (valueAsNormalizedUUID) {
-                    onSubmit(valueAsNormalizedUUID);
-                    return;
+                handleSubmit(value);
+            }}
+            onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                    // Prevent the default behavior of selecting the highlighted option
+                    event.preventDefault();
+                    // Use the actual input value instead of the highlighted option
+                    handleSubmit(inputValue);
                 }
-
-                setLoading(true);
-                queryClient
-                    .fetchQuery(getUUIDQueryOptions(value, addKnownAlias))
-                    .then(({ uuid }) => {
-                        onSubmit(uuid);
-                    })
-                    .catch((error: unknown) => {
-                        console.error("Failed to fetch username", error);
-                    })
-                    .finally(() => {
-                        setLoading(false);
-                    });
             }}
             renderInput={(params) => {
                 return (
