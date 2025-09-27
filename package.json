@@ -17,7 +17,8 @@
         "lint:check": "run-p eslint:check prettier:check",
         "lint:fix": "run-p eslint:write prettier:write",
         "test": "node --test --experimental-strip-types --env-file=.env.development",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "generate-route-tree": "node scripts/generate-route-tree.js"
     },
     "imports": {
         "#*": "./src/*"
