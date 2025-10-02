@@ -1,5 +1,4 @@
 import { queryClient } from "#queryClient.ts";
-import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { getUsernameQueryOptions } from "#queries/username.ts";
 import { timeIntervalsFromDefinition } from "#intervals.ts";
@@ -79,32 +78,33 @@ import { normalizeUUID } from "#helpers/uuid.ts";
 import { captureException } from "@sentry/react";
 
 const sessionSearchSchema = z.object({
-    timeIntervalDefinition: fallback(
-        z.union([
+    timeIntervalDefinition: z
+        .union([
             z.object({
                 type: z.literal("contained"),
-                date: fallback(z.coerce.date().optional(), undefined),
+                date: z.coerce.date().optional().default(undefined),
             }),
             z.object({
                 type: z.literal("until"),
-                date: fallback(z.coerce.date().optional(), undefined),
+                date: z.coerce.date().optional().default(undefined),
             }),
-        ]),
-        { type: "contained" },
-    ),
-    trackingStart: fallback(z.coerce.date().optional(), undefined).transform(
-        (value) => {
+        ])
+        .default({ type: "contained" }),
+    trackingStart: z.coerce
+        .date()
+        .optional()
+        .default(undefined)
+        .transform((value) => {
             if (value === undefined) {
                 return new Date(1970, 0, 1);
             }
             return value;
-        },
-    ),
-    gamemode: fallback(z.enum(ALL_GAMEMODE_KEYS), "overall"),
-    stat: fallback(z.enum(ALL_STAT_KEYS), "fkdr"),
-    variantSelection: fallback(z.enum(["session", "overall", "both"]), "both"),
-    sessionTableMode: fallback(z.enum(["total", "rate"]), "total"),
-    showExtrapolatedSessions: fallback(z.boolean(), false),
+        }),
+    gamemode: z.enum(ALL_GAMEMODE_KEYS).default("overall"),
+    stat: z.enum(ALL_STAT_KEYS).default("fkdr"),
+    variantSelection: z.enum(["session", "overall", "both"]).default("both"),
+    sessionTableMode: z.enum(["total", "rate"]).default("total"),
+    showExtrapolatedSessions: z.boolean().default(false),
 });
 
 export const Route = createFileRoute("/session/$uuid")({
