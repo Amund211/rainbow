@@ -59,7 +59,7 @@ defaultEnd.setHours(23, 59, 59, 999);
 
 const historyExploreSearchSchema = z.object({
     // TODO: Read "preferred user" from local storage or similar
-    uuids: z.array(z.string()).readonly().default([]),
+    uuids: z.array(z.string()).default([]).readonly(),
     start: z.coerce.date().default(defaultStart),
     end: z.coerce.date().default(defaultEnd),
     limit: z.number().int().min(1).max(50).default(50),

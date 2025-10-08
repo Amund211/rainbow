@@ -82,7 +82,7 @@ const sessionSearchSchema = z.object({
         .union([
             z.object({
                 type: z.literal("contained"),
-                date: z.coerce.date().optional().default(undefined),
+                date: z.coerce.date().optional(),
             }),
             z.object({
                 type: z.literal("until"),
@@ -92,8 +92,8 @@ const sessionSearchSchema = z.object({
         .default({ type: "contained" }),
     trackingStart: z.coerce
         .date()
-        .optional()
         .default(undefined)
+        .optional()
         .transform((value) => {
             if (value === undefined) {
                 return new Date(1970, 0, 1);
