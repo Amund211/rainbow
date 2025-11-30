@@ -14,8 +14,8 @@ const URL = `http://localhost:${PORT}`;
 
         console.log(`Navigating to ${URL}...`);
         await page.goto(URL, {
-            waitUntil: "networkidle",
-            timeout: 30000,
+            waitUntil: "domcontentloaded",
+            timeout: 15000,
         });
 
         console.log("Setting rainbow_user_id in localStorage...");
@@ -66,4 +66,3 @@ const URL = `http://localhost:${PORT}`;
         process.exit(1);
     }
 })();
-
