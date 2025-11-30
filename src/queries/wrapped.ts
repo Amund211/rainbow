@@ -23,6 +23,8 @@ interface BestSession {
     };
 }
 
+export type { BestSession };
+
 interface StreakInfo {
     highest: number;
     when: string;

@@ -1,6 +1,10 @@
 import { queryClient } from "#queryClient.ts";
 import { getUsernameQueryOptions } from "#queries/username.ts";
-import { getWrappedQueryOptions, type WrappedData } from "#queries/wrapped.ts";
+import {
+    getWrappedQueryOptions,
+    type WrappedData,
+    type BestSession,
+} from "#queries/wrapped.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
 import { computeStat } from "#stats/index.ts";
 import {
@@ -163,33 +167,6 @@ const formatHours = (hours: number): string => {
     return `${wholeHours.toString()}h ${minutes.toString()}m`;
 };
 
-// Convert UTC hour to local hour
-const utcToLocalHour = (utcHour: number): number => {
-    const now = new Date();
-    const utcDate = new Date(
-        Date.UTC(
-            now.getUTCFullYear(),
-            now.getUTCMonth(),
-            now.getUTCDate(),
-            utcHour,
-        ),
-    );
-    return utcDate.getHours();
-};
-
-const formatTimeRange = (utcHourStart: number, windowSize = 4): string => {
-    const localHourStart = utcToLocalHour(utcHourStart);
-    const localHourEnd = (localHourStart + windowSize) % 24;
-
-    const formatHour = (h: number) => {
-        if (h === 0) return "12am";
-        if (h < 12) return `${h.toString()}am`;
-        if (h === 12) return "12pm";
-        return `${(h - 12).toString()}pm`;
-    };
-    return `${formatHour(localHourStart)}-${formatHour(localHourEnd)}`;
-};
-
 // Confetti configuration
 const CONFETTI_DURATION_SECONDS = 5;
 
@@ -223,7 +200,9 @@ const ConfettiEffect: React.FC = () => {
             setShowConfetti(false);
         }, CONFETTI_DURATION_SECONDS * 1000);
 
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+        };
     }, []);
 
     if (!showConfetti) return null;
@@ -272,7 +251,7 @@ const ConfettiEffect: React.FC = () => {
 interface BestSessionCardProps {
     title: string;
     icon: JSX.Element;
-    session: WrappedData["bestSessions"]["highestFKDR"] | undefined;
+    session: BestSession | undefined;
     statLabel: string;
     color: string;
     showDuration?: boolean;
@@ -476,7 +455,7 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                                 "Dec",
                             ].map((month, index) => {
                                 const count =
-                                    wrappedData.sessionsPerMonth[
+                                    wrappedData.sessionsPerMonth?.[
                                         (index + 1).toString()
                                     ] ?? 0;
                                 return (
@@ -535,13 +514,13 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                                     "Dec",
                                 ].map((month, index) => {
                                     const count =
-                                        wrappedData.sessionsPerMonth[
+                                        wrappedData.sessionsPerMonth?.[
                                             (index + 1).toString()
                                         ] ?? 0;
                                     const maxCount = Math.max(
                                         ...Object.values(
-                                            wrappedData.sessionsPerMonth,
-                                        ).map((v) => v ?? 0),
+                                            wrappedData.sessionsPerMonth ?? {},
+                                        ),
                                         1,
                                     );
                                     const heightPercent =
@@ -607,7 +586,6 @@ interface YearStatsCardsProps {
     totalBedsBroken: number | null;
     startFKDR: number | null;
     endFKDR: number | null;
-    starsStart: number | null;
     starsEnd: number | null;
     starsGained: number | null;
     winRate: number;
@@ -1028,8 +1006,7 @@ interface FavoritePlayTimesProps {
 const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
     wrappedData,
 }) => {
-    if (!wrappedData.favoritePlayIntervals && !wrappedData.playtimeDistribution)
-        return null;
+    if (!wrappedData.playtimeDistribution) return null;
 
     // Helper function to convert UTC day/hour to local day/hour
     const utcToLocalDayHour = (
@@ -1083,13 +1060,13 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
         }
 
         const localDistribution: Record<string, number[]> = {
-            Sunday: new Array(24).fill(0),
-            Monday: new Array(24).fill(0),
-            Tuesday: new Array(24).fill(0),
-            Wednesday: new Array(24).fill(0),
-            Thursday: new Array(24).fill(0),
-            Friday: new Array(24).fill(0),
-            Saturday: new Array(24).fill(0),
+            Sunday: Array.from({ length: 24 }, () => 0),
+            Monday: Array.from({ length: 24 }, () => 0),
+            Tuesday: Array.from({ length: 24 }, () => 0),
+            Wednesday: Array.from({ length: 24 }, () => 0),
+            Thursday: Array.from({ length: 24 }, () => 0),
+            Friday: Array.from({ length: 24 }, () => 0),
+            Saturday: Array.from({ length: 24 }, () => 0),
         };
 
         // For each UTC day/hour, add to the corresponding local day/hour
@@ -1110,10 +1087,10 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
     // Convert UTC hourly distribution to local hourly distribution
     const getLocalHourlyDistribution = (): number[] => {
         if (!wrappedData.playtimeDistribution?.hourlyDistribution) {
-            return new Array(24).fill(0);
+            return Array.from({ length: 24 }, () => 0);
         }
 
-        const localDistribution = new Array(24).fill(0);
+        const localDistribution = Array.from({ length: 24 }, () => 0);
         const timezoneOffset = new Date().getTimezoneOffset() / 60; // Hours difference from UTC
 
         wrappedData.playtimeDistribution.hourlyDistribution.forEach(
@@ -1126,16 +1103,10 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
         return localDistribution;
     };
 
-    const localHourlyDist = wrappedData.playtimeDistribution
-        ? getLocalHourlyDistribution()
-        : null;
-    const localDayHourDist = wrappedData.playtimeDistribution
-        ? getLocalDayHourDistribution()
-        : null;
+    const localHourlyDist = getLocalHourlyDistribution();
+    const localDayHourDist = getLocalDayHourDistribution();
 
-    const maxHourlyValue = localHourlyDist
-        ? Math.max(...localHourlyDist, 0.01)
-        : 1;
+    const maxHourlyValue = Math.max(...localHourlyDist, 0.01);
 
     return (
         <Fade in timeout={1600}>
@@ -1145,276 +1116,215 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                         <Stack direction="row" alignItems="center" gap={1}>
                             <CalendarMonth color="primary" />
                             <Typography variant="h6">
-                                Favorite Play Times (Local Time)
+                                Play Time Patterns (Local Time)
                             </Typography>
                         </Stack>
 
-                        {/* Top 3 intervals - only show if favoritePlayIntervals exists */}
-                        {wrappedData.favoritePlayIntervals && (
-                            <Grid container spacing={2}>
-                                {wrappedData.favoritePlayIntervals.map(
-                                    (interval, index) => (
-                                        <Grid
-                                            size={{ xs: 12, sm: 4 }}
-                                            key={index}
-                                        >
-                                            <Card
-                                                variant="outlined"
-                                                sx={{
-                                                    bgcolor: "action.hover",
-                                                }}
-                                            >
-                                                <CardContent>
-                                                    <Stack
-                                                        alignItems="center"
-                                                        gap={1}
-                                                    >
-                                                        <Typography variant="h6">
-                                                            #
-                                                            {(
-                                                                index + 1
-                                                            ).toString()}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="h5"
-                                                            color="primary"
-                                                        >
-                                                            {formatTimeRange(
-                                                                interval.hourStart,
-                                                            )}
-                                                        </Typography>
-                                                        <Typography variant="body2">
-                                                            {interval.percentage.toFixed(
-                                                                1,
-                                                            )}
-                                                            % of playtime
-                                                        </Typography>
-                                                    </Stack>
-                                                </CardContent>
-                                            </Card>
-                                        </Grid>
-                                    ),
-                                )}
-                            </Grid>
-                        )}
-
                         {/* 24-hour bar chart using actual playtime distribution */}
-                        {localHourlyDist && (
-                            <Box sx={{ mt: 2 }}>
-                                <Typography
-                                    variant="caption"
-                                    color="textSecondary"
-                                    sx={{ mb: 1, display: "block" }}
-                                >
-                                    Playtime distribution across the day
-                                </Typography>
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        gap: 0.5,
-                                        alignItems: "flex-end",
-                                        height: 80,
-                                    }}
-                                >
-                                    {localHourlyDist.map((hours, localHour) => {
-                                        const heightPercent =
-                                            (hours / maxHourlyValue) * 100;
+                        <Box sx={{ mt: 2 }}>
+                            <Typography
+                                variant="caption"
+                                color="textSecondary"
+                                sx={{ mb: 1, display: "block" }}
+                            >
+                                Playtime distribution across the day
+                            </Typography>
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    gap: 0.5,
+                                    alignItems: "flex-end",
+                                    height: 80,
+                                }}
+                            >
+                                {localHourlyDist.map((hours, localHour) => {
+                                    const heightPercent =
+                                        (hours / maxHourlyValue) * 100;
 
-                                        return (
-                                            <Tooltip
-                                                key={localHour}
-                                                title={`${localHour.toString()}:00 - ${((localHour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
-                                            >
-                                                <Box
-                                                    sx={{
-                                                        flex: 1,
-                                                        display: "flex",
-                                                        flexDirection: "column",
-                                                        justifyContent:
-                                                            "flex-end",
-                                                        alignItems: "center",
-                                                        height: "100%",
-                                                    }}
-                                                >
-                                                    <Box
-                                                        sx={{
-                                                            width: "100%",
-                                                            height: `${heightPercent.toString()}%`,
-                                                            bgcolor:
-                                                                hours > 0
-                                                                    ? "primary.main"
-                                                                    : "action.disabled",
-                                                            borderRadius:
-                                                                "2px 2px 0 0",
-                                                            minHeight:
-                                                                hours > 0
-                                                                    ? "4px"
-                                                                    : "2px",
-                                                            transition:
-                                                                "all 0.3s ease",
-                                                            "&:hover": {
-                                                                opacity: 0.8,
-                                                            },
-                                                        }}
-                                                    />
-                                                    {localHour % 6 === 0 && (
-                                                        <Typography
-                                                            variant="caption"
-                                                            sx={{
-                                                                fontSize:
-                                                                    "0.65rem",
-                                                                mt: 0.5,
-                                                            }}
-                                                        >
-                                                            {localHour.toString()}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            </Tooltip>
-                                        );
-                                    })}
-                                </Box>
-                            </Box>
-                        )}
-
-                        {/* Heatmap: day of week x hour of day */}
-                        {localDayHourDist && (
-                            <Box sx={{ mt: 3 }}>
-                                <Typography
-                                    variant="caption"
-                                    color="textSecondary"
-                                    sx={{ mb: 1, display: "block" }}
-                                >
-                                    Playtime heatmap: when you play during the
-                                    week
-                                </Typography>
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: 0.5,
-                                    }}
-                                >
-                                    {[
-                                        "Monday",
-                                        "Tuesday",
-                                        "Wednesday",
-                                        "Thursday",
-                                        "Friday",
-                                        "Saturday",
-                                        "Sunday",
-                                    ].map((day) => {
-                                        const dayData = localDayHourDist[day];
-                                        const maxDayValue = Math.max(
-                                            ...Object.values(
-                                                localDayHourDist,
-                                            ).flat(),
-                                            0.01,
-                                        );
-
-                                        return (
+                                    return (
+                                        <Tooltip
+                                            key={localHour}
+                                            title={`${localHour.toString()}:00 - ${((localHour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
+                                        >
                                             <Box
-                                                key={day}
                                                 sx={{
+                                                    flex: 1,
                                                     display: "flex",
-                                                    gap: 0.5,
+                                                    flexDirection: "column",
+                                                    justifyContent: "flex-end",
                                                     alignItems: "center",
+                                                    height: "100%",
                                                 }}
                                             >
-                                                <Typography
-                                                    variant="caption"
-                                                    sx={{
-                                                        width: "70px",
-                                                        fontSize: "0.7rem",
-                                                    }}
-                                                >
-                                                    {day.substring(0, 3)}
-                                                </Typography>
                                                 <Box
                                                     sx={{
-                                                        display: "flex",
-                                                        gap: 0.25,
-                                                        flex: 1,
-                                                    }}
-                                                >
-                                                    {dayData.map(
-                                                        (hours, hour) => {
-                                                            const intensity =
-                                                                hours /
-                                                                maxDayValue;
-                                                            const opacity =
-                                                                hours > 0
-                                                                    ? 0.2 +
-                                                                      intensity *
-                                                                          0.8
-                                                                    : 0.05;
-
-                                                            return (
-                                                                <Tooltip
-                                                                    key={hour}
-                                                                    title={`${day} ${hour.toString()}:00 - ${((hour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
-                                                                >
-                                                                    <Box
-                                                                        sx={{
-                                                                            flex: 1,
-                                                                            height: 20,
-                                                                            bgcolor:
-                                                                                "primary.main",
-                                                                            opacity:
-                                                                                opacity,
-                                                                            borderRadius: 0.5,
-                                                                            transition:
-                                                                                "all 0.2s ease",
-                                                                            "&:hover":
-                                                                                {
-                                                                                    transform:
-                                                                                        "scale(1.2)",
-                                                                                    zIndex: 10,
-                                                                                    opacity: 1,
-                                                                                },
-                                                                        }}
-                                                                    />
-                                                                </Tooltip>
-                                                            );
+                                                        width: "100%",
+                                                        height: `${heightPercent.toString()}%`,
+                                                        bgcolor:
+                                                            hours > 0
+                                                                ? "primary.main"
+                                                                : "action.disabled",
+                                                        borderRadius:
+                                                            "2px 2px 0 0",
+                                                        minHeight:
+                                                            hours > 0
+                                                                ? "4px"
+                                                                : "2px",
+                                                        transition:
+                                                            "all 0.3s ease",
+                                                        "&:hover": {
+                                                            opacity: 0.8,
                                                         },
-                                                    )}
-                                                </Box>
-                                            </Box>
-                                        );
-                                    })}
-                                    {/* Hour labels */}
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            gap: 0.25,
-                                            ml: "70px",
-                                        }}
-                                    >
-                                        {Array.from({ length: 24 }).map(
-                                            (_, hour) =>
-                                                hour % 6 === 0 ? (
+                                                    }}
+                                                />
+                                                {localHour % 6 === 0 && (
                                                     <Typography
-                                                        key={hour}
                                                         variant="caption"
                                                         sx={{
-                                                            flex: 1,
-                                                            fontSize: "0.6rem",
-                                                            textAlign: "center",
+                                                            fontSize: "0.65rem",
+                                                            mt: 0.5,
                                                         }}
                                                     >
-                                                        {hour.toString()}
+                                                        {localHour.toString()}
                                                     </Typography>
-                                                ) : (
-                                                    <Box
-                                                        key={hour}
-                                                        sx={{ flex: 1 }}
-                                                    />
-                                                ),
-                                        )}
-                                    </Box>
+                                                )}
+                                            </Box>
+                                        </Tooltip>
+                                    );
+                                })}
+                            </Box>
+                        </Box>
+
+                        {/* Heatmap: day of week x hour of day */}
+                        <Box sx={{ mt: 3 }}>
+                            <Typography
+                                variant="caption"
+                                color="textSecondary"
+                                sx={{ mb: 1, display: "block" }}
+                            >
+                                Playtime heatmap: when you play during the week
+                            </Typography>
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 0.5,
+                                }}
+                            >
+                                {[
+                                    "Monday",
+                                    "Tuesday",
+                                    "Wednesday",
+                                    "Thursday",
+                                    "Friday",
+                                    "Saturday",
+                                    "Sunday",
+                                ].map((day) => {
+                                    const dayData = localDayHourDist[day];
+                                    const maxDayValue = Math.max(
+                                        ...Object.values(
+                                            localDayHourDist,
+                                        ).flat(),
+                                        0.01,
+                                    );
+
+                                    return (
+                                        <Box
+                                            key={day}
+                                            sx={{
+                                                display: "flex",
+                                                gap: 0.5,
+                                                alignItems: "center",
+                                            }}
+                                        >
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    width: "70px",
+                                                    fontSize: "0.7rem",
+                                                }}
+                                            >
+                                                {day.substring(0, 3)}
+                                            </Typography>
+                                            <Box
+                                                sx={{
+                                                    display: "flex",
+                                                    gap: 0.25,
+                                                    flex: 1,
+                                                }}
+                                            >
+                                                {dayData.map((hours, hour) => {
+                                                    const intensity =
+                                                        hours / maxDayValue;
+                                                    const opacity =
+                                                        hours > 0
+                                                            ? 0.2 +
+                                                              intensity * 0.8
+                                                            : 0.05;
+
+                                                    return (
+                                                        <Tooltip
+                                                            key={hour}
+                                                            title={`${day} ${hour.toString()}:00 - ${((hour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
+                                                        >
+                                                            <Box
+                                                                sx={{
+                                                                    flex: 1,
+                                                                    height: 20,
+                                                                    bgcolor:
+                                                                        "primary.main",
+                                                                    opacity:
+                                                                        opacity,
+                                                                    borderRadius: 0.5,
+                                                                    transition:
+                                                                        "all 0.2s ease",
+                                                                    "&:hover": {
+                                                                        transform:
+                                                                            "scale(1.2)",
+                                                                        zIndex: 10,
+                                                                        opacity: 1,
+                                                                    },
+                                                                }}
+                                                            />
+                                                        </Tooltip>
+                                                    );
+                                                })}
+                                            </Box>
+                                        </Box>
+                                    );
+                                })}
+                                {/* Hour labels */}
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        gap: 0.25,
+                                        ml: "70px",
+                                    }}
+                                >
+                                    {Array.from({ length: 24 }).map(
+                                        (_, hour) =>
+                                            hour % 6 === 0 ? (
+                                                <Typography
+                                                    key={hour}
+                                                    variant="caption"
+                                                    sx={{
+                                                        flex: 1,
+                                                        fontSize: "0.6rem",
+                                                        textAlign: "center",
+                                                    }}
+                                                >
+                                                    {hour.toString()}
+                                                </Typography>
+                                            ) : (
+                                                <Box
+                                                    key={hour}
+                                                    sx={{ flex: 1 }}
+                                                />
+                                            ),
+                                    )}
                                 </Box>
                             </Box>
-                        )}
+                        </Box>
                     </Stack>
                 </CardContent>
             </Card>
@@ -1582,8 +1492,8 @@ function RouteComponent() {
     }
 
     // Calculate year stats from yearStats
-    const startStats = wrappedData?.yearStats.start;
-    const endStats = wrappedData?.yearStats.end;
+    const startStats = wrappedData?.yearStats?.start;
+    const endStats = wrappedData?.yearStats?.end;
 
     const totalGames =
         startStats && endStats
@@ -1649,7 +1559,8 @@ function RouteComponent() {
         totalGames && totalWins ? (totalWins / totalGames) * 100 : 0;
 
     const lowCoverage =
-        wrappedData && wrappedData.sessionCoverage.gamesPlayedPercentage < 50;
+        wrappedData?.sessionCoverage?.gamesPlayedPercentage &&
+        wrappedData.sessionCoverage.gamesPlayedPercentage < 50;
 
     return (
         <Stack spacing={3}>
@@ -1740,8 +1651,8 @@ function RouteComponent() {
                     <Fade in timeout={1000}>
                         <Alert severity="info" icon={<Info />}>
                             <Typography variant="body2">
-                                This player didn't record any sessions with the
-                                Prism Overlay in {year.toString()}. Showing
+                                This player didn&apos;t record any sessions with
+                                the Prism Overlay in {year.toString()}. Showing
                                 overall year statistics instead.
                             </Typography>
                         </Alert>
@@ -1874,12 +1785,12 @@ function RouteComponent() {
                 </>
             ) : (
                 <>
-                    {lowCoverage && (
+                    {lowCoverage && wrappedData.sessionCoverage && (
                         <Fade in timeout={800}>
                             <Alert severity="warning" icon={<Warning />}>
                                 <Typography variant="body2">
                                     Session coverage is low (
-                                    {wrappedData.sessionCoverage!.gamesPlayedPercentage.toFixed(
+                                    {wrappedData.sessionCoverage.gamesPlayedPercentage.toFixed(
                                         1,
                                     )}
                                     % of games in sessions). Many stats gained
@@ -1890,754 +1801,39 @@ function RouteComponent() {
                     )}
 
                     {/* Session Overview */}
-                    <Fade in timeout={1000}>
-                        <Card variant="outlined">
-                            <CardContent>
-                                <Stack gap={2}>
-                                    <Stack
-                                        direction="row"
-                                        alignItems="center"
-                                        gap={1}
-                                    >
-                                        <Schedule color="primary" />
-                                        <Typography variant="h6">
-                                            Session Overview
-                                        </Typography>
-                                    </Stack>
-                                    <Grid container spacing={2}>
-                                        <Grid size={{ xs: 6, sm: 3 }}>
-                                            <Stack alignItems="center">
-                                                <Typography
-                                                    variant="h4"
-                                                    color="primary"
-                                                >
-                                                    {wrappedData.totalSessions.toString()}
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    color="textSecondary"
-                                                >
-                                                    Total Sessions
-                                                </Typography>
-                                            </Stack>
-                                        </Grid>
-                                        {wrappedData.nonConsecutiveSessions >
-                                            0 && (
-                                            <Grid size={{ xs: 6, sm: 3 }}>
-                                                <Tooltip title="These sessions had gaps in tracking and were excluded">
-                                                    <Stack alignItems="center">
-                                                        <Typography
-                                                            variant="h4"
-                                                            color="warning.main"
-                                                        >
-                                                            {wrappedData.nonConsecutiveSessions.toString()}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="textSecondary"
-                                                        >
-                                                            Filtered Out
-                                                        </Typography>
-                                                    </Stack>
-                                                </Tooltip>
-                                            </Grid>
-                                        )}
-                                        {wrappedData.sessionLengths && (
-                                            <>
-                                                <Grid size={{ xs: 6, sm: 3 }}>
-                                                    <Stack alignItems="center">
-                                                        <Typography
-                                                            variant="h4"
-                                                            color="success.main"
-                                                        >
-                                                            {formatHours(
-                                                                wrappedData
-                                                                    .sessionLengths
-                                                                    .totalHours,
-                                                            )}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="textSecondary"
-                                                        >
-                                                            Total Time
-                                                        </Typography>
-                                                    </Stack>
-                                                </Grid>
-                                                <Grid size={{ xs: 6, sm: 3 }}>
-                                                    <Stack alignItems="center">
-                                                        <Typography
-                                                            variant="h4"
-                                                            color="info.main"
-                                                        >
-                                                            {formatHours(
-                                                                wrappedData
-                                                                    .sessionLengths
-                                                                    .averageHours,
-                                                            )}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="textSecondary"
-                                                        >
-                                                            Avg Session
-                                                        </Typography>
-                                                    </Stack>
-                                                </Grid>
-                                            </>
-                                        )}
-                                    </Grid>
-
-                                    {wrappedData.sessionsPerMonth && (
-                                        <>
-                                            <Divider />
-
-                                            <Typography variant="subtitle2">
-                                                Sessions per Month
-                                            </Typography>
-                                            <Grid container spacing={1}>
-                                                {[
-                                                    "Jan",
-                                                    "Feb",
-                                                    "Mar",
-                                                    "Apr",
-                                                    "May",
-                                                    "Jun",
-                                                    "Jul",
-                                                    "Aug",
-                                                    "Sep",
-                                                    "Oct",
-                                                    "Nov",
-                                                    "Dec",
-                                                ].map((month, index) => {
-                                                    const count =
-                                                        wrappedData
-                                                            .sessionsPerMonth[
-                                                            (
-                                                                index + 1
-                                                            ).toString()
-                                                        ] ?? 0;
-                                                    return (
-                                                        <Grid
-                                                            size={{
-                                                                xs: 3,
-                                                                sm: 2,
-                                                                md: 1,
-                                                            }}
-                                                            key={month}
-                                                        >
-                                                            <Tooltip
-                                                                title={`${count.toString()} sessions`}
-                                                            >
-                                                                <Stack
-                                                                    alignItems="center"
-                                                                    gap={0.5}
-                                                                >
-                                                                    <Typography
-                                                                        variant="caption"
-                                                                        color="textSecondary"
-                                                                    >
-                                                                        {month}
-                                                                    </Typography>
-                                                                    <Chip
-                                                                        label={count.toString()}
-                                                                        size="small"
-                                                                        color={
-                                                                            count >
-                                                                            0
-                                                                                ? "primary"
-                                                                                : "default"
-                                                                        }
-                                                                    />
-                                                                </Stack>
-                                                            </Tooltip>
-                                                        </Grid>
-                                                    );
-                                                })}
-                                            </Grid>
-
-                                            {/* Bar chart for sessions per month */}
-                                            <Box sx={{ mt: 2, mb: 1 }}>
-                                                <Grid container spacing={1}>
-                                                    {[
-                                                        "Jan",
-                                                        "Feb",
-                                                        "Mar",
-                                                        "Apr",
-                                                        "May",
-                                                        "Jun",
-                                                        "Jul",
-                                                        "Aug",
-                                                        "Sep",
-                                                        "Oct",
-                                                        "Nov",
-                                                        "Dec",
-                                                    ].map((month, index) => {
-                                                        const count =
-                                                            wrappedData
-                                                                .sessionsPerMonth[
-                                                                (
-                                                                    index + 1
-                                                                ).toString()
-                                                            ] ?? 0;
-                                                        const maxCount =
-                                                            Math.max(
-                                                                ...Object.values(
-                                                                    wrappedData.sessionsPerMonth,
-                                                                ).map(
-                                                                    (v) =>
-                                                                        v ?? 0,
-                                                                ),
-                                                                1,
-                                                            );
-                                                        const heightPercent =
-                                                            (count / maxCount) *
-                                                            100;
-                                                        return (
-                                                            <Grid
-                                                                size={{
-                                                                    xs: 3,
-                                                                    sm: 2,
-                                                                    md: 1,
-                                                                }}
-                                                                key={`bar-${month}`}
-                                                            >
-                                                                <Tooltip
-                                                                    title={`${count.toString()} sessions`}
-                                                                >
-                                                                    <Box
-                                                                        sx={{
-                                                                            display:
-                                                                                "flex",
-                                                                            flexDirection:
-                                                                                "column",
-                                                                            alignItems:
-                                                                                "center",
-                                                                            height: 60,
-                                                                            justifyContent:
-                                                                                "flex-end",
-                                                                        }}
-                                                                    >
-                                                                        <Box
-                                                                            sx={{
-                                                                                width: "100%",
-                                                                                height: `${heightPercent.toString()}%`,
-                                                                                bgcolor:
-                                                                                    count >
-                                                                                    0
-                                                                                        ? "primary.main"
-                                                                                        : "action.disabled",
-                                                                                borderRadius:
-                                                                                    "4px 4px 0 0",
-                                                                                minHeight:
-                                                                                    count >
-                                                                                    0
-                                                                                        ? "4px"
-                                                                                        : "2px",
-                                                                            }}
-                                                                        />
-                                                                    </Box>
-                                                                </Tooltip>
-                                                            </Grid>
-                                                        );
-                                                    })}
-                                                </Grid>
-                                            </Box>
-                                        </>
-                                    )}
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Fade>
+                    <SessionOverview wrappedData={wrappedData} />
 
                     {/* Main Stats Grid */}
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                            <StatCard
-                                title="Games Played"
-                                value={(totalGames ?? 0).toLocaleString()}
-                                subtitle={
-                                    wrappedData?.sessionCoverage
-                                        ? `${wrappedData.sessionCoverage.gamesPlayedPercentage.toFixed(1)}% in sessions`
-                                        : undefined
-                                }
-                                icon={<EmojiEvents sx={{ fontSize: 48 }} />}
-                                color="#FF6B6B"
-                                delay={100}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                            <StatCard
-                                title="Wins"
-                                value={(totalWins ?? 0).toLocaleString()}
-                                subtitle={`${winRate.toFixed(1)}% win rate`}
-                                icon={<Star sx={{ fontSize: 48 }} />}
-                                color="#4ECDC4"
-                                delay={200}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                            <StatCard
-                                title="Final Kills"
-                                value={(totalFinalKills ?? 0).toLocaleString()}
-                                subtitle="enemies eliminated"
-                                icon={
-                                    <LocalFireDepartment
-                                        sx={{ fontSize: 48 }}
-                                    />
-                                }
-                                color="#FFD93D"
-                                delay={300}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                            <StatCard
-                                title="Beds Broken"
-                                value={(totalBedsBroken ?? 0).toLocaleString()}
-                                subtitle="beds destroyed"
-                                icon={<Celebration sx={{ fontSize: 48 }} />}
-                                color="#95E1D3"
-                                delay={400}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                            <StatCard
-                                title="FKDR"
-                                value={(endFKDR ?? 0).toFixed(2)}
-                                subtitle={
-                                    startFKDR && endFKDR
-                                        ? (endFKDR - startFKDR).toLocaleString(
-                                              undefined,
-                                              {
-                                                  signDisplay: "always",
-                                                  maximumFractionDigits: 2,
-                                              },
-                                          )
-                                        : undefined
-                                }
-                                icon={<TrendingUp sx={{ fontSize: 48 }} />}
-                                color="#A8E6CF"
-                                delay={500}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                            <StatCard
-                                title="Stars Gained"
-                                value={`+${(starsGained ?? 0).toFixed(1)}`}
-                                subtitle={`now at ${(starsEnd ?? 0).toFixed(1)} ⭐`}
-                                icon={<Star sx={{ fontSize: 48 }} />}
-                                color="#FFB6D9"
-                                delay={600}
-                            />
-                        </Grid>
-                    </Grid>
+                    <YearStatsCards
+                        wrappedData={wrappedData}
+                        totalGames={totalGames}
+                        totalWins={totalWins}
+                        totalFinalKills={totalFinalKills}
+                        totalBedsBroken={totalBedsBroken}
+                        endFKDR={endFKDR}
+                        startFKDR={startFKDR}
+                        starsGained={starsGained}
+                        starsEnd={starsEnd}
+                        winRate={winRate}
+                    />
 
                     {/* Session Averages */}
-                    <Fade in timeout={1200}>
-                        <Card variant="outlined">
-                            <CardContent>
-                                <Stack gap={2}>
-                                    <Stack
-                                        direction="row"
-                                        alignItems="center"
-                                        gap={1}
-                                    >
-                                        <ShowChart color="primary" />
-                                        <Typography variant="h6">
-                                            Average Session Stats
-                                        </Typography>
-                                    </Stack>
-                                    <Grid container spacing={2}>
-                                        <Grid size={{ xs: 6, sm: 3 }}>
-                                            <Stack alignItems="center">
-                                                <Typography variant="h5">
-                                                    {wrappedData.averages.gamesPlayed.toFixed(
-                                                        1,
-                                                    )}
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    color="textSecondary"
-                                                >
-                                                    Games/Session
-                                                </Typography>
-                                            </Stack>
-                                        </Grid>
-                                        <Grid size={{ xs: 6, sm: 3 }}>
-                                            <Stack alignItems="center">
-                                                <Typography variant="h5">
-                                                    {wrappedData.averages.wins.toFixed(
-                                                        1,
-                                                    )}
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    color="textSecondary"
-                                                >
-                                                    Wins/Session
-                                                </Typography>
-                                            </Stack>
-                                        </Grid>
-                                        <Grid size={{ xs: 6, sm: 3 }}>
-                                            <Stack alignItems="center">
-                                                <Typography variant="h5">
-                                                    {wrappedData.averages.finalKills.toFixed(
-                                                        1,
-                                                    )}
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    color="textSecondary"
-                                                >
-                                                    Finals/Session
-                                                </Typography>
-                                            </Stack>
-                                        </Grid>
-                                        <Grid size={{ xs: 6, sm: 3 }}>
-                                            <Stack alignItems="center">
-                                                <Typography variant="h5">
-                                                    {formatHours(
-                                                        wrappedData.averages
-                                                            .sessionLengthHours,
-                                                    )}
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    color="textSecondary"
-                                                >
-                                                    Avg Length
-                                                </Typography>
-                                            </Stack>
-                                        </Grid>
-                                    </Grid>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Fade>
+                    <AverageSessionStats wrappedData={wrappedData} />
 
                     {/* Best Sessions */}
-                    <Typography variant="h5" fontWeight="bold" sx={{ mt: 2 }}>
-                        🏆 Best Sessions
-                    </Typography>
-
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <BestSessionCard
-                                title="Highest FKDR"
-                                icon={<TrendingUp />}
-                                session={wrappedData.bestSessions.highestFKDR}
-                                statLabel="FKDR"
-                                color="#667eea"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <BestSessionCard
-                                title="Most Kills"
-                                icon={<LocalFireDepartment />}
-                                session={wrappedData.bestSessions.mostKills}
-                                statLabel="Kills"
-                                color="#f093fb"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <BestSessionCard
-                                title="Most Final Kills"
-                                icon={<Whatshot />}
-                                session={
-                                    wrappedData.bestSessions.mostFinalKills
-                                }
-                                statLabel="Final Kills"
-                                color="#FFD93D"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <BestSessionCard
-                                title="Most Wins"
-                                icon={<EmojiEventsOutlined />}
-                                session={wrappedData.bestSessions.mostWins}
-                                statLabel="Wins"
-                                color="#4ECDC4"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <BestSessionCard
-                                title="Longest Session"
-                                icon={<Timer />}
-                                session={
-                                    wrappedData.bestSessions.longestSession
-                                }
-                                statLabel="hours"
-                                color="#A8E6CF"
-                                showDuration={false}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <BestSessionCard
-                                title="Most Wins/Hour"
-                                icon={<TrendingUp />}
-                                session={
-                                    wrappedData.bestSessions.mostWinsPerHour
-                                }
-                                statLabel="wins/hr"
-                                color="#95E1D3"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <BestSessionCard
-                                title="Most Finals/Hour"
-                                icon={<Whatshot />}
-                                session={
-                                    wrappedData.bestSessions.mostFinalsPerHour
-                                }
-                                statLabel="finals/hr"
-                                color="#FF6B6B"
-                            />
-                        </Grid>
-                    </Grid>
+                    <BestSessions wrappedData={wrappedData} />
 
                     {/* Streaks Section */}
-                    <Typography variant="h5" fontWeight="bold" sx={{ mt: 3 }}>
-                        🔥 Streaks
-                    </Typography>
-
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <Fade in timeout={1400}>
-                                <Card variant="outlined">
-                                    <CardContent>
-                                        <Stack gap={2}>
-                                            <Typography
-                                                variant="h6"
-                                                textAlign="center"
-                                            >
-                                                Highest Winstreaks
-                                            </Typography>
-                                            <Divider />
-                                            {Object.entries(
-                                                wrappedData.winstreaks,
-                                            ).map(([mode, streak]) => (
-                                                <Stack
-                                                    key={mode}
-                                                    direction="row"
-                                                    justifyContent="space-between"
-                                                    alignItems="center"
-                                                >
-                                                    <Typography
-                                                        variant="body2"
-                                                        sx={{
-                                                            textTransform:
-                                                                "capitalize",
-                                                        }}
-                                                    >
-                                                        {mode}
-                                                    </Typography>
-                                                    <Stack alignItems="flex-end">
-                                                        <Typography
-                                                            variant="h6"
-                                                            color="success.main"
-                                                        >
-                                                            {streak.highest.toString()}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="textSecondary"
-                                                        >
-                                                            {new Date(
-                                                                streak.when,
-                                                            ).toLocaleDateString(
-                                                                undefined,
-                                                                {
-                                                                    month: "short",
-                                                                    day: "numeric",
-                                                                },
-                                                            )}
-                                                        </Typography>
-                                                    </Stack>
-                                                </Stack>
-                                            ))}
-                                        </Stack>
-                                    </CardContent>
-                                </Card>
-                            </Fade>
-                        </Grid>
-
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <Fade in timeout={1400}>
-                                <Card variant="outlined">
-                                    <CardContent>
-                                        <Stack gap={2}>
-                                            <Typography
-                                                variant="h6"
-                                                textAlign="center"
-                                            >
-                                                Highest Final Kill Streaks
-                                            </Typography>
-                                            <Divider />
-                                            {Object.entries(
-                                                wrappedData.finalKillStreaks,
-                                            ).map(([mode, streak]) => (
-                                                <Stack
-                                                    key={mode}
-                                                    direction="row"
-                                                    justifyContent="space-between"
-                                                    alignItems="center"
-                                                >
-                                                    <Typography
-                                                        variant="body2"
-                                                        sx={{
-                                                            textTransform:
-                                                                "capitalize",
-                                                        }}
-                                                    >
-                                                        {mode}
-                                                    </Typography>
-                                                    <Stack alignItems="flex-end">
-                                                        <Typography
-                                                            variant="h6"
-                                                            color="error.main"
-                                                        >
-                                                            {streak.highest.toString()}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="textSecondary"
-                                                        >
-                                                            {new Date(
-                                                                streak.when,
-                                                            ).toLocaleDateString(
-                                                                undefined,
-                                                                {
-                                                                    month: "short",
-                                                                    day: "numeric",
-                                                                },
-                                                            )}
-                                                        </Typography>
-                                                    </Stack>
-                                                </Stack>
-                                            ))}
-                                        </Stack>
-                                    </CardContent>
-                                </Card>
-                            </Fade>
-                        </Grid>
-                    </Grid>
+                    <Streaks wrappedData={wrappedData} />
 
                     {/* Play Patterns */}
                     <FavoritePlayTimes wrappedData={wrappedData} />
+
                     {/* Flawless Sessions */}
-                    <Fade in timeout={1800}>
-                        <Card
-                            variant="outlined"
-                            sx={{
-                                background:
-                                    "linear-gradient(135deg, #FFD70022 0%, #FFD70011 100%)",
-                                border: "2px solid #FFD700",
-                            }}
-                        >
-                            <CardContent>
-                                <Stack gap={2} alignItems="center">
-                                    <Stack
-                                        direction="row"
-                                        alignItems="center"
-                                        gap={1}
-                                    >
-                                        <CheckCircle
-                                            sx={{
-                                                fontSize: 32,
-                                                color: "#FFD700",
-                                            }}
-                                        />
-                                        <Typography variant="h5">
-                                            Flawless Sessions
-                                        </Typography>
-                                    </Stack>
-                                    <Typography
-                                        variant="h3"
-                                        fontWeight="bold"
-                                        color="#FFD700"
-                                    >
-                                        {wrappedData.flawlessSessions.count.toString()}
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {wrappedData.flawlessSessions.percentage.toFixed(
-                                            1,
-                                        )}
-                                        % of sessions with no losses and no
-                                        final deaths
-                                    </Typography>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Fade>
+                    <FlawlessSessions wrappedData={wrappedData} />
 
                     {/* Session Coverage Info */}
-                    <Fade in timeout={1900}>
-                        <Card variant="outlined">
-                            <CardContent>
-                                <Stack gap={2}>
-                                    <Stack
-                                        direction="row"
-                                        alignItems="center"
-                                        gap={1}
-                                    >
-                                        <Info color="primary" />
-                                        <Typography variant="h6">
-                                            Session Coverage
-                                        </Typography>
-                                    </Stack>
-                                    <Grid container spacing={2}>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
-                                            <Stack alignItems="center">
-                                                <Typography
-                                                    variant="h4"
-                                                    color={
-                                                        lowCoverage
-                                                            ? "warning.main"
-                                                            : "success.main"
-                                                    }
-                                                >
-                                                    {wrappedData.sessionCoverage.gamesPlayedPercentage.toFixed(
-                                                        1,
-                                                    )}
-                                                    %
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    color="textSecondary"
-                                                    textAlign="center"
-                                                >
-                                                    of games played captured in
-                                                    sessions
-                                                </Typography>
-                                            </Stack>
-                                        </Grid>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
-                                            <Stack alignItems="center">
-                                                <Typography
-                                                    variant="h4"
-                                                    color="info.main"
-                                                >
-                                                    {formatHours(
-                                                        wrappedData
-                                                            .sessionCoverage
-                                                            .adjustedTotalHours,
-                                                    )}
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    color="textSecondary"
-                                                    textAlign="center"
-                                                >
-                                                    adjusted total playtime
-                                                    (accounting for gaps)
-                                                </Typography>
-                                            </Stack>
-                                        </Grid>
-                                    </Grid>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Fade>
+                    <SessionCoverage wrappedData={wrappedData} />
 
                     {/* Closing Message */}
                     <Fade in timeout={2000}>
