@@ -20,10 +20,7 @@ const URL = `http://localhost:${PORT}`;
 
         console.log("Setting rainbow_user_id in localStorage...");
         await page.evaluate(() => {
-            localStorage.setItem(
-                "rainbow_user_id",
-                "rnb_copilot_coding_agent",
-            );
+            localStorage.setItem("rainbow_user_id", "rnb_copilot_coding_agent");
         });
 
         // Verify it was set
