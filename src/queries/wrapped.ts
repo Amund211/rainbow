@@ -41,6 +41,65 @@ interface PlaytimeDistribution {
     dayHourDistribution: Record<string, number[]>; // Weekday name -> 24 elements for UTC hours
 }
 
+// API response structure (before conversion)
+interface APIWrappedData {
+    success: boolean;
+    uuid: string;
+    year: number;
+    totalSessions: number;
+    nonConsecutiveSessions: number;
+    sessionLengths?: {
+        totalHours: number;
+        longestHours: number;
+        shortestHours: number;
+        averageHours: number;
+    };
+    sessionsPerMonth?: Record<string, number>;
+    bestSessions?: {
+        highestFKDR: BestSession;
+        mostKills: BestSession;
+        mostFinalKills: BestSession;
+        mostWins: BestSession;
+        longestSession: BestSession;
+        mostWinsPerHour: BestSession;
+        mostFinalsPerHour: BestSession;
+    };
+    averages?: {
+        sessionLengthHours: number;
+        gamesPlayed: number;
+        wins: number;
+        finalKills: number;
+    };
+    yearStats?: {
+        start: APIPlayerDataPITFromWrapped;
+        end: APIPlayerDataPITFromWrapped;
+    };
+    winstreaks?: {
+        overall: StreakInfo;
+        solo: StreakInfo;
+        doubles: StreakInfo;
+        threes: StreakInfo;
+        fours: StreakInfo;
+    };
+    finalKillStreaks?: {
+        overall: StreakInfo;
+        solo: StreakInfo;
+        doubles: StreakInfo;
+        threes: StreakInfo;
+        fours: StreakInfo;
+    };
+    sessionCoverage?: {
+        gamesPlayedPercentage: number;
+        adjustedTotalHours: number;
+    };
+    favoritePlayIntervals?: PlayInterval[];
+    flawlessSessions?: {
+        count: number;
+        percentage: number;
+    };
+    playtimeDistribution?: PlaytimeDistribution;
+}
+
 export interface WrappedData {
     success: boolean;
     uuid: string;
@@ -278,43 +337,45 @@ export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
                 );
             }
 
-            const wrappedData = (await response
-                .json()
-                .catch((error: unknown) => {
-                    response
-                        .text()
-                        .then((text) => {
-                            captureException(error, {
-                                extra: {
-                                    message:
-                                        "Failed to get wrapped: failed to parse json",
-                                    uuid,
-                                    year,
-                                    text,
-                                },
-                            });
-                        })
-                        .catch((textError: unknown) => {
-                            captureException(textError, {
-                                extra: {
-                                    message:
-                                        "Failed to get wrapped: failed to read response text when handling response error",
-                                    uuid,
-                                    year,
-                                    jsonParseError: error,
-                                },
-                            });
+            const apiData = (await response.json().catch((error: unknown) => {
+                response
+                    .text()
+                    .then((text) => {
+                        captureException(error, {
+                            extra: {
+                                message:
+                                    "Failed to get wrapped: failed to parse json",
+                                uuid,
+                                year,
+                                text,
+                            },
                         });
-                    throw error;
-                })) as any; // Use any temporarily since API structure is different
+                    })
+                    .catch((textError: unknown) => {
+                        captureException(textError, {
+                            extra: {
+                                message:
+                                    "Failed to get wrapped: failed to read response text when handling response error",
+                                uuid,
+                                year,
+                                jsonParseError: error,
+                            },
+                        });
+                    });
+                throw error;
+            })) as APIWrappedData;
 
             // Convert the PascalCase API response to camelCase
             const convertedData: WrappedData = {
-                ...wrappedData,
-                yearStats: {
-                    start: convertAPIPlayerDataPIT(wrappedData.yearStats.start),
-                    end: convertAPIPlayerDataPIT(wrappedData.yearStats.end),
-                },
+                ...apiData,
+                yearStats: apiData.yearStats
+                    ? {
+                          start: convertAPIPlayerDataPIT(
+                              apiData.yearStats.start,
+                          ),
+                          end: convertAPIPlayerDataPIT(apiData.yearStats.end),
+                      }
+                    : undefined,
             };
 
             return convertedData;
