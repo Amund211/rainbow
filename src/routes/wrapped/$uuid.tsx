@@ -1020,6 +1020,7 @@ const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
 };
 
 // Favorite Play Times Component
+// Favorite Play Times Component
 interface FavoritePlayTimesProps {
     wrappedData: WrappedData;
 }
@@ -1027,7 +1028,114 @@ interface FavoritePlayTimesProps {
 const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
     wrappedData,
 }) => {
-    if (!wrappedData.favoritePlayIntervals) return null;
+    if (!wrappedData.favoritePlayIntervals && !wrappedData.playtimeDistribution)
+        return null;
+
+    // Helper function to convert UTC day/hour to local day/hour
+    const utcToLocalDayHour = (
+        utcDay: string,
+        utcHour: number,
+    ): { day: string; hour: number } => {
+        // Map weekday names to numbers (Sunday = 0, Monday = 1, etc.)
+        const dayMap: Record<string, number> = {
+            Sunday: 0,
+            Monday: 1,
+            Tuesday: 2,
+            Wednesday: 3,
+            Thursday: 4,
+            Friday: 5,
+            Saturday: 6,
+        };
+
+        // Create a date for the given UTC day and hour
+        const now = new Date();
+        const utcDayNum = dayMap[utcDay];
+
+        // Find next occurrence of this weekday
+        const daysUntilTarget = (utcDayNum - now.getUTCDay() + 7) % 7;
+        const targetDate = new Date(now);
+        targetDate.setUTCDate(now.getUTCDate() + daysUntilTarget);
+        targetDate.setUTCHours(utcHour, 0, 0, 0);
+
+        // Get local day and hour
+        const localDayNum = targetDate.getDay();
+        const localHour = targetDate.getHours();
+        const dayNames = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+        ];
+
+        return {
+            day: dayNames[localDayNum],
+            hour: localHour,
+        };
+    };
+
+    // Convert UTC day/hour distribution to local day/hour distribution
+    const getLocalDayHourDistribution = (): Record<string, number[]> => {
+        if (!wrappedData.playtimeDistribution?.dayHourDistribution) {
+            return {};
+        }
+
+        const localDistribution: Record<string, number[]> = {
+            Sunday: new Array(24).fill(0),
+            Monday: new Array(24).fill(0),
+            Tuesday: new Array(24).fill(0),
+            Wednesday: new Array(24).fill(0),
+            Thursday: new Array(24).fill(0),
+            Friday: new Array(24).fill(0),
+            Saturday: new Array(24).fill(0),
+        };
+
+        // For each UTC day/hour, add to the corresponding local day/hour
+        Object.entries(
+            wrappedData.playtimeDistribution.dayHourDistribution,
+        ).forEach(([utcDay, hours]) => {
+            hours.forEach((value, utcHour) => {
+                if (value > 0) {
+                    const local = utcToLocalDayHour(utcDay, utcHour);
+                    localDistribution[local.day][local.hour] += value;
+                }
+            });
+        });
+
+        return localDistribution;
+    };
+
+    // Convert UTC hourly distribution to local hourly distribution
+    const getLocalHourlyDistribution = (): number[] => {
+        if (!wrappedData.playtimeDistribution?.hourlyDistribution) {
+            return new Array(24).fill(0);
+        }
+
+        const localDistribution = new Array(24).fill(0);
+        const timezoneOffset = new Date().getTimezoneOffset() / 60; // Hours difference from UTC
+
+        wrappedData.playtimeDistribution.hourlyDistribution.forEach(
+            (value, utcHour) => {
+                const localHour = (utcHour - timezoneOffset + 24) % 24;
+                localDistribution[localHour] += value;
+            },
+        );
+
+        return localDistribution;
+    };
+
+    const localHourlyDist = wrappedData.playtimeDistribution
+        ? getLocalHourlyDistribution()
+        : null;
+    const localDayHourDist = wrappedData.playtimeDistribution
+        ? getLocalDayHourDistribution()
+        : null;
+
+    const maxHourlyValue = localHourlyDist
+        ? Math.max(...localHourlyDist, 0.01)
+        : 1;
 
     return (
         <Fade in timeout={1600}>
@@ -1041,155 +1149,272 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                             </Typography>
                         </Stack>
 
-                        {/* Top 3 intervals */}
-                        <Grid container spacing={2}>
-                            {wrappedData.favoritePlayIntervals.map(
-                                (interval, index) => (
-                                    <Grid size={{ xs: 12, sm: 4 }} key={index}>
-                                        <Card
-                                            variant="outlined"
-                                            sx={{
-                                                bgcolor: "action.hover",
-                                            }}
+                        {/* Top 3 intervals - only show if favoritePlayIntervals exists */}
+                        {wrappedData.favoritePlayIntervals && (
+                            <Grid container spacing={2}>
+                                {wrappedData.favoritePlayIntervals.map(
+                                    (interval, index) => (
+                                        <Grid
+                                            size={{ xs: 12, sm: 4 }}
+                                            key={index}
                                         >
-                                            <CardContent>
-                                                <Stack
-                                                    alignItems="center"
-                                                    gap={1}
-                                                >
-                                                    <Typography variant="h6">
-                                                        #
-                                                        {(index + 1).toString()}
-                                                    </Typography>
-                                                    <Typography
-                                                        variant="h5"
-                                                        color="primary"
-                                                    >
-                                                        {formatTimeRange(
-                                                            interval.hourStart,
-                                                        )}
-                                                    </Typography>
-                                                    <Typography variant="body2">
-                                                        {interval.percentage.toFixed(
-                                                            1,
-                                                        )}
-                                                        % of playtime
-                                                    </Typography>
-                                                </Stack>
-                                            </CardContent>
-                                        </Card>
-                                    </Grid>
-                                ),
-                            )}
-                        </Grid>
-
-                        {/* 24-hour bar chart */}
-                        <Box sx={{ mt: 2 }}>
-                            <Typography
-                                variant="caption"
-                                color="textSecondary"
-                                sx={{ mb: 1, display: "block" }}
-                            >
-                                Playtime distribution across the day
-                            </Typography>
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    gap: 0.5,
-                                    alignItems: "flex-end",
-                                    height: 80,
-                                }}
-                            >
-                                {Array.from({ length: 24 }, (_, utcHour) => {
-                                    // Find all intervals that include this hour
-                                    let percentage = 0;
-                                    wrappedData.favoritePlayIntervals.forEach(
-                                        (interval) => {
-                                            const windowSize = 4;
-                                            const start = interval.hourStart;
-                                            const end =
-                                                (start + windowSize) % 24;
-
-                                            // Check if utcHour falls within this interval
-                                            if (
-                                                (start <= end &&
-                                                    utcHour >= start &&
-                                                    utcHour < end) ||
-                                                (start > end &&
-                                                    (utcHour >= start ||
-                                                        utcHour < end))
-                                            ) {
-                                                percentage = Math.max(
-                                                    percentage,
-                                                    interval.percentage,
-                                                );
-                                            }
-                                        },
-                                    );
-
-                                    const localHour = utcToLocalHour(utcHour);
-                                    const maxPercentage = Math.max(
-                                        ...wrappedData.favoritePlayIntervals.map(
-                                            (i) => i.percentage,
-                                        ),
-                                        1,
-                                    );
-                                    const heightPercent =
-                                        (percentage / maxPercentage) * 100;
-
-                                    return (
-                                        <Tooltip
-                                            key={utcHour}
-                                            title={`${localHour.toString()}:00 - ${((localHour + 1) % 24).toString()}:00: ${percentage.toFixed(1)}%`}
-                                        >
-                                            <Box
+                                            <Card
+                                                variant="outlined"
                                                 sx={{
-                                                    flex: 1,
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    justifyContent: "flex-end",
-                                                    alignItems: "center",
-                                                    height: "100%",
+                                                    bgcolor: "action.hover",
                                                 }}
+                                            >
+                                                <CardContent>
+                                                    <Stack
+                                                        alignItems="center"
+                                                        gap={1}
+                                                    >
+                                                        <Typography variant="h6">
+                                                            #
+                                                            {(
+                                                                index + 1
+                                                            ).toString()}
+                                                        </Typography>
+                                                        <Typography
+                                                            variant="h5"
+                                                            color="primary"
+                                                        >
+                                                            {formatTimeRange(
+                                                                interval.hourStart,
+                                                            )}
+                                                        </Typography>
+                                                        <Typography variant="body2">
+                                                            {interval.percentage.toFixed(
+                                                                1,
+                                                            )}
+                                                            % of playtime
+                                                        </Typography>
+                                                    </Stack>
+                                                </CardContent>
+                                            </Card>
+                                        </Grid>
+                                    ),
+                                )}
+                            </Grid>
+                        )}
+
+                        {/* 24-hour bar chart using actual playtime distribution */}
+                        {localHourlyDist && (
+                            <Box sx={{ mt: 2 }}>
+                                <Typography
+                                    variant="caption"
+                                    color="textSecondary"
+                                    sx={{ mb: 1, display: "block" }}
+                                >
+                                    Playtime distribution across the day
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        gap: 0.5,
+                                        alignItems: "flex-end",
+                                        height: 80,
+                                    }}
+                                >
+                                    {localHourlyDist.map((hours, localHour) => {
+                                        const heightPercent =
+                                            (hours / maxHourlyValue) * 100;
+
+                                        return (
+                                            <Tooltip
+                                                key={localHour}
+                                                title={`${localHour.toString()}:00 - ${((localHour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
                                             >
                                                 <Box
                                                     sx={{
-                                                        width: "100%",
-                                                        height: `${heightPercent.toString()}%`,
-                                                        bgcolor:
-                                                            percentage > 0
-                                                                ? "primary.main"
-                                                                : "action.disabled",
-                                                        borderRadius:
-                                                            "2px 2px 0 0",
-                                                        minHeight:
-                                                            percentage > 0
-                                                                ? "4px"
-                                                                : "2px",
-                                                        transition:
-                                                            "all 0.3s ease",
-                                                        "&:hover": {
-                                                            opacity: 0.8,
-                                                        },
+                                                        flex: 1,
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        justifyContent:
+                                                            "flex-end",
+                                                        alignItems: "center",
+                                                        height: "100%",
                                                     }}
-                                                />
-                                                {utcHour % 6 === 0 && (
+                                                >
+                                                    <Box
+                                                        sx={{
+                                                            width: "100%",
+                                                            height: `${heightPercent.toString()}%`,
+                                                            bgcolor:
+                                                                hours > 0
+                                                                    ? "primary.main"
+                                                                    : "action.disabled",
+                                                            borderRadius:
+                                                                "2px 2px 0 0",
+                                                            minHeight:
+                                                                hours > 0
+                                                                    ? "4px"
+                                                                    : "2px",
+                                                            transition:
+                                                                "all 0.3s ease",
+                                                            "&:hover": {
+                                                                opacity: 0.8,
+                                                            },
+                                                        }}
+                                                    />
+                                                    {localHour % 6 === 0 && (
+                                                        <Typography
+                                                            variant="caption"
+                                                            sx={{
+                                                                fontSize:
+                                                                    "0.65rem",
+                                                                mt: 0.5,
+                                                            }}
+                                                        >
+                                                            {localHour.toString()}
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            </Tooltip>
+                                        );
+                                    })}
+                                </Box>
+                            </Box>
+                        )}
+
+                        {/* Heatmap: day of week x hour of day */}
+                        {localDayHourDist && (
+                            <Box sx={{ mt: 3 }}>
+                                <Typography
+                                    variant="caption"
+                                    color="textSecondary"
+                                    sx={{ mb: 1, display: "block" }}
+                                >
+                                    Playtime heatmap: when you play during the
+                                    week
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: 0.5,
+                                    }}
+                                >
+                                    {[
+                                        "Monday",
+                                        "Tuesday",
+                                        "Wednesday",
+                                        "Thursday",
+                                        "Friday",
+                                        "Saturday",
+                                        "Sunday",
+                                    ].map((day) => {
+                                        const dayData = localDayHourDist[day];
+                                        const maxDayValue = Math.max(
+                                            ...Object.values(
+                                                localDayHourDist,
+                                            ).flat(),
+                                            0.01,
+                                        );
+
+                                        return (
+                                            <Box
+                                                key={day}
+                                                sx={{
+                                                    display: "flex",
+                                                    gap: 0.5,
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        width: "70px",
+                                                        fontSize: "0.7rem",
+                                                    }}
+                                                >
+                                                    {day.substring(0, 3)}
+                                                </Typography>
+                                                <Box
+                                                    sx={{
+                                                        display: "flex",
+                                                        gap: 0.25,
+                                                        flex: 1,
+                                                    }}
+                                                >
+                                                    {dayData.map(
+                                                        (hours, hour) => {
+                                                            const intensity =
+                                                                hours /
+                                                                maxDayValue;
+                                                            const opacity =
+                                                                hours > 0
+                                                                    ? 0.2 +
+                                                                      intensity *
+                                                                          0.8
+                                                                    : 0.05;
+
+                                                            return (
+                                                                <Tooltip
+                                                                    key={hour}
+                                                                    title={`${day} ${hour.toString()}:00 - ${((hour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
+                                                                >
+                                                                    <Box
+                                                                        sx={{
+                                                                            flex: 1,
+                                                                            height: 20,
+                                                                            bgcolor:
+                                                                                "primary.main",
+                                                                            opacity:
+                                                                                opacity,
+                                                                            borderRadius: 0.5,
+                                                                            transition:
+                                                                                "all 0.2s ease",
+                                                                            "&:hover":
+                                                                                {
+                                                                                    transform:
+                                                                                        "scale(1.2)",
+                                                                                    zIndex: 10,
+                                                                                    opacity: 1,
+                                                                                },
+                                                                        }}
+                                                                    />
+                                                                </Tooltip>
+                                                            );
+                                                        },
+                                                    )}
+                                                </Box>
+                                            </Box>
+                                        );
+                                    })}
+                                    {/* Hour labels */}
+                                    <Box
+                                        sx={{
+                                            display: "flex",
+                                            gap: 0.25,
+                                            ml: "70px",
+                                        }}
+                                    >
+                                        {Array.from({ length: 24 }).map(
+                                            (_, hour) =>
+                                                hour % 6 === 0 ? (
                                                     <Typography
+                                                        key={hour}
                                                         variant="caption"
                                                         sx={{
-                                                            fontSize: "0.65rem",
-                                                            mt: 0.5,
+                                                            flex: 1,
+                                                            fontSize: "0.6rem",
+                                                            textAlign: "center",
                                                         }}
                                                     >
-                                                        {localHour.toString()}
+                                                        {hour.toString()}
                                                     </Typography>
-                                                )}
-                                            </Box>
-                                        </Tooltip>
-                                    );
-                                })}
+                                                ) : (
+                                                    <Box
+                                                        key={hour}
+                                                        sx={{ flex: 1 }}
+                                                    />
+                                                ),
+                                        )}
+                                    </Box>
+                                </Box>
                             </Box>
-                        </Box>
+                        )}
                     </Stack>
                 </CardContent>
             </Card>
@@ -2298,208 +2523,7 @@ function RouteComponent() {
                     </Grid>
 
                     {/* Play Patterns */}
-                    <Fade in timeout={1600}>
-                        <Card variant="outlined">
-                            <CardContent>
-                                <Stack gap={2}>
-                                    <Stack
-                                        direction="row"
-                                        alignItems="center"
-                                        gap={1}
-                                    >
-                                        <CalendarMonth color="primary" />
-                                        <Typography variant="h6">
-                                            Favorite Play Times (Local Time)
-                                        </Typography>
-                                    </Stack>
-
-                                    {/* Top 3 intervals */}
-                                    <Grid container spacing={2}>
-                                        {wrappedData.favoritePlayIntervals.map(
-                                            (interval, index) => (
-                                                <Grid
-                                                    size={{ xs: 12, sm: 4 }}
-                                                    key={index}
-                                                >
-                                                    <Card
-                                                        variant="outlined"
-                                                        sx={{
-                                                            bgcolor:
-                                                                "action.hover",
-                                                        }}
-                                                    >
-                                                        <CardContent>
-                                                            <Stack
-                                                                alignItems="center"
-                                                                gap={1}
-                                                            >
-                                                                <Typography variant="h6">
-                                                                    #
-                                                                    {(
-                                                                        index +
-                                                                        1
-                                                                    ).toString()}
-                                                                </Typography>
-                                                                <Typography
-                                                                    variant="h5"
-                                                                    color="primary"
-                                                                >
-                                                                    {formatTimeRange(
-                                                                        interval.hourStart,
-                                                                    )}
-                                                                </Typography>
-                                                                <Typography variant="body2">
-                                                                    {interval.percentage.toFixed(
-                                                                        1,
-                                                                    )}
-                                                                    % of
-                                                                    playtime
-                                                                </Typography>
-                                                            </Stack>
-                                                        </CardContent>
-                                                    </Card>
-                                                </Grid>
-                                            ),
-                                        )}
-                                    </Grid>
-
-                                    {/* 24-hour bar chart */}
-                                    <Box sx={{ mt: 2 }}>
-                                        <Typography
-                                            variant="caption"
-                                            color="textSecondary"
-                                            sx={{ mb: 1, display: "block" }}
-                                        >
-                                            Playtime distribution across the day
-                                        </Typography>
-                                        <Box
-                                            sx={{
-                                                display: "flex",
-                                                gap: 0.5,
-                                                alignItems: "flex-end",
-                                                height: 80,
-                                            }}
-                                        >
-                                            {Array.from(
-                                                { length: 24 },
-                                                (_, utcHour) => {
-                                                    // Find all intervals that include this hour
-                                                    let percentage = 0;
-                                                    wrappedData.favoritePlayIntervals.forEach(
-                                                        (interval) => {
-                                                            const windowSize = 4;
-                                                            const start =
-                                                                interval.hourStart;
-                                                            const end =
-                                                                (start +
-                                                                    windowSize) %
-                                                                24;
-
-                                                            // Check if utcHour falls within this interval
-                                                            if (
-                                                                (start <= end &&
-                                                                    utcHour >=
-                                                                        start &&
-                                                                    utcHour <
-                                                                        end) ||
-                                                                (start > end &&
-                                                                    (utcHour >=
-                                                                        start ||
-                                                                        utcHour <
-                                                                            end))
-                                                            ) {
-                                                                percentage =
-                                                                    Math.max(
-                                                                        percentage,
-                                                                        interval.percentage,
-                                                                    );
-                                                            }
-                                                        },
-                                                    );
-
-                                                    const localHour =
-                                                        utcToLocalHour(utcHour);
-                                                    const maxPercentage =
-                                                        Math.max(
-                                                            ...wrappedData.favoritePlayIntervals.map(
-                                                                (i) =>
-                                                                    i.percentage,
-                                                            ),
-                                                            1,
-                                                        );
-                                                    const heightPercent =
-                                                        (percentage /
-                                                            maxPercentage) *
-                                                        100;
-
-                                                    return (
-                                                        <Tooltip
-                                                            key={utcHour}
-                                                            title={`${localHour.toString()}:00 - ${((localHour + 1) % 24).toString()}:00: ${percentage.toFixed(1)}%`}
-                                                        >
-                                                            <Box
-                                                                sx={{
-                                                                    flex: 1,
-                                                                    display:
-                                                                        "flex",
-                                                                    flexDirection:
-                                                                        "column",
-                                                                    justifyContent:
-                                                                        "flex-end",
-                                                                    alignItems:
-                                                                        "center",
-                                                                    height: "100%",
-                                                                }}
-                                                            >
-                                                                <Box
-                                                                    sx={{
-                                                                        width: "100%",
-                                                                        height: `${heightPercent.toString()}%`,
-                                                                        bgcolor:
-                                                                            percentage >
-                                                                            0
-                                                                                ? "primary.main"
-                                                                                : "action.disabled",
-                                                                        borderRadius:
-                                                                            "2px 2px 0 0",
-                                                                        minHeight:
-                                                                            percentage >
-                                                                            0
-                                                                                ? "4px"
-                                                                                : "2px",
-                                                                        transition:
-                                                                            "all 0.3s ease",
-                                                                        "&:hover":
-                                                                            {
-                                                                                opacity: 0.8,
-                                                                            },
-                                                                    }}
-                                                                />
-                                                                {utcHour % 6 ===
-                                                                    0 && (
-                                                                    <Typography
-                                                                        variant="caption"
-                                                                        sx={{
-                                                                            fontSize:
-                                                                                "0.65rem",
-                                                                            mt: 0.5,
-                                                                        }}
-                                                                    >
-                                                                        {localHour.toString()}
-                                                                    </Typography>
-                                                                )}
-                                                            </Box>
-                                                        </Tooltip>
-                                                    );
-                                                },
-                                            )}
-                                        </Box>
-                                    </Box>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Fade>
-
+                    <FavoritePlayTimes wrappedData={wrappedData} />
                     {/* Flawless Sessions */}
                     <Fade in timeout={1800}>
                         <Card

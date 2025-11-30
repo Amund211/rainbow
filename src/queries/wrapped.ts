@@ -34,6 +34,11 @@ interface PlayInterval {
     percentage: number;
 }
 
+interface PlaytimeDistribution {
+    hourlyDistribution: number[]; // 24 elements for UTC hours 0-23
+    dayHourDistribution: Record<string, number[]>; // Weekday name -> 24 elements for UTC hours
+}
+
 export interface WrappedData {
     success: boolean;
     uuid: string;
@@ -89,6 +94,7 @@ export interface WrappedData {
         count: number;
         percentage: number;
     };
+    playtimeDistribution?: PlaytimeDistribution;
 }
 
 interface WrappedQueryOptions {
