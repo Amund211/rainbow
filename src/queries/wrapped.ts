@@ -40,14 +40,14 @@ export interface WrappedData {
     year: number;
     totalSessions: number;
     nonConsecutiveSessions: number;
-    sessionLengths: {
+    sessionLengths?: {
         totalHours: number;
         longestHours: number;
         shortestHours: number;
         averageHours: number;
     };
-    sessionsPerMonth: Record<string, number>;
-    bestSessions: {
+    sessionsPerMonth?: Record<string, number>;
+    bestSessions?: {
         highestFKDR: BestSession;
         mostKills: BestSession;
         mostFinalKills: BestSession;
@@ -56,36 +56,36 @@ export interface WrappedData {
         mostWinsPerHour: BestSession;
         mostFinalsPerHour: BestSession;
     };
-    averages: {
+    averages?: {
         sessionLengthHours: number;
         gamesPlayed: number;
         wins: number;
         finalKills: number;
     };
-    yearStats: {
+    yearStats?: {
         start: PlayerDataPIT;
         end: PlayerDataPIT;
     };
-    winstreaks: {
+    winstreaks?: {
         overall: StreakInfo;
         solo: StreakInfo;
         doubles: StreakInfo;
         threes: StreakInfo;
         fours: StreakInfo;
     };
-    finalKillStreaks: {
+    finalKillStreaks?: {
         overall: StreakInfo;
         solo: StreakInfo;
         doubles: StreakInfo;
         threes: StreakInfo;
         fours: StreakInfo;
     };
-    sessionCoverage: {
+    sessionCoverage?: {
         gamesPlayedPercentage: number;
         adjustedTotalHours: number;
     };
-    favoritePlayIntervals: PlayInterval[];
-    flawlessSessions: {
+    favoritePlayIntervals?: PlayInterval[];
+    flawlessSessions?: {
         count: number;
         percentage: number;
     };
@@ -171,7 +171,9 @@ interface APIPlayerDataPITFromWrapped {
 const convertAPIPlayerDataPIT = (
     apiData: APIPlayerDataPITFromWrapped,
 ): PlayerDataPIT => {
-    const convertStats = (stats: APIPlayerDataPITFromWrapped["Solo"]): StatsPIT => ({
+    const convertStats = (
+        stats: APIPlayerDataPITFromWrapped["Solo"],
+    ): StatsPIT => ({
         winstreak: stats.Winstreak,
         gamesPlayed: stats.GamesPlayed,
         wins: stats.Wins,
