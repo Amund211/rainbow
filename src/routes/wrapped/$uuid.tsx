@@ -348,7 +348,8 @@ interface SessionOverviewProps {
 }
 
 const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
-    if (!wrappedData.sessionLengths || !wrappedData.sessionsPerMonth) {
+    const sessionStats = wrappedData.sessionStats;
+    if (!sessionStats?.sessionLengths || !sessionStats?.sessionsPerMonth) {
         return null;
     }
 
@@ -404,7 +405,7 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                                         color="success.main"
                                     >
                                         {formatHours(
-                                            wrappedData.sessionLengths
+                                            sessionStats.sessionLengths
                                                 .totalHours,
                                         )}
                                     </Typography>
@@ -420,7 +421,7 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                                 <Stack alignItems="center">
                                     <Typography variant="h4" color="info.main">
                                         {formatHours(
-                                            wrappedData.sessionLengths
+                                            sessionStats.sessionLengths
                                                 .averageHours,
                                         )}
                                     </Typography>
@@ -455,7 +456,7 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                                 "Dec",
                             ].map((month, index) => {
                                 const count =
-                                    wrappedData.sessionsPerMonth?.[
+                                    sessionStats.sessionsPerMonth?.[
                                         (index + 1).toString()
                                     ] ?? 0;
                                 return (
@@ -514,12 +515,12 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                                     "Dec",
                                 ].map((month, index) => {
                                     const count =
-                                        wrappedData.sessionsPerMonth?.[
+                                        sessionStats.sessionsPerMonth?.[
                                             (index + 1).toString()
                                         ] ?? 0;
                                     const maxCount = Math.max(
                                         ...Object.values(
-                                            wrappedData.sessionsPerMonth ?? {},
+                                            sessionStats.sessionsPerMonth ?? {},
                                         ),
                                         1,
                                     );
@@ -610,8 +611,8 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({
                     title="Games Played"
                     value={(totalGames ?? 0).toLocaleString()}
                     subtitle={
-                        wrappedData.sessionCoverage
-                            ? `${wrappedData.sessionCoverage.gamesPlayedPercentage.toFixed(1)}% in sessions`
+                        wrappedData.sessionStats?.sessionCoverage
+                            ? `${wrappedData.sessionStats.sessionCoverage.gamesPlayedPercentage.toFixed(1)}% in sessions`
                             : undefined
                     }
                     icon={<EmojiEvents sx={{ fontSize: 48 }} />}
@@ -694,7 +695,8 @@ interface AverageSessionStatsProps {
 const AverageSessionStats: React.FC<AverageSessionStatsProps> = ({
     wrappedData,
 }) => {
-    if (!wrappedData.averages) return null;
+    const sessionStats = wrappedData.sessionStats;
+    if (!sessionStats?.averages) return null;
 
     return (
         <Fade in timeout={1200}>
@@ -711,7 +713,7 @@ const AverageSessionStats: React.FC<AverageSessionStatsProps> = ({
                             <Grid size={{ xs: 6, sm: 3 }}>
                                 <Stack alignItems="center">
                                     <Typography variant="h5" color="primary">
-                                        {wrappedData.averages.gamesPlayed.toFixed(
+                                        {sessionStats.averages.gamesPlayed.toFixed(
                                             1,
                                         )}
                                     </Typography>
@@ -729,7 +731,7 @@ const AverageSessionStats: React.FC<AverageSessionStatsProps> = ({
                                         variant="h5"
                                         color="success.main"
                                     >
-                                        {wrappedData.averages.wins.toFixed(1)}
+                                        {sessionStats.averages.wins.toFixed(1)}
                                     </Typography>
                                     <Typography
                                         variant="caption"
@@ -745,7 +747,7 @@ const AverageSessionStats: React.FC<AverageSessionStatsProps> = ({
                                         variant="h5"
                                         color="warning.main"
                                     >
-                                        {wrappedData.averages.finalKills.toFixed(
+                                        {sessionStats.averages.finalKills.toFixed(
                                             1,
                                         )}
                                     </Typography>
@@ -761,7 +763,7 @@ const AverageSessionStats: React.FC<AverageSessionStatsProps> = ({
                                 <Stack alignItems="center">
                                     <Typography variant="h5" color="info.main">
                                         {formatHours(
-                                            wrappedData.averages
+                                            sessionStats.averages
                                                 .sessionLengthHours,
                                         )}
                                     </Typography>
@@ -787,7 +789,8 @@ interface BestSessionsProps {
 }
 
 const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
-    if (!wrappedData.bestSessions) return null;
+    const sessionStats = wrappedData.sessionStats;
+    if (!sessionStats?.bestSessions) return null;
 
     return (
         <>
@@ -800,7 +803,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                     <BestSessionCard
                         title="Highest FKDR"
                         icon={<TrendingUp />}
-                        session={wrappedData.bestSessions.highestFKDR}
+                        session={sessionStats.bestSessions.highestFKDR}
                         statLabel="FKDR"
                         color="#667eea"
                     />
@@ -809,7 +812,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                     <BestSessionCard
                         title="Most Kills"
                         icon={<LocalFireDepartment />}
-                        session={wrappedData.bestSessions.mostKills}
+                        session={sessionStats.bestSessions.mostKills}
                         statLabel="Kills"
                         color="#f093fb"
                     />
@@ -818,7 +821,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                     <BestSessionCard
                         title="Most Final Kills"
                         icon={<Whatshot />}
-                        session={wrappedData.bestSessions.mostFinalKills}
+                        session={sessionStats.bestSessions.mostFinalKills}
                         statLabel="Final Kills"
                         color="#FFD93D"
                     />
@@ -827,7 +830,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                     <BestSessionCard
                         title="Most Wins"
                         icon={<EmojiEventsOutlined />}
-                        session={wrappedData.bestSessions.mostWins}
+                        session={sessionStats.bestSessions.mostWins}
                         statLabel="Wins"
                         color="#4ECDC4"
                     />
@@ -836,7 +839,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                     <BestSessionCard
                         title="Longest Session"
                         icon={<Timer />}
-                        session={wrappedData.bestSessions.longestSession}
+                        session={sessionStats.bestSessions.longestSession}
                         statLabel="hours"
                         color="#A8E6CF"
                         showDuration={false}
@@ -846,7 +849,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                     <BestSessionCard
                         title="Most Wins/Hour"
                         icon={<TrendingUp />}
-                        session={wrappedData.bestSessions.mostWinsPerHour}
+                        session={sessionStats.bestSessions.mostWinsPerHour}
                         statLabel="wins/hr"
                         color="#95E1D3"
                     />
@@ -855,7 +858,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                     <BestSessionCard
                         title="Most Finals/Hour"
                         icon={<Whatshot />}
-                        session={wrappedData.bestSessions.mostFinalsPerHour}
+                        session={sessionStats.bestSessions.mostFinalsPerHour}
                         statLabel="finals/hr"
                         color="#FF6B6B"
                     />
@@ -871,7 +874,9 @@ interface StreaksProps {
 }
 
 const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
-    if (!wrappedData.winstreaks || !wrappedData.finalKillStreaks) return null;
+    const sessionStats = wrappedData.sessionStats;
+    if (!sessionStats?.winstreaks || !sessionStats?.finalKillStreaks)
+        return null;
 
     return (
         <>
@@ -889,48 +894,47 @@ const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
                                         Highest Winstreaks
                                     </Typography>
                                     <Divider />
-                                    {Object.entries(wrappedData.winstreaks).map(
-                                        ([mode, streak]) => (
-                                            <Stack
-                                                key={mode}
-                                                direction="row"
-                                                justifyContent="space-between"
-                                                alignItems="center"
+                                    {Object.entries(
+                                        sessionStats.winstreaks,
+                                    ).map(([mode, streak]) => (
+                                        <Stack
+                                            key={mode}
+                                            direction="row"
+                                            justifyContent="space-between"
+                                            alignItems="center"
+                                        >
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    textTransform: "capitalize",
+                                                }}
                                             >
+                                                {mode}
+                                            </Typography>
+                                            <Stack alignItems="flex-end">
                                                 <Typography
-                                                    variant="body2"
-                                                    sx={{
-                                                        textTransform:
-                                                            "capitalize",
-                                                    }}
+                                                    variant="h6"
+                                                    color="primary.main"
                                                 >
-                                                    {mode}
+                                                    {streak.highest.toString()}
                                                 </Typography>
-                                                <Stack alignItems="flex-end">
-                                                    <Typography
-                                                        variant="h6"
-                                                        color="primary.main"
-                                                    >
-                                                        {streak.highest.toString()}
-                                                    </Typography>
-                                                    <Typography
-                                                        variant="caption"
-                                                        color="textSecondary"
-                                                    >
-                                                        {new Date(
-                                                            streak.when,
-                                                        ).toLocaleDateString(
-                                                            undefined,
-                                                            {
-                                                                month: "short",
-                                                                day: "numeric",
-                                                            },
-                                                        )}
-                                                    </Typography>
-                                                </Stack>
+                                                <Typography
+                                                    variant="caption"
+                                                    color="textSecondary"
+                                                >
+                                                    {new Date(
+                                                        streak.when,
+                                                    ).toLocaleDateString(
+                                                        undefined,
+                                                        {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                        },
+                                                    )}
+                                                </Typography>
                                             </Stack>
-                                        ),
-                                    )}
+                                        </Stack>
+                                    ))}
                                 </Stack>
                             </CardContent>
                         </Card>
@@ -947,7 +951,7 @@ const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
                                     </Typography>
                                     <Divider />
                                     {Object.entries(
-                                        wrappedData.finalKillStreaks,
+                                        sessionStats.finalKillStreaks,
                                     ).map(([mode, streak]) => (
                                         <Stack
                                             key={mode}
@@ -1006,107 +1010,30 @@ interface FavoritePlayTimesProps {
 const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
     wrappedData,
 }) => {
-    if (!wrappedData.playtimeDistribution) return null;
+    const sessionStats = wrappedData.sessionStats;
+    if (!sessionStats?.playtimeDistribution) return null;
 
-    // Helper function to convert UTC day/hour to local day/hour
-    const utcToLocalDayHour = (
-        utcDay: string,
-        utcHour: number,
-    ): { day: string; hour: number } => {
-        // Map weekday names to numbers (Sunday = 0, Monday = 1, etc.)
-        const dayMap: Record<string, number> = {
-            Sunday: 0,
-            Monday: 1,
-            Tuesday: 2,
-            Wednesday: 3,
-            Thursday: 4,
-            Friday: 5,
-            Saturday: 6,
-        };
+    const { hourlyDistribution, dayHourDistribution } =
+        sessionStats.playtimeDistribution;
 
-        // Create a date for the given UTC day and hour
-        const now = new Date();
-        const utcDayNum = dayMap[utcDay];
+    // Data is already in local timezone from the API
+    const maxHourlyValue = Math.max(...hourlyDistribution, 0.01);
 
-        // Find next occurrence of this weekday
-        const daysUntilTarget = (utcDayNum - now.getUTCDay() + 7) % 7;
-        const targetDate = new Date(now);
-        targetDate.setUTCDate(now.getUTCDate() + daysUntilTarget);
-        targetDate.setUTCHours(utcHour, 0, 0, 0);
-
-        // Get local day and hour
-        const localDayNum = targetDate.getDay();
-        const localHour = targetDate.getHours();
-        const dayNames = [
-            "Sunday",
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-        ];
-
-        return {
-            day: dayNames[localDayNum],
-            hour: localHour,
-        };
-    };
-
-    // Convert UTC day/hour distribution to local day/hour distribution
-    const getLocalDayHourDistribution = (): Record<string, number[]> => {
-        if (!wrappedData.playtimeDistribution?.dayHourDistribution) {
-            return {};
-        }
-
-        const localDistribution: Record<string, number[]> = {
-            Sunday: Array.from({ length: 24 }, () => 0),
-            Monday: Array.from({ length: 24 }, () => 0),
-            Tuesday: Array.from({ length: 24 }, () => 0),
-            Wednesday: Array.from({ length: 24 }, () => 0),
-            Thursday: Array.from({ length: 24 }, () => 0),
-            Friday: Array.from({ length: 24 }, () => 0),
-            Saturday: Array.from({ length: 24 }, () => 0),
-        };
-
-        // For each UTC day/hour, add to the corresponding local day/hour
-        Object.entries(
-            wrappedData.playtimeDistribution.dayHourDistribution,
-        ).forEach(([utcDay, hours]) => {
-            hours.forEach((value, utcHour) => {
-                if (value > 0) {
-                    const local = utcToLocalDayHour(utcDay, utcHour);
-                    localDistribution[local.day][local.hour] += value;
-                }
-            });
-        });
-
-        return localDistribution;
-    };
-
-    // Convert UTC hourly distribution to local hourly distribution
-    const getLocalHourlyDistribution = (): number[] => {
-        if (!wrappedData.playtimeDistribution?.hourlyDistribution) {
-            return Array.from({ length: 24 }, () => 0);
-        }
-
-        const localDistribution = Array.from({ length: 24 }, () => 0);
-        const timezoneOffset = new Date().getTimezoneOffset() / 60; // Hours difference from UTC
-
-        wrappedData.playtimeDistribution.hourlyDistribution.forEach(
-            (value, utcHour) => {
-                const localHour = (utcHour - timezoneOffset + 24) % 24;
-                localDistribution[localHour] += value;
-            },
-        );
-
-        return localDistribution;
-    };
-
-    const localHourlyDist = getLocalHourlyDistribution();
-    const localDayHourDist = getLocalDayHourDistribution();
-
-    const maxHourlyValue = Math.max(...localHourlyDist, 0.01);
+    // Ensure all weekdays are present (API may omit days with no playtime)
+    const allWeekdays = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    ];
+    const dayHourDist: Record<string, number[]> = {};
+    allWeekdays.forEach((day) => {
+        dayHourDist[day] =
+            dayHourDistribution[day] ?? Array.from({ length: 24 }, () => 0);
+    });
 
     return (
         <Fade in timeout={1600}>
@@ -1137,14 +1064,14 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                     height: 80,
                                 }}
                             >
-                                {localHourlyDist.map((hours, localHour) => {
+                                {hourlyDistribution.map((hours, hour) => {
                                     const heightPercent =
                                         (hours / maxHourlyValue) * 100;
 
                                     return (
                                         <Tooltip
-                                            key={localHour}
-                                            title={`${localHour.toString()}:00 - ${((localHour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
+                                            key={hour}
+                                            title={`${hour.toString()}:00 - ${((hour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
                                         >
                                             <Box
                                                 sx={{
@@ -1177,7 +1104,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                                         },
                                                     }}
                                                 />
-                                                {localHour % 6 === 0 && (
+                                                {hour % 6 === 0 && (
                                                     <Typography
                                                         variant="caption"
                                                         sx={{
@@ -1185,7 +1112,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                                             mt: 0.5,
                                                         }}
                                                     >
-                                                        {localHour.toString()}
+                                                        {hour.toString()}
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -1220,11 +1147,9 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                     "Saturday",
                                     "Sunday",
                                 ].map((day) => {
-                                    const dayData = localDayHourDist[day];
+                                    const dayData = dayHourDist[day];
                                     const maxDayValue = Math.max(
-                                        ...Object.values(
-                                            localDayHourDist,
-                                        ).flat(),
+                                        ...Object.values(dayHourDist).flat(),
                                         0.01,
                                     );
 
@@ -1338,7 +1263,8 @@ interface FlawlessSessionsProps {
 }
 
 const FlawlessSessions: React.FC<FlawlessSessionsProps> = ({ wrappedData }) => {
-    if (!wrappedData.flawlessSessions) return null;
+    const sessionStats = wrappedData.sessionStats;
+    if (!sessionStats?.flawlessSessions) return null;
 
     return (
         <Fade in timeout={1800}>
@@ -1368,10 +1294,12 @@ const FlawlessSessions: React.FC<FlawlessSessionsProps> = ({ wrappedData }) => {
                             fontWeight="bold"
                             color="#FFD700"
                         >
-                            {wrappedData.flawlessSessions.count.toString()}
+                            {sessionStats.flawlessSessions.count.toString()}
                         </Typography>
                         <Typography variant="body2" color="textSecondary">
-                            {wrappedData.flawlessSessions.percentage.toFixed(1)}
+                            {sessionStats.flawlessSessions.percentage.toFixed(
+                                1,
+                            )}
                             % of sessions with no losses and no final deaths
                         </Typography>
                     </Stack>
@@ -1387,7 +1315,8 @@ interface SessionCoverageProps {
 }
 
 const SessionCoverage: React.FC<SessionCoverageProps> = ({ wrappedData }) => {
-    if (!wrappedData.sessionCoverage) return null;
+    const sessionStats = wrappedData.sessionStats;
+    if (!sessionStats?.sessionCoverage) return null;
 
     return (
         <Fade in timeout={2000}>
@@ -1404,7 +1333,7 @@ const SessionCoverage: React.FC<SessionCoverageProps> = ({ wrappedData }) => {
                             <Grid size={{ xs: 12, sm: 6 }}>
                                 <Stack alignItems="center">
                                     <Typography variant="h4" color="primary">
-                                        {wrappedData.sessionCoverage.gamesPlayedPercentage.toFixed(
+                                        {sessionStats.sessionCoverage.gamesPlayedPercentage.toFixed(
                                             1,
                                         )}
                                         %
@@ -1425,7 +1354,7 @@ const SessionCoverage: React.FC<SessionCoverageProps> = ({ wrappedData }) => {
                                         color="success.main"
                                     >
                                         {formatHours(
-                                            wrappedData.sessionCoverage
+                                            sessionStats.sessionCoverage
                                                 .adjustedTotalHours,
                                         )}
                                     </Typography>
@@ -1559,8 +1488,8 @@ function RouteComponent() {
         totalGames && totalWins ? (totalWins / totalGames) * 100 : 0;
 
     const lowCoverage =
-        wrappedData?.sessionCoverage?.gamesPlayedPercentage &&
-        wrappedData.sessionCoverage.gamesPlayedPercentage < 50;
+        wrappedData?.sessionStats?.sessionCoverage?.gamesPlayedPercentage &&
+        wrappedData?.sessionStats?.sessionCoverage?.gamesPlayedPercentage < 50;
 
     return (
         <Stack spacing={3}>
@@ -1785,20 +1714,21 @@ function RouteComponent() {
                 </>
             ) : (
                 <>
-                    {lowCoverage && wrappedData.sessionCoverage && (
-                        <Fade in timeout={800}>
-                            <Alert severity="warning" icon={<Warning />}>
-                                <Typography variant="body2">
-                                    Session coverage is low (
-                                    {wrappedData.sessionCoverage.gamesPlayedPercentage.toFixed(
-                                        1,
-                                    )}
-                                    % of games in sessions). Many stats gained
-                                    outside recorded sessions.
-                                </Typography>
-                            </Alert>
-                        </Fade>
-                    )}
+                    {lowCoverage &&
+                        wrappedData.sessionStats?.sessionCoverage && (
+                            <Fade in timeout={800}>
+                                <Alert severity="warning" icon={<Warning />}>
+                                    <Typography variant="body2">
+                                        Session coverage is low (
+                                        {wrappedData.sessionStats.sessionCoverage.gamesPlayedPercentage.toFixed(
+                                            1,
+                                        )}
+                                        % of games in sessions). Many stats
+                                        gained outside recorded sessions.
+                                    </Typography>
+                                </Alert>
+                            </Fade>
+                        )}
 
                     {/* Session Overview */}
                     <SessionOverview wrappedData={wrappedData} />

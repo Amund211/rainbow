@@ -116,59 +116,62 @@ export interface WrappedData {
         start: PlayerDataPIT;
         end: PlayerDataPIT;
     };
-    // Session stats are nested under sessionStats and only present when there's at least one consecutive session
-    sessionLengths?: {
-        totalHours: number;
-        longestHours: number;
-        shortestHours: number;
-        averageHours: number;
+    // Session stats are nested and only present when there's at least one consecutive session
+    sessionStats?: {
+        sessionLengths: {
+            totalHours: number;
+            longestHours: number;
+            shortestHours: number;
+            averageHours: number;
+        };
+        sessionsPerMonth: Record<string, number>;
+        bestSessions: {
+            highestFKDR: BestSession;
+            mostKills: BestSession;
+            mostFinalKills: BestSession;
+            mostWins: BestSession;
+            longestSession: BestSession;
+            mostWinsPerHour: BestSession;
+            mostFinalsPerHour: BestSession;
+        };
+        averages: {
+            sessionLengthHours: number;
+            gamesPlayed: number;
+            wins: number;
+            finalKills: number;
+        };
+        winstreaks: {
+            overall: StreakInfo;
+            solo: StreakInfo;
+            doubles: StreakInfo;
+            threes: StreakInfo;
+            fours: StreakInfo;
+        };
+        finalKillStreaks: {
+            overall: StreakInfo;
+            solo: StreakInfo;
+            doubles: StreakInfo;
+            threes: StreakInfo;
+            fours: StreakInfo;
+        };
+        sessionCoverage: {
+            gamesPlayedPercentage: number;
+            adjustedTotalHours: number;
+        };
+        favoritePlayIntervals: PlayInterval[];
+        flawlessSessions: {
+            count: number;
+            percentage: number;
+        };
+        playtimeDistribution: PlaytimeDistribution;
     };
-    sessionsPerMonth?: Record<string, number>;
-    bestSessions?: {
-        highestFKDR: BestSession;
-        mostKills: BestSession;
-        mostFinalKills: BestSession;
-        mostWins: BestSession;
-        longestSession: BestSession;
-        mostWinsPerHour: BestSession;
-        mostFinalsPerHour: BestSession;
-    };
-    averages?: {
-        sessionLengthHours: number;
-        gamesPlayed: number;
-        wins: number;
-        finalKills: number;
-    };
-    winstreaks?: {
-        overall: StreakInfo;
-        solo: StreakInfo;
-        doubles: StreakInfo;
-        threes: StreakInfo;
-        fours: StreakInfo;
-    };
-    finalKillStreaks?: {
-        overall: StreakInfo;
-        solo: StreakInfo;
-        doubles: StreakInfo;
-        threes: StreakInfo;
-        fours: StreakInfo;
-    };
-    sessionCoverage?: {
-        gamesPlayedPercentage: number;
-        adjustedTotalHours: number;
-    };
-    favoritePlayIntervals?: PlayInterval[];
-    flawlessSessions?: {
-        count: number;
-        percentage: number;
-    };
-    playtimeDistribution?: PlaytimeDistribution;
     cause?: string;
 }
 
 interface WrappedQueryOptions {
     uuid: string;
     year: number;
+    timezone?: string; // IANA timezone (e.g., "Europe/Oslo", "America/New_York")
 }
 
 // API returns PascalCase, we need camelCase for PlayerDataPIT
@@ -273,10 +276,17 @@ const convertAPIPlayerDataPIT = (
     };
 };
 
-export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
+export const getWrappedQueryOptions = ({
+    uuid,
+    year,
+    timezone,
+}: WrappedQueryOptions) => {
+    // Get user's timezone if not provided
+    const tz = timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+
     return queryOptions({
         staleTime: Infinity, // Wrapped data is historical and doesn't change
-        queryKey: ["wrapped", uuid, year],
+        queryKey: ["wrapped", uuid, year, tz],
         queryFn: async (): Promise<WrappedData> => {
             if (!isNormalizedUUID(uuid)) {
                 captureMessage(
@@ -286,26 +296,30 @@ export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
                         extra: {
                             uuid,
                             year,
+                            timezone: tz,
                         },
                     },
                 );
                 throw new Error(`UUID not normalized: ${uuid}`);
             }
 
-            const response = await fetch(
+            const url = new URL(
                 `${env.VITE_FLASHLIGHT_URL}/v1/wrapped/${uuid}/${year.toString()}`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-User-Id": getOrSetUserId(),
-                    },
-                    method: "GET",
+            );
+            url.searchParams.set("timezone", tz);
+
+            const response = await fetch(url, {
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-User-Id": getOrSetUserId(),
                 },
-            ).catch((error: unknown) => {
+                method: "GET",
+            }).catch((error: unknown) => {
                 captureException(error, {
                     extra: {
                         uuid,
                         year,
+                        timezone: tz,
                         message: "Failed to get wrapped: failed to fetch",
                     },
                 });
@@ -355,6 +369,7 @@ export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
                                     "Failed to get wrapped: failed to parse json",
                                 uuid,
                                 year,
+                                timezone: tz,
                                 text,
                             },
                         });
@@ -366,6 +381,7 @@ export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
                                     "Failed to get wrapped: failed to read response text when handling response error",
                                 uuid,
                                 year,
+                                timezone: tz,
                                 jsonParseError: error,
                             },
                         });
@@ -373,7 +389,7 @@ export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
                 throw error;
             })) as APIWrappedData;
 
-            // Convert the PascalCase API response to camelCase and flatten sessionStats
+            // Convert the PascalCase API response to camelCase, keeping nested structure
             const convertedData: WrappedData = {
                 success: apiData.success,
                 uuid: apiData.uuid,
@@ -388,17 +404,8 @@ export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
                           end: convertAPIPlayerDataPIT(apiData.yearStats.end),
                       }
                     : undefined,
-                // Flatten sessionStats to top level for backward compatibility
-                sessionLengths: apiData.sessionStats?.sessionLengths,
-                sessionsPerMonth: apiData.sessionStats?.sessionsPerMonth,
-                bestSessions: apiData.sessionStats?.bestSessions,
-                averages: apiData.sessionStats?.averages,
-                winstreaks: apiData.sessionStats?.winstreaks,
-                finalKillStreaks: apiData.sessionStats?.finalKillStreaks,
-                sessionCoverage: apiData.sessionStats?.sessionCoverage,
-                favoritePlayIntervals: apiData.sessionStats?.favoritePlayIntervals,
-                flawlessSessions: apiData.sessionStats?.flawlessSessions,
-                playtimeDistribution: apiData.sessionStats?.playtimeDistribution,
+                // Keep sessionStats nested as returned from API
+                sessionStats: apiData.sessionStats,
                 cause: apiData.cause,
             };
 
