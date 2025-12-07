@@ -41,21 +41,16 @@ interface PlaytimeDistribution {
     dayHourDistribution: Record<string, number[]>; // Weekday name -> 24 elements for UTC hours
 }
 
-// API response structure (before conversion)
-interface APIWrappedData {
-    success: boolean;
-    uuid: string;
-    year: number;
-    totalSessions: number;
-    nonConsecutiveSessions: number;
-    sessionLengths?: {
+// Session statistics - only present when there is at least one consecutive session
+interface SessionStats {
+    sessionLengths: {
         totalHours: number;
         longestHours: number;
         shortestHours: number;
         averageHours: number;
     };
-    sessionsPerMonth?: Record<string, number>;
-    bestSessions?: {
+    sessionsPerMonth: Record<string, number>;
+    bestSessions: {
         highestFKDR: BestSession;
         mostKills: BestSession;
         mostFinalKills: BestSession;
@@ -64,40 +59,51 @@ interface APIWrappedData {
         mostWinsPerHour: BestSession;
         mostFinalsPerHour: BestSession;
     };
-    averages?: {
+    averages: {
         sessionLengthHours: number;
         gamesPlayed: number;
         wins: number;
         finalKills: number;
     };
+    winstreaks: {
+        overall: StreakInfo;
+        solo: StreakInfo;
+        doubles: StreakInfo;
+        threes: StreakInfo;
+        fours: StreakInfo;
+    };
+    finalKillStreaks: {
+        overall: StreakInfo;
+        solo: StreakInfo;
+        doubles: StreakInfo;
+        threes: StreakInfo;
+        fours: StreakInfo;
+    };
+    sessionCoverage: {
+        gamesPlayedPercentage: number;
+        adjustedTotalHours: number;
+    };
+    favoritePlayIntervals: PlayInterval[];
+    flawlessSessions: {
+        count: number;
+        percentage: number;
+    };
+    playtimeDistribution: PlaytimeDistribution;
+}
+
+// API response structure (before conversion)
+interface APIWrappedData {
+    success: boolean;
+    uuid: string;
+    year: number;
+    totalSessions: number;
+    nonConsecutiveSessions: number;
     yearStats?: {
         start: APIPlayerDataPITFromWrapped;
         end: APIPlayerDataPITFromWrapped;
     };
-    winstreaks?: {
-        overall: StreakInfo;
-        solo: StreakInfo;
-        doubles: StreakInfo;
-        threes: StreakInfo;
-        fours: StreakInfo;
-    };
-    finalKillStreaks?: {
-        overall: StreakInfo;
-        solo: StreakInfo;
-        doubles: StreakInfo;
-        threes: StreakInfo;
-        fours: StreakInfo;
-    };
-    sessionCoverage?: {
-        gamesPlayedPercentage: number;
-        adjustedTotalHours: number;
-    };
-    favoritePlayIntervals?: PlayInterval[];
-    flawlessSessions?: {
-        count: number;
-        percentage: number;
-    };
-    playtimeDistribution?: PlaytimeDistribution;
+    sessionStats?: SessionStats;
+    cause?: string;
 }
 
 export interface WrappedData {
@@ -106,6 +112,11 @@ export interface WrappedData {
     year: number;
     totalSessions: number;
     nonConsecutiveSessions: number;
+    yearStats?: {
+        start: PlayerDataPIT;
+        end: PlayerDataPIT;
+    };
+    // Session stats are nested under sessionStats and only present when there's at least one consecutive session
     sessionLengths?: {
         totalHours: number;
         longestHours: number;
@@ -127,10 +138,6 @@ export interface WrappedData {
         gamesPlayed: number;
         wins: number;
         finalKills: number;
-    };
-    yearStats?: {
-        start: PlayerDataPIT;
-        end: PlayerDataPIT;
     };
     winstreaks?: {
         overall: StreakInfo;
@@ -156,6 +163,7 @@ export interface WrappedData {
         percentage: number;
     };
     playtimeDistribution?: PlaytimeDistribution;
+    cause?: string;
 }
 
 interface WrappedQueryOptions {
@@ -365,9 +373,13 @@ export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
                 throw error;
             })) as APIWrappedData;
 
-            // Convert the PascalCase API response to camelCase
+            // Convert the PascalCase API response to camelCase and flatten sessionStats
             const convertedData: WrappedData = {
-                ...apiData,
+                success: apiData.success,
+                uuid: apiData.uuid,
+                year: apiData.year,
+                totalSessions: apiData.totalSessions,
+                nonConsecutiveSessions: apiData.nonConsecutiveSessions,
                 yearStats: apiData.yearStats
                     ? {
                           start: convertAPIPlayerDataPIT(
@@ -376,6 +388,18 @@ export const getWrappedQueryOptions = ({ uuid, year }: WrappedQueryOptions) => {
                           end: convertAPIPlayerDataPIT(apiData.yearStats.end),
                       }
                     : undefined,
+                // Flatten sessionStats to top level for backward compatibility
+                sessionLengths: apiData.sessionStats?.sessionLengths,
+                sessionsPerMonth: apiData.sessionStats?.sessionsPerMonth,
+                bestSessions: apiData.sessionStats?.bestSessions,
+                averages: apiData.sessionStats?.averages,
+                winstreaks: apiData.sessionStats?.winstreaks,
+                finalKillStreaks: apiData.sessionStats?.finalKillStreaks,
+                sessionCoverage: apiData.sessionStats?.sessionCoverage,
+                favoritePlayIntervals: apiData.sessionStats?.favoritePlayIntervals,
+                flawlessSessions: apiData.sessionStats?.flawlessSessions,
+                playtimeDistribution: apiData.sessionStats?.playtimeDistribution,
+                cause: apiData.cause,
             };
 
             return convertedData;
