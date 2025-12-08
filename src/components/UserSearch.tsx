@@ -1,6 +1,6 @@
 import { getUUIDQueryOptions } from "#queries/uuid.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
-import { useUUIDToUsername } from "#queries/username.ts";
+import { useUUIDToUsername, useCachedUsername } from "#queries/username.ts";
 import { Search } from "@mui/icons-material";
 import {
     Autocomplete,
@@ -277,6 +277,7 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
 // Virtualized listbox component for the Autocomplete to improve performance
 // with large lists of users
 const LISTBOX_PADDING = 8; // px
+const LISTBOX_ITEM_SIZE = 48; // px - height of each item in the virtualized list
 
 function renderRow(props: ListChildComponentProps) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -328,13 +329,12 @@ const ListboxComponent = React.forwardRef<
     );
 
     const itemCount = itemData.length;
-    const itemSize = 48; // Approximate height of each item
 
     const getHeight = () => {
         if (itemCount > 8) {
-            return 8 * itemSize;
+            return 8 * LISTBOX_ITEM_SIZE;
         }
-        return itemCount * itemSize;
+        return itemCount * LISTBOX_ITEM_SIZE;
     };
 
     const gridRef = useResetCache(itemCount);
@@ -349,7 +349,7 @@ const ListboxComponent = React.forwardRef<
                     ref={gridRef}
                     outerElementType={OuterElementType}
                     innerElementType="ul"
-                    itemSize={() => itemSize}
+                    itemSize={() => LISTBOX_ITEM_SIZE}
                     overscanCount={5}
                     itemCount={itemCount}
                 >
@@ -364,12 +364,7 @@ const UserOption: React.FC<{
     uuid: string;
     optionProps: React.HTMLAttributes<HTMLLIElement>;
 }> = ({ uuid, optionProps }) => {
-    const queryClient = useQueryClient();
-    const cachedData = queryClient.getQueryData<{
-        uuid: string;
-        username: string;
-    }>(["username", uuid]);
-    const username = cachedData?.username;
+    const username = useCachedUsername(uuid);
     
     return (
         <Stack
