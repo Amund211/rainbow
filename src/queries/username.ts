@@ -1,4 +1,9 @@
-import { queryOptions, useQueries } from "@tanstack/react-query";
+import {
+    queryOptions,
+    useQueries,
+    useQuery,
+    useQueryClient,
+} from "@tanstack/react-query";
 import { env } from "#env.ts";
 import { addKnownAliasWithoutRerendering } from "#contexts/KnownAliases/helpers.ts";
 import { useKnownAliases } from "#contexts/KnownAliases/hooks.ts";
@@ -162,4 +167,26 @@ export const useUUIDToUsername = (uuids: readonly string[]) => {
         }
     });
     return result;
+};
+
+/**
+ * Hook to lazily get a single username. Only fetches if the data isn't already cached.
+ * This is useful for virtualized lists where we only want to fetch usernames for visible items.
+ */
+export const useUsername = (uuid: string) => {
+    const { addKnownAlias } = useKnownAliases();
+    const query = useQuery(getUsernameQueryOptions(uuid, addKnownAlias));
+    return query.data?.username;
+};
+
+/**
+ * Hook to get a username from the cache without triggering a fetch.
+ * Returns undefined if the username is not in the cache.
+ */
+export const useCachedUsername = (uuid: string) => {
+    const queryClient = useQueryClient();
+    const cachedData = queryClient.getQueryData<{ uuid: string; username: string }>(
+        ["username", uuid]
+    );
+    return cachedData?.username;
 };

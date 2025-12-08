@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import React from "react";
+import { VariableSizeList, type ListChildComponentProps } from "react-window";
 import { usePlayerVisits } from "#contexts/PlayerVisits/hooks.ts";
 import { useKnownAliases } from "#contexts/KnownAliases/hooks.ts";
 import { useCurrentUser } from "#contexts/CurrentUser/hooks.ts";
@@ -75,11 +76,23 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
 ): UserSearchOptions<Multiple> => {
     const { knownAliases } = useKnownAliases();
     const uuids = Object.keys(knownAliases);
-    const uuidToUsername = useUUIDToUsername([
-        ...new Set(uuids.concat(additionalUUIDs ?? [])),
-    ]);
+    const queryClient = useQueryClient();
     const { orderUUIDsByScore } = usePlayerVisits();
     const { currentUser } = useCurrentUser();
+
+    // Helper to get cached username without triggering a fetch
+    const getCachedUsername = (uuid: string) => {
+        const cachedData = queryClient.getQueryData<{
+            uuid: string;
+            username: string;
+        }>(["username", uuid]);
+        return cachedData?.username;
+    };
+
+    // Only fetch usernames for the additional UUIDs (e.g., selected values in multi-select)
+    const uuidToUsername = useUUIDToUsername([
+        ...(additionalUUIDs ?? []),
+    ]);
 
     return {
         uuids,
@@ -90,7 +103,7 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
                         // The names can be anything here as long as it won't get filtered out
                         return { names: [option.text], option: option };
                     case "uuid": {
-                        const name = uuidToUsername[option.uuid];
+                        const name = getCachedUsername(option.uuid);
                         const names = knownAliases[option.uuid] ?? [];
                         if (!name) {
                             return {
@@ -188,9 +201,9 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
         getOptionLabel: (option) => {
             switch (option.type) {
                 case "uuid":
-                    return uuidToUsername[option.uuid] ?? option.uuid;
+                    return getCachedUsername(option.uuid) ?? option.uuid;
                 case "free-text":
-                    return uuidToUsername[option.text] ?? option.text;
+                    return getCachedUsername(option.text) ?? option.text;
                 default:
                     option satisfies never;
                     return "";
@@ -214,7 +227,7 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
 
                     // The free-text value was submitted as a username. Compare it with the option's username
                     return (
-                        uuidToUsername[option.uuid]?.toLowerCase() ===
+                        getCachedUsername(option.uuid)?.toLowerCase() ===
                         value.text.toLowerCase()
                     );
                 }
@@ -261,11 +274,101 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
     };
 };
 
+// Virtualized listbox component for the Autocomplete to improve performance
+// with large lists of users
+const LISTBOX_PADDING = 8; // px
+
+function renderRow(props: ListChildComponentProps) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const { data, index, style } = props;
+    const itemData = data as React.ReactElement[];
+    const dataSet = itemData[index];
+    const inlineStyle = {
+        ...style,
+        top: (style.top as number) + LISTBOX_PADDING,
+    };
+
+    return React.cloneElement(dataSet, {
+        style: inlineStyle,
+    });
+}
+
+const OuterElementContext = React.createContext({});
+
+const OuterElementType = React.forwardRef<HTMLDivElement>((props, ref) => {
+    const outerProps = React.useContext(OuterElementContext);
+    return <div ref={ref} {...props} {...outerProps} />;
+});
+OuterElementType.displayName = "OuterElementType";
+
+function useResetCache(data: number) {
+    const ref = React.useRef<VariableSizeList>(null);
+    React.useEffect(() => {
+        if (ref.current != null) {
+            ref.current.resetAfterIndex(0, true);
+        }
+    }, [data]);
+    return ref;
+}
+
+// Adapter for react-window
+const ListboxComponent = React.forwardRef<
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLElement>
+>(function ListboxComponent(props, ref) {
+    const { children, ...other } = props;
+    const itemData: React.ReactElement[] = [];
+    (children as React.ReactElement[]).forEach(
+        (item: React.ReactElement & { children?: React.ReactElement[] }) => {
+            itemData.push(item);
+            itemData.push(...(item.children ?? []));
+        }
+    );
+
+    const itemCount = itemData.length;
+    const itemSize = 48; // Approximate height of each item
+
+    const getHeight = () => {
+        if (itemCount > 8) {
+            return 8 * itemSize;
+        }
+        return itemCount * itemSize;
+    };
+
+    const gridRef = useResetCache(itemCount);
+
+    return (
+        <div ref={ref}>
+            <OuterElementContext.Provider value={other}>
+                <VariableSizeList
+                    itemData={itemData}
+                    height={getHeight() + 2 * LISTBOX_PADDING}
+                    width="100%"
+                    ref={gridRef}
+                    outerElementType={OuterElementType}
+                    innerElementType="ul"
+                    itemSize={() => itemSize}
+                    overscanCount={5}
+                    itemCount={itemCount}
+                >
+                    {renderRow}
+                </VariableSizeList>
+            </OuterElementContext.Provider>
+        </div>
+    );
+});
+
 const UserOption: React.FC<{
     uuid: string;
     optionProps: React.HTMLAttributes<HTMLLIElement>;
 }> = ({ uuid, optionProps }) => {
-    const username = useUUIDToUsername([uuid])[uuid];
+    const queryClient = useQueryClient();
+    const cachedData = queryClient.getQueryData<{
+        uuid: string;
+        username: string;
+    }>(["username", uuid]);
+    const username = cachedData?.username;
+    
     return (
         <Stack
             component="li"
@@ -278,7 +381,7 @@ const UserOption: React.FC<{
                 src={`https://crafatar.com/renders/head/${uuid}?overlay`}
                 alt={`Player head of ${username ?? "unknown"}`}
             />
-            <Typography variant="body1">{username}</Typography>
+            <Typography variant="body1">{username ?? uuid}</Typography>
         </Stack>
     );
 };
@@ -308,6 +411,11 @@ export const UserSearch: React.FC<UserSearchProps> = ({
             blurOnSelect
             selectOnFocus
             autoHighlight
+            slotProps={{
+                listbox: {
+                    component: ListboxComponent,
+                },
+            }}
             filterOptions={filterOptions}
             renderOption={renderOption}
             getOptionLabel={getOptionLabel}
@@ -401,6 +509,11 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
             fullWidth
             size={size}
             autoHighlight
+            slotProps={{
+                listbox: {
+                    component: ListboxComponent,
+                },
+            }}
             filterOptions={filterOptions}
             renderOption={renderOption}
             getOptionLabel={getOptionLabel}
