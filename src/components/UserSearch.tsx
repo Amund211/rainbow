@@ -288,9 +288,11 @@ function renderRow(props: ListChildComponentProps) {
         top: (style.top as number) + LISTBOX_PADDING,
     };
 
-    return React.cloneElement(dataSet, {
-        style: inlineStyle,
-    });
+    return (
+        <div key={index} style={inlineStyle}>
+            {dataSet}
+        </div>
+    );
 }
 
 const OuterElementContext = React.createContext({});
