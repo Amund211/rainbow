@@ -4,14 +4,7 @@ import { isNormalizedUUID } from "#helpers/uuid.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
 import type { PlayerDataPIT, StatsPIT } from "./playerdata.ts";
-
-interface BestSession {
-    start: PlayerDataPIT;
-    end: PlayerDataPIT;
-    consecutive: boolean;
-}
-
-export type { BestSession };
+import type { Session } from "./sessions.ts";
 
 interface StreakInfo {
     highest: number;
@@ -29,6 +22,63 @@ interface PlaytimeDistribution {
     dayHourDistribution: Record<string, number[]>; // Weekday name -> 24 elements for UTC hours
 }
 
+// API Session (from API with PascalCase PlayerDataPIT)
+interface APISession {
+    start: APIPlayerDataPITFromWrapped;
+    end: APIPlayerDataPITFromWrapped;
+    consecutive: boolean;
+}
+
+// API Session statistics - as returned from API before conversion
+interface APISessionStats {
+    sessionLengths: {
+        totalHours: number;
+        longestHours: number;
+        shortestHours: number;
+        averageHours: number;
+    };
+    sessionsPerMonth: Record<string, number>;
+    bestSessions: {
+        highestFKDR: APISession;
+        mostKills: APISession;
+        mostFinalKills: APISession;
+        mostWins: APISession;
+        longestSession: APISession;
+        mostWinsPerHour: APISession;
+        mostFinalsPerHour: APISession;
+    };
+    averages: {
+        sessionLengthHours: number;
+        gamesPlayed: number;
+        wins: number;
+        finalKills: number;
+    };
+    winstreaks: {
+        overall: StreakInfo;
+        solo: StreakInfo;
+        doubles: StreakInfo;
+        threes: StreakInfo;
+        fours: StreakInfo;
+    };
+    finalKillStreaks: {
+        overall: StreakInfo;
+        solo: StreakInfo;
+        doubles: StreakInfo;
+        threes: StreakInfo;
+        fours: StreakInfo;
+    };
+    sessionCoverage: {
+        gamesPlayedPercentage: number;
+        adjustedTotalHours: number;
+    };
+    favoritePlayIntervals: PlayInterval[];
+    flawlessSessions: {
+        count: number;
+        percentage: number;
+    };
+    playtimeDistribution: PlaytimeDistribution;
+}
+
 // Session statistics - only present when there is at least one consecutive session
 interface SessionStats {
     sessionLengths: {
@@ -39,13 +89,13 @@ interface SessionStats {
     };
     sessionsPerMonth: Record<string, number>;
     bestSessions: {
-        highestFKDR: BestSession;
-        mostKills: BestSession;
-        mostFinalKills: BestSession;
-        mostWins: BestSession;
-        longestSession: BestSession;
-        mostWinsPerHour: BestSession;
-        mostFinalsPerHour: BestSession;
+        highestFKDR: Session;
+        mostKills: Session;
+        mostFinalKills: Session;
+        mostWins: Session;
+        longestSession: Session;
+        mostWinsPerHour: Session;
+        mostFinalsPerHour: Session;
     };
     averages: {
         sessionLengthHours: number;
@@ -90,7 +140,7 @@ interface APIWrappedData {
         start: APIPlayerDataPITFromWrapped;
         end: APIPlayerDataPITFromWrapped;
     };
-    sessionStats?: SessionStats;
+    sessionStats?: APISessionStats;
     cause?: string;
 }
 
@@ -105,54 +155,7 @@ export interface WrappedData {
         end: PlayerDataPIT;
     };
     // Session stats are nested and only present when there's at least one consecutive session
-    sessionStats?: {
-        sessionLengths: {
-            totalHours: number;
-            longestHours: number;
-            shortestHours: number;
-            averageHours: number;
-        };
-        sessionsPerMonth: Record<string, number>;
-        bestSessions: {
-            highestFKDR: BestSession;
-            mostKills: BestSession;
-            mostFinalKills: BestSession;
-            mostWins: BestSession;
-            longestSession: BestSession;
-            mostWinsPerHour: BestSession;
-            mostFinalsPerHour: BestSession;
-        };
-        averages: {
-            sessionLengthHours: number;
-            gamesPlayed: number;
-            wins: number;
-            finalKills: number;
-        };
-        winstreaks: {
-            overall: StreakInfo;
-            solo: StreakInfo;
-            doubles: StreakInfo;
-            threes: StreakInfo;
-            fours: StreakInfo;
-        };
-        finalKillStreaks: {
-            overall: StreakInfo;
-            solo: StreakInfo;
-            doubles: StreakInfo;
-            threes: StreakInfo;
-            fours: StreakInfo;
-        };
-        sessionCoverage: {
-            gamesPlayedPercentage: number;
-            adjustedTotalHours: number;
-        };
-        favoritePlayIntervals: PlayInterval[];
-        flawlessSessions: {
-            count: number;
-            percentage: number;
-        };
-        playtimeDistribution: PlaytimeDistribution;
-    };
+    sessionStats?: SessionStats;
     cause?: string;
 }
 
@@ -377,6 +380,14 @@ export const getWrappedQueryOptions = ({
                 throw error;
             })) as APIWrappedData;
 
+            // Helper to convert a session from API format
+            const convertSession = (apiSession: APISession): Session => ({
+                start: convertAPIPlayerDataPIT(apiSession.start),
+                end: convertAPIPlayerDataPIT(apiSession.end),
+                consecutive: apiSession.consecutive,
+                extrapolated: false, // Sessions from wrapped are not extrapolated
+            });
+
             // Convert the PascalCase API response to camelCase, keeping nested structure
             const convertedData: WrappedData = {
                 success: apiData.success,
@@ -392,8 +403,39 @@ export const getWrappedQueryOptions = ({
                           end: convertAPIPlayerDataPIT(apiData.yearStats.end),
                       }
                     : undefined,
-                // Keep sessionStats nested as returned from API
-                sessionStats: apiData.sessionStats,
+                // Convert sessionStats, including bestSessions
+                sessionStats: apiData.sessionStats
+                    ? {
+                          ...apiData.sessionStats,
+                          bestSessions: {
+                              highestFKDR: convertSession(
+                                  apiData.sessionStats.bestSessions.highestFKDR,
+                              ),
+                              mostKills: convertSession(
+                                  apiData.sessionStats.bestSessions.mostKills,
+                              ),
+                              mostFinalKills: convertSession(
+                                  apiData.sessionStats.bestSessions
+                                      .mostFinalKills,
+                              ),
+                              mostWins: convertSession(
+                                  apiData.sessionStats.bestSessions.mostWins,
+                              ),
+                              longestSession: convertSession(
+                                  apiData.sessionStats.bestSessions
+                                      .longestSession,
+                              ),
+                              mostWinsPerHour: convertSession(
+                                  apiData.sessionStats.bestSessions
+                                      .mostWinsPerHour,
+                              ),
+                              mostFinalsPerHour: convertSession(
+                                  apiData.sessionStats.bestSessions
+                                      .mostFinalsPerHour,
+                              ),
+                          },
+                      }
+                    : undefined,
                 cause: apiData.cause,
             };
 

@@ -1,10 +1,7 @@
 import { queryClient } from "#queryClient.ts";
 import { getUsernameQueryOptions } from "#queries/username.ts";
-import {
-    getWrappedQueryOptions,
-    type WrappedData,
-    type BestSession,
-} from "#queries/wrapped.ts";
+import { getWrappedQueryOptions, type WrappedData } from "#queries/wrapped.ts";
+import { type Session } from "#queries/sessions.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
 import { computeStat } from "#stats/index.ts";
 import {
@@ -251,9 +248,16 @@ const ConfettiEffect: React.FC = () => {
 interface BestSessionCardProps {
     title: string;
     icon: JSX.Element;
-    session: BestSession | undefined;
+    session: Session | undefined;
     statLabel: string;
-    statType: "fkdr" | "kills" | "finals" | "wins" | "duration" | "winsPerHour" | "finalsPerHour";
+    statType:
+        | "fkdr"
+        | "kills"
+        | "finals"
+        | "wins"
+        | "duration"
+        | "winsPerHour"
+        | "finalsPerHour";
     color: string;
     showDuration?: boolean;
 }
@@ -271,23 +275,27 @@ const BestSessionCard: React.FC<BestSessionCardProps> = ({
 
     const startDate = new Date(session.start.queriedAt);
     const endDate = new Date(session.end.queriedAt);
-    
+
     // Calculate session duration in hours
     const durationMs = endDate.getTime() - startDate.getTime();
     const durationHours = durationMs / (1000 * 60 * 60);
-    
+
     // Calculate stats deltas (end - start)
-    const gamesPlayed = session.end.overall.gamesPlayed - session.start.overall.gamesPlayed;
+    const gamesPlayed =
+        session.end.overall.gamesPlayed - session.start.overall.gamesPlayed;
     const wins = session.end.overall.wins - session.start.overall.wins;
-    const finalKills = session.end.overall.finalKills - session.start.overall.finalKills;
-    const finalDeaths = session.end.overall.finalDeaths - session.start.overall.finalDeaths;
+    const finalKills =
+        session.end.overall.finalKills - session.start.overall.finalKills;
+    const finalDeaths =
+        session.end.overall.finalDeaths - session.start.overall.finalDeaths;
     const kills = session.end.overall.kills - session.start.overall.kills;
-    
+
     // Calculate the display value based on stat type
     let displayValue: number;
     switch (statType) {
         case "fkdr":
-            displayValue = finalDeaths > 0 ? finalKills / finalDeaths : finalKills;
+            displayValue =
+                finalDeaths > 0 ? finalKills / finalDeaths : finalKills;
             break;
         case "kills":
             displayValue = kills;
@@ -308,7 +316,7 @@ const BestSessionCard: React.FC<BestSessionCardProps> = ({
             displayValue = durationHours > 0 ? finalKills / durationHours : 0;
             break;
     }
-    
+
     return (
         <Grow in timeout={1500}>
             <Card
@@ -923,8 +931,7 @@ interface StreaksProps {
 
 const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
     const sessionStats = wrappedData.sessionStats;
-    if (!sessionStats)
-        return null;
+    if (!sessionStats) return null;
 
     return (
         <>
