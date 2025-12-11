@@ -6,21 +6,9 @@ import { getOrSetUserId } from "#helpers/userId.ts";
 import type { PlayerDataPIT, StatsPIT } from "./playerdata.ts";
 
 interface BestSession {
-    start: string;
-    end: string;
-    value: number;
-    durationHours: number;
-    stats: {
-        gamesPlayed: number;
-        wins: number;
-        losses: number;
-        bedsBroken: number;
-        bedsLost: number;
-        finalKills: number;
-        finalDeaths: number;
-        kills: number;
-        deaths: number;
-    };
+    start: PlayerDataPIT;
+    end: PlayerDataPIT;
+    consecutive: boolean;
 }
 
 export type { BestSession };

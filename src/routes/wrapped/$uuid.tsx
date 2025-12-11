@@ -253,6 +253,7 @@ interface BestSessionCardProps {
     icon: JSX.Element;
     session: BestSession | undefined;
     statLabel: string;
+    statType: "fkdr" | "kills" | "finals" | "wins" | "duration" | "winsPerHour" | "finalsPerHour";
     color: string;
     showDuration?: boolean;
 }
@@ -262,12 +263,52 @@ const BestSessionCard: React.FC<BestSessionCardProps> = ({
     icon,
     session,
     statLabel,
+    statType,
     color,
     showDuration = true,
 }) => {
     if (!session) return null;
 
-    const startDate = new Date(session.start);
+    const startDate = new Date(session.start.queriedAt);
+    const endDate = new Date(session.end.queriedAt);
+    
+    // Calculate session duration in hours
+    const durationMs = endDate.getTime() - startDate.getTime();
+    const durationHours = durationMs / (1000 * 60 * 60);
+    
+    // Calculate stats deltas (end - start)
+    const gamesPlayed = session.end.overall.gamesPlayed - session.start.overall.gamesPlayed;
+    const wins = session.end.overall.wins - session.start.overall.wins;
+    const finalKills = session.end.overall.finalKills - session.start.overall.finalKills;
+    const finalDeaths = session.end.overall.finalDeaths - session.start.overall.finalDeaths;
+    const kills = session.end.overall.kills - session.start.overall.kills;
+    
+    // Calculate the display value based on stat type
+    let displayValue: number;
+    switch (statType) {
+        case "fkdr":
+            displayValue = finalDeaths > 0 ? finalKills / finalDeaths : finalKills;
+            break;
+        case "kills":
+            displayValue = kills;
+            break;
+        case "finals":
+            displayValue = finalKills;
+            break;
+        case "wins":
+            displayValue = wins;
+            break;
+        case "duration":
+            displayValue = durationHours;
+            break;
+        case "winsPerHour":
+            displayValue = durationHours > 0 ? wins / durationHours : 0;
+            break;
+        case "finalsPerHour":
+            displayValue = durationHours > 0 ? finalKills / durationHours : 0;
+            break;
+    }
+    
     return (
         <Grow in timeout={1500}>
             <Card
@@ -306,7 +347,7 @@ const BestSessionCard: React.FC<BestSessionCardProps> = ({
                             textAlign="center"
                             fontWeight="bold"
                         >
-                            {session.value.toLocaleString(undefined, {
+                            {displayValue.toLocaleString(undefined, {
                                 maximumFractionDigits: 2,
                             })}{" "}
                             {statLabel}
@@ -318,20 +359,20 @@ const BestSessionCard: React.FC<BestSessionCardProps> = ({
                             flexWrap="wrap"
                         >
                             <Typography variant="caption" color="textSecondary">
-                                {session.stats.gamesPlayed.toString()} games
+                                {gamesPlayed.toString()} games
                             </Typography>
                             <Typography variant="caption" color="textSecondary">
-                                {session.stats.wins.toString()} wins
+                                {wins.toString()} wins
                             </Typography>
                             <Typography variant="caption" color="textSecondary">
-                                {session.stats.finalKills.toString()} finals
+                                {finalKills.toString()} finals
                             </Typography>
                             {showDuration && (
                                 <Typography
                                     variant="caption"
                                     color="textSecondary"
                                 >
-                                    {formatHours(session.durationHours)}
+                                    {formatHours(durationHours)}
                                 </Typography>
                             )}
                         </Stack>
@@ -349,7 +390,7 @@ interface SessionOverviewProps {
 
 const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
     const sessionStats = wrappedData.sessionStats;
-    if (!sessionStats?.sessionLengths || !sessionStats?.sessionsPerMonth) {
+    if (!sessionStats) {
         return null;
     }
 
@@ -456,7 +497,7 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                                 "Dec",
                             ].map((month, index) => {
                                 const count =
-                                    sessionStats.sessionsPerMonth?.[
+                                    sessionStats.sessionsPerMonth[
                                         (index + 1).toString()
                                     ] ?? 0;
                                 return (
@@ -515,12 +556,12 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                                     "Dec",
                                 ].map((month, index) => {
                                     const count =
-                                        sessionStats.sessionsPerMonth?.[
+                                        sessionStats.sessionsPerMonth[
                                             (index + 1).toString()
                                         ] ?? 0;
                                     const maxCount = Math.max(
                                         ...Object.values(
-                                            sessionStats.sessionsPerMonth ?? {},
+                                            sessionStats.sessionsPerMonth,
                                         ),
                                         1,
                                     );
@@ -805,6 +846,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                         icon={<TrendingUp />}
                         session={sessionStats.bestSessions.highestFKDR}
                         statLabel="FKDR"
+                        statType="fkdr"
                         color="#667eea"
                     />
                 </Grid>
@@ -814,6 +856,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                         icon={<LocalFireDepartment />}
                         session={sessionStats.bestSessions.mostKills}
                         statLabel="Kills"
+                        statType="kills"
                         color="#f093fb"
                     />
                 </Grid>
@@ -823,6 +866,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                         icon={<Whatshot />}
                         session={sessionStats.bestSessions.mostFinalKills}
                         statLabel="Final Kills"
+                        statType="finals"
                         color="#FFD93D"
                     />
                 </Grid>
@@ -832,6 +876,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                         icon={<EmojiEventsOutlined />}
                         session={sessionStats.bestSessions.mostWins}
                         statLabel="Wins"
+                        statType="wins"
                         color="#4ECDC4"
                     />
                 </Grid>
@@ -841,6 +886,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                         icon={<Timer />}
                         session={sessionStats.bestSessions.longestSession}
                         statLabel="hours"
+                        statType="duration"
                         color="#A8E6CF"
                         showDuration={false}
                     />
@@ -851,6 +897,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                         icon={<TrendingUp />}
                         session={sessionStats.bestSessions.mostWinsPerHour}
                         statLabel="wins/hr"
+                        statType="winsPerHour"
                         color="#95E1D3"
                     />
                 </Grid>
@@ -860,6 +907,7 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
                         icon={<Whatshot />}
                         session={sessionStats.bestSessions.mostFinalsPerHour}
                         statLabel="finals/hr"
+                        statType="finalsPerHour"
                         color="#FF6B6B"
                     />
                 </Grid>
@@ -875,7 +923,7 @@ interface StreaksProps {
 
 const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
     const sessionStats = wrappedData.sessionStats;
-    if (!sessionStats?.winstreaks || !sessionStats?.finalKillStreaks)
+    if (!sessionStats)
         return null;
 
     return (
@@ -1488,8 +1536,8 @@ function RouteComponent() {
         totalGames && totalWins ? (totalWins / totalGames) * 100 : 0;
 
     const lowCoverage =
-        wrappedData?.sessionStats?.sessionCoverage?.gamesPlayedPercentage &&
-        wrappedData?.sessionStats?.sessionCoverage?.gamesPlayedPercentage < 50;
+        wrappedData?.sessionStats?.sessionCoverage !== undefined &&
+        wrappedData.sessionStats.sessionCoverage.gamesPlayedPercentage < 50;
 
     return (
         <Stack spacing={3}>
