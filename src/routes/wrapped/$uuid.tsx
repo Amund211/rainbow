@@ -1081,24 +1081,10 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
     const { hourlyDistribution, dayHourDistribution } =
         sessionStats.playtimeDistribution;
 
-    // Data is already in local timezone from the API
     const maxHourlyValue = Math.max(...hourlyDistribution, 0.01);
 
-    // Ensure all weekdays are present (API may omit days with no playtime)
-    const allWeekdays = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-    ];
-    const dayHourDist: Record<string, number[]> = {};
-    allWeekdays.forEach((day) => {
-        dayHourDist[day] =
-            dayHourDistribution[day] ?? Array.from({ length: 24 }, () => 0);
-    });
+    // TODO: Use the tz from params or similar if we implement a selector
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     return (
         <Fade in timeout={1600}>
@@ -1108,7 +1094,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                         <Stack direction="row" alignItems="center" gap={1}>
                             <CalendarMonth color="primary" />
                             <Typography variant="h6">
-                                Play Time Patterns (Local Time)
+                                {`Play Time Patterns (${tz})`}
                             </Typography>
                         </Stack>
 
@@ -1212,9 +1198,11 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                     "Saturday",
                                     "Sunday",
                                 ].map((day) => {
-                                    const dayData = dayHourDist[day];
+                                    const dayData = dayHourDistribution[day];
                                     const maxDayValue = Math.max(
-                                        ...Object.values(dayHourDist).flat(),
+                                        ...Object.values(
+                                            dayHourDistribution,
+                                        ).flat(),
                                         0.01,
                                     );
 
