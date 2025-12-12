@@ -280,22 +280,32 @@ const BestSessionCard: React.FC<BestSessionCardProps> = ({
     const durationMs = endDate.getTime() - startDate.getTime();
     const durationHours = durationMs / (1000 * 60 * 60);
 
-    // Calculate stats deltas (end - start)
-    const gamesPlayed =
-        session.end.overall.gamesPlayed - session.start.overall.gamesPlayed;
-    const wins = session.end.overall.wins - session.start.overall.wins;
-    const finalKills =
-        session.end.overall.finalKills - session.start.overall.finalKills;
-    const finalDeaths =
-        session.end.overall.finalDeaths - session.start.overall.finalDeaths;
-    const kills = session.end.overall.kills - session.start.overall.kills;
+    const { start, end } = session;
+    const history = [start];
+
+    const gamesPlayed = computeStat(
+        end,
+        "overall",
+        "gamesPlayed",
+        "session",
+        history,
+    );
+    const wins = computeStat(end, "overall", "wins", "session", history);
+    const fkdr = computeStat(end, "overall", "fkdr", "session", history);
+    const finalKills = computeStat(
+        end,
+        "overall",
+        "finalKills",
+        "session",
+        history,
+    );
+    const kills = computeStat(end, "overall", "kills", "session", history);
 
     // Calculate the display value based on stat type
     let displayValue: number;
     switch (statType) {
         case "fkdr":
-            displayValue =
-                finalDeaths > 0 ? finalKills / finalDeaths : finalKills;
+            displayValue = fkdr;
             break;
         case "kills":
             displayValue = kills;
