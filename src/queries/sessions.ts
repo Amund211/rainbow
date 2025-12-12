@@ -9,7 +9,7 @@ import { isNormalizedUUID } from "#helpers/uuid.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
 
-interface APISession {
+export interface APISession {
     start: APIPlayerDataPIT;
     end: APIPlayerDataPIT;
     consecutive: boolean;
@@ -24,6 +24,17 @@ export interface Session {
     consecutive: boolean;
 }
 export type Sessions = readonly Session[];
+
+// Convert API session to application session
+export const apiToSession = (
+    apiSession: APISession,
+    extrapolated = false,
+): Session => ({
+    start: apiToPlayerDataPIT(apiSession.start),
+    end: apiToPlayerDataPIT(apiSession.end),
+    consecutive: apiSession.consecutive,
+    extrapolated,
+});
 
 interface SessionsQueryOptions {
     uuid: string;
@@ -157,14 +168,9 @@ export const getSessionsQueryOptions = ({
                     throw error;
                 })) as APISessions;
 
-            return apiSessions.map((apiSession) => {
-                return {
-                    start: apiToPlayerDataPIT(apiSession.start),
-                    end: apiToPlayerDataPIT(apiSession.end),
-                    consecutive: apiSession.consecutive,
-                    extrapolated: false,
-                };
-            });
+            return apiSessions.map((apiSession) =>
+                apiToSession(apiSession, false),
+            );
         },
     });
 };

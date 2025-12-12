@@ -3,8 +3,12 @@ import { env } from "#env.ts";
 import { isNormalizedUUID } from "#helpers/uuid.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
-import type { PlayerDataPIT, StatsPIT } from "./playerdata.ts";
-import type { Session } from "./sessions.ts";
+import {
+    apiToPlayerDataPIT,
+    type APIPlayerDataPIT,
+    type PlayerDataPIT,
+} from "./playerdata.ts";
+import { apiToSession, type APISession, type Session } from "./sessions.ts";
 
 interface StreakInfo {
     highest: number;
@@ -20,13 +24,6 @@ interface PlayInterval {
 interface PlaytimeDistribution {
     hourlyDistribution: number[]; // 24 elements for UTC hours 0-23
     dayHourDistribution: Record<string, number[]>; // Weekday name -> 24 elements for UTC hours
-}
-
-// API Session (from API with PascalCase PlayerDataPIT)
-interface APISession {
-    start: APIPlayerDataPITFromWrapped;
-    end: APIPlayerDataPITFromWrapped;
-    consecutive: boolean;
 }
 
 // API Session statistics - as returned from API before conversion
@@ -137,8 +134,8 @@ interface APIWrappedData {
     totalSessions: number;
     nonConsecutiveSessions: number;
     yearStats?: {
-        start: APIPlayerDataPITFromWrapped;
-        end: APIPlayerDataPITFromWrapped;
+        start: APIPlayerDataPIT;
+        end: APIPlayerDataPIT;
     };
     sessionStats?: APISessionStats;
     cause?: string;
@@ -164,108 +161,6 @@ interface WrappedQueryOptions {
     year: number;
     timezone?: string; // IANA timezone (e.g., "Europe/Oslo", "America/New_York")
 }
-
-// API returns PascalCase, we need camelCase for PlayerDataPIT
-interface APIPlayerDataPITFromWrapped {
-    DBID: string;
-    QueriedAt: string;
-    UUID: string;
-    Displayname: string | null;
-    LastLogin: string | null;
-    LastLogout: string | null;
-    MissingBedwarsStats: boolean;
-    Experience: number;
-    Solo: {
-        Winstreak: number | null;
-        GamesPlayed: number;
-        Wins: number;
-        Losses: number;
-        BedsBroken: number;
-        BedsLost: number;
-        FinalKills: number;
-        FinalDeaths: number;
-        Kills: number;
-        Deaths: number;
-    };
-    Doubles: {
-        Winstreak: number | null;
-        GamesPlayed: number;
-        Wins: number;
-        Losses: number;
-        BedsBroken: number;
-        BedsLost: number;
-        FinalKills: number;
-        FinalDeaths: number;
-        Kills: number;
-        Deaths: number;
-    };
-    Threes: {
-        Winstreak: number | null;
-        GamesPlayed: number;
-        Wins: number;
-        Losses: number;
-        BedsBroken: number;
-        BedsLost: number;
-        FinalKills: number;
-        FinalDeaths: number;
-        Kills: number;
-        Deaths: number;
-    };
-    Fours: {
-        Winstreak: number | null;
-        GamesPlayed: number;
-        Wins: number;
-        Losses: number;
-        BedsBroken: number;
-        BedsLost: number;
-        FinalKills: number;
-        FinalDeaths: number;
-        Kills: number;
-        Deaths: number;
-    };
-    Overall: {
-        Winstreak: number | null;
-        GamesPlayed: number;
-        Wins: number;
-        Losses: number;
-        BedsBroken: number;
-        BedsLost: number;
-        FinalKills: number;
-        FinalDeaths: number;
-        Kills: number;
-        Deaths: number;
-    };
-}
-
-const convertAPIPlayerDataPIT = (
-    apiData: APIPlayerDataPITFromWrapped,
-): PlayerDataPIT => {
-    const convertStats = (
-        stats: APIPlayerDataPITFromWrapped["Solo"],
-    ): StatsPIT => ({
-        winstreak: stats.Winstreak,
-        gamesPlayed: stats.GamesPlayed,
-        wins: stats.Wins,
-        losses: stats.Losses,
-        bedsBroken: stats.BedsBroken,
-        bedsLost: stats.BedsLost,
-        finalKills: stats.FinalKills,
-        finalDeaths: stats.FinalDeaths,
-        kills: stats.Kills,
-        deaths: stats.Deaths,
-    });
-
-    return {
-        uuid: apiData.UUID,
-        queriedAt: new Date(apiData.QueriedAt),
-        experience: apiData.Experience,
-        solo: convertStats(apiData.Solo),
-        doubles: convertStats(apiData.Doubles),
-        threes: convertStats(apiData.Threes),
-        fours: convertStats(apiData.Fours),
-        overall: convertStats(apiData.Overall),
-    };
-};
 
 export const getWrappedQueryOptions = ({
     uuid,
@@ -380,15 +275,7 @@ export const getWrappedQueryOptions = ({
                 throw error;
             })) as APIWrappedData;
 
-            // Helper to convert a session from API format
-            const convertSession = (apiSession: APISession): Session => ({
-                start: convertAPIPlayerDataPIT(apiSession.start),
-                end: convertAPIPlayerDataPIT(apiSession.end),
-                consecutive: apiSession.consecutive,
-                extrapolated: false, // Sessions from wrapped are not extrapolated
-            });
-
-            // Convert the PascalCase API response to camelCase, keeping nested structure
+            // Convert the API response to application format, keeping nested structure
             const convertedData: WrappedData = {
                 success: apiData.success,
                 uuid: apiData.uuid,
@@ -397,10 +284,8 @@ export const getWrappedQueryOptions = ({
                 nonConsecutiveSessions: apiData.nonConsecutiveSessions,
                 yearStats: apiData.yearStats
                     ? {
-                          start: convertAPIPlayerDataPIT(
-                              apiData.yearStats.start,
-                          ),
-                          end: convertAPIPlayerDataPIT(apiData.yearStats.end),
+                          start: apiToPlayerDataPIT(apiData.yearStats.start),
+                          end: apiToPlayerDataPIT(apiData.yearStats.end),
                       }
                     : undefined,
                 // Convert sessionStats, including bestSessions
@@ -408,30 +293,37 @@ export const getWrappedQueryOptions = ({
                     ? {
                           ...apiData.sessionStats,
                           bestSessions: {
-                              highestFKDR: convertSession(
+                              highestFKDR: apiToSession(
                                   apiData.sessionStats.bestSessions.highestFKDR,
+                                  false,
                               ),
-                              mostKills: convertSession(
+                              mostKills: apiToSession(
                                   apiData.sessionStats.bestSessions.mostKills,
+                                  false,
                               ),
-                              mostFinalKills: convertSession(
+                              mostFinalKills: apiToSession(
                                   apiData.sessionStats.bestSessions
                                       .mostFinalKills,
+                                  false,
                               ),
-                              mostWins: convertSession(
+                              mostWins: apiToSession(
                                   apiData.sessionStats.bestSessions.mostWins,
+                                  false,
                               ),
-                              longestSession: convertSession(
+                              longestSession: apiToSession(
                                   apiData.sessionStats.bestSessions
                                       .longestSession,
+                                  false,
                               ),
-                              mostWinsPerHour: convertSession(
+                              mostWinsPerHour: apiToSession(
                                   apiData.sessionStats.bestSessions
                                       .mostWinsPerHour,
+                                  false,
                               ),
-                              mostFinalsPerHour: convertSession(
+                              mostFinalsPerHour: apiToSession(
                                   apiData.sessionStats.bestSessions
                                       .mostFinalsPerHour,
+                                  false,
                               ),
                           },
                       }
