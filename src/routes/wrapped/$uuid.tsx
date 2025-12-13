@@ -45,6 +45,7 @@ import {
     CheckCircle,
     Info,
     Error,
+    PieChart,
 } from "@mui/icons-material";
 import type { StatKey } from "#stats/keys.ts";
 
@@ -1403,7 +1404,7 @@ const SessionCoverage: React.FC<SessionCoverageProps> = ({ wrappedData }) => {
                 <CardContent>
                     <Stack gap={2}>
                         <Stack direction="row" alignItems="center" gap={1}>
-                            <Info color="primary" />
+                            <PieChart color="primary" />
                             <Typography variant="h6">
                                 Session Coverage
                             </Typography>
