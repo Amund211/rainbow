@@ -1559,10 +1559,15 @@ interface ShareableCardProps {
         yearStats: NonNullable<WrappedData["yearStats"]>;
     };
     username?: string;
+    uuid?: string;
 }
 
 const ShareableCard = React.forwardRef<HTMLDivElement, ShareableCardProps>(
-    ({ wrappedData, username }, ref) => {
+    ({ wrappedData, username, uuid }, ref) => {
+        const sessionStats = wrappedData.sessionStats;
+        const modes = ["overall", "solo", "doubles"] as const;
+
+        // Calculate stats for display
         const getOverallSessionStats = (
             stat: Exclude<StatKey, "winstreak">,
         ): number => {
@@ -1597,218 +1602,472 @@ const ShareableCard = React.forwardRef<HTMLDivElement, ShareableCardProps>(
             [wrappedData.yearStats.start],
         );
         const totalStars = getOverallSessionStats("stars");
-        const eoyStars = getCurrentStats("stars");
-        const totalHours =
-            wrappedData.sessionStats?.sessionLengths.totalHours ?? 0;
+        const eoyFKDR = getCurrentStats("fkdr");
 
         return (
             <Box
                 ref={ref}
                 sx={{
                     background: `linear-gradient(135deg, ${CARD_GRADIENT_START} 0%, ${CARD_GRADIENT_END} 100%)`,
-                    p: 4,
+                    p: 3,
                     borderRadius: 2,
                     color: "white",
-                    minWidth: 600,
-                    maxWidth: 800,
+                    width: 1100,
+                    maxWidth: 1100,
                 }}
             >
-                <Stack gap={3}>
-                    <Typography
-                        variant="h3"
-                        fontWeight="bold"
-                        textAlign="center"
-                        sx={{ color: "white" }}
+                <Stack gap={2.5}>
+                    {/* Header with player head and title */}
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="center"
+                        gap={2}
                     >
-                        {username
-                            ? `${username}'s ${wrappedData.year.toString()} Wrapped`
-                            : `${wrappedData.year.toString()} Wrapped`}
-                    </Typography>
-                    <Typography
-                        variant="h6"
-                        textAlign="center"
-                        sx={{ color: "rgba(255, 255, 255, 0.9)" }}
-                    >
-                        Bed Wars Year in Review
-                    </Typography>
+                        {uuid && (
+                            <PlayerHead
+                                uuid={uuid}
+                                username={username}
+                                variant="face"
+                                width={60}
+                            />
+                        )}
+                        <Stack alignItems="center">
+                            <Typography
+                                variant="h4"
+                                fontWeight="bold"
+                                sx={{ color: "white" }}
+                            >
+                                {username
+                                    ? `${username}'s ${wrappedData.year.toString()} Wrapped`
+                                    : `${wrappedData.year.toString()} Wrapped`}
+                            </Typography>
+                            <Typography
+                                variant="subtitle1"
+                                sx={{ color: "rgba(255, 255, 255, 0.9)" }}
+                            >
+                                Bed Wars Year in Review
+                            </Typography>
+                        </Stack>
+                    </Stack>
 
+                    {/* 2x2 Grid Layout */}
                     <Grid container spacing={2}>
+                        {/* Top Left: Overall Stats */}
                         <Grid size={{ xs: 6 }}>
-                            <Box
+                            <Card
                                 sx={{
-                                    bgcolor: "rgba(255, 255, 255, 0.15)",
-                                    p: 2,
-                                    borderRadius: 1,
-                                    textAlign: "center",
+                                    bgcolor: "rgba(255, 255, 255, 0.1)",
+                                    backdropFilter: "blur(10px)",
+                                    height: "100%",
                                 }}
                             >
-                                <Typography
-                                    variant="h4"
-                                    fontWeight="bold"
-                                    sx={{ color: "white" }}
+                                <CardContent
+                                    sx={{ p: 2, "&:last-child": { pb: 2 } }}
                                 >
-                                    {totalGames.toLocaleString()}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
-                                >
-                                    Games Played
-                                </Typography>
-                            </Box>
+                                    <Typography
+                                        variant="h6"
+                                        fontWeight="bold"
+                                        sx={{ color: "white", mb: 1.5 }}
+                                    >
+                                        📊 Overall Stats
+                                    </Typography>
+                                    <Grid container spacing={1.5}>
+                                        <Grid size={{ xs: 4 }}>
+                                            <Box
+                                                sx={{
+                                                    textAlign: "center",
+                                                    p: 1,
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    {totalGames.toLocaleString()}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.8)",
+                                                    }}
+                                                >
+                                                    Games
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid size={{ xs: 4 }}>
+                                            <Box
+                                                sx={{
+                                                    textAlign: "center",
+                                                    p: 1,
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    {totalWins.toLocaleString()}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.8)",
+                                                    }}
+                                                >
+                                                    Wins
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid size={{ xs: 4 }}>
+                                            <Box
+                                                sx={{
+                                                    textAlign: "center",
+                                                    p: 1,
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    {totalFinalKills.toLocaleString()}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.8)",
+                                                    }}
+                                                >
+                                                    Finals
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid size={{ xs: 4 }}>
+                                            <Box
+                                                sx={{
+                                                    textAlign: "center",
+                                                    p: 1,
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    {yearlyFKDR.toLocaleString(
+                                                        undefined,
+                                                        {
+                                                            maximumFractionDigits: 2,
+                                                        },
+                                                    )}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.8)",
+                                                    }}
+                                                >
+                                                    FKDR
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid size={{ xs: 4 }}>
+                                            <Box
+                                                sx={{
+                                                    textAlign: "center",
+                                                    p: 1,
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    {eoyFKDR.toLocaleString(
+                                                        undefined,
+                                                        {
+                                                            maximumFractionDigits: 2,
+                                                        },
+                                                    )}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.8)",
+                                                    }}
+                                                >
+                                                    Current
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid size={{ xs: 4 }}>
+                                            <Box
+                                                sx={{
+                                                    textAlign: "center",
+                                                    p: 1,
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    +
+                                                    {totalStars.toLocaleString(
+                                                        undefined,
+                                                        {
+                                                            maximumFractionDigits: 0,
+                                                        },
+                                                    )}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.8)",
+                                                    }}
+                                                >
+                                                    Stars
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
                         </Grid>
+
+                        {/* Top Right: Best Sessions */}
                         <Grid size={{ xs: 6 }}>
-                            <Box
+                            <Card
                                 sx={{
-                                    bgcolor: "rgba(255, 255, 255, 0.15)",
-                                    p: 2,
-                                    borderRadius: 1,
-                                    textAlign: "center",
+                                    bgcolor: "rgba(255, 255, 255, 0.1)",
+                                    backdropFilter: "blur(10px)",
+                                    height: "100%",
                                 }}
                             >
-                                <Typography
-                                    variant="h4"
-                                    fontWeight="bold"
-                                    sx={{ color: "white" }}
+                                <CardContent
+                                    sx={{ p: 2, "&:last-child": { pb: 2 } }}
                                 >
-                                    {totalWins.toLocaleString()}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
-                                >
-                                    Wins
-                                </Typography>
-                            </Box>
+                                    <Typography
+                                        variant="h6"
+                                        fontWeight="bold"
+                                        sx={{ color: "white", mb: 1.5 }}
+                                    >
+                                        🏆 Best Sessions
+                                    </Typography>
+                                    {sessionStats?.bestSessions && (
+                                        <Stack gap={1}>
+                                            <BestSessionCard
+                                                title="Highest FKDR"
+                                                icon={<TrendingUp />}
+                                                session={
+                                                    sessionStats.bestSessions
+                                                        .highestFKDR
+                                                }
+                                                statLabel="FKDR"
+                                                statType="fkdr"
+                                                color="#667eea"
+                                            />
+                                            <BestSessionCard
+                                                title="Most Wins"
+                                                icon={<EmojiEventsOutlined />}
+                                                session={
+                                                    sessionStats.bestSessions
+                                                        .mostWins
+                                                }
+                                                statLabel="Wins"
+                                                statType="wins"
+                                                color="#4ECDC4"
+                                            />
+                                        </Stack>
+                                    )}
+                                </CardContent>
+                            </Card>
                         </Grid>
+
+                        {/* Bottom Left: Streaks */}
                         <Grid size={{ xs: 6 }}>
-                            <Box
+                            <Card
                                 sx={{
-                                    bgcolor: "rgba(255, 255, 255, 0.15)",
-                                    p: 2,
-                                    borderRadius: 1,
-                                    textAlign: "center",
+                                    bgcolor: "rgba(255, 255, 255, 0.1)",
+                                    backdropFilter: "blur(10px)",
+                                    height: "100%",
                                 }}
                             >
-                                <Typography
-                                    variant="h4"
-                                    fontWeight="bold"
-                                    sx={{ color: "white" }}
+                                <CardContent
+                                    sx={{ p: 2, "&:last-child": { pb: 2 } }}
                                 >
-                                    {totalFinalKills.toLocaleString()}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
-                                >
-                                    Final Kills
-                                </Typography>
-                            </Box>
+                                    <Typography
+                                        variant="h6"
+                                        fontWeight="bold"
+                                        sx={{ color: "white", mb: 1.5 }}
+                                    >
+                                        🔥 Streaks
+                                    </Typography>
+                                    {sessionStats && (
+                                        <Stack gap={1.5}>
+                                            {modes.map((mode) => {
+                                                const streak =
+                                                    sessionStats.winstreaks[
+                                                        mode
+                                                    ];
+                                                return (
+                                                    <Stack
+                                                        key={mode}
+                                                        direction="row"
+                                                        justifyContent="space-between"
+                                                        alignItems="center"
+                                                    >
+                                                        <Typography
+                                                            variant="body1"
+                                                            sx={{
+                                                                textTransform:
+                                                                    "capitalize",
+                                                                color: "rgba(255, 255, 255, 0.9)",
+                                                            }}
+                                                        >
+                                                            {mode}
+                                                        </Typography>
+                                                        <Typography
+                                                            variant="h5"
+                                                            fontWeight="bold"
+                                                            sx={{
+                                                                color: "white",
+                                                            }}
+                                                        >
+                                                            {streak.highest.toLocaleString()}
+                                                        </Typography>
+                                                    </Stack>
+                                                );
+                                            })}
+                                        </Stack>
+                                    )}
+                                </CardContent>
+                            </Card>
                         </Grid>
+
+                        {/* Bottom Right: Session Overview */}
                         <Grid size={{ xs: 6 }}>
-                            <Box
+                            <Card
                                 sx={{
-                                    bgcolor: "rgba(255, 255, 255, 0.15)",
-                                    p: 2,
-                                    borderRadius: 1,
-                                    textAlign: "center",
+                                    bgcolor: "rgba(255, 255, 255, 0.1)",
+                                    backdropFilter: "blur(10px)",
+                                    height: "100%",
                                 }}
                             >
-                                <Typography
-                                    variant="h4"
-                                    fontWeight="bold"
-                                    sx={{ color: "white" }}
+                                <CardContent
+                                    sx={{ p: 2, "&:last-child": { pb: 2 } }}
                                 >
-                                    {yearlyFKDR.toLocaleString(undefined, {
-                                        maximumFractionDigits: 2,
-                                    })}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
-                                >
-                                    FKDR
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                            <Box
-                                sx={{
-                                    bgcolor: "rgba(255, 255, 255, 0.15)",
-                                    p: 2,
-                                    borderRadius: 1,
-                                    textAlign: "center",
-                                }}
-                            >
-                                <Typography
-                                    variant="h4"
-                                    fontWeight="bold"
-                                    sx={{ color: "white" }}
-                                >
-                                    +
-                                    {totalStars.toLocaleString(undefined, {
-                                        maximumFractionDigits: 1,
-                                    })}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
-                                >
-                                    Stars Gained (now{" "}
-                                    {eoyStars.toLocaleString(undefined, {
-                                        maximumFractionDigits: 1,
-                                    })}{" "}
-                                    ⭐)
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                            <Box
-                                sx={{
-                                    bgcolor: "rgba(255, 255, 255, 0.15)",
-                                    p: 2,
-                                    borderRadius: 1,
-                                    textAlign: "center",
-                                }}
-                            >
-                                <Typography
-                                    variant="h4"
-                                    fontWeight="bold"
-                                    sx={{ color: "white" }}
-                                >
-                                    {formatHours(totalHours)}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
-                                >
-                                    Time Played
-                                </Typography>
-                            </Box>
+                                    <Typography
+                                        variant="h6"
+                                        fontWeight="bold"
+                                        sx={{ color: "white", mb: 1.5 }}
+                                    >
+                                        ⏱️ Session Overview
+                                    </Typography>
+                                    {sessionStats && (
+                                        <Stack gap={1.5}>
+                                            <Stack
+                                                direction="row"
+                                                justifyContent="space-between"
+                                                alignItems="center"
+                                            >
+                                                <Typography
+                                                    variant="body1"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.9)",
+                                                    }}
+                                                >
+                                                    Total Sessions
+                                                </Typography>
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    {wrappedData.totalSessions.toLocaleString()}
+                                                </Typography>
+                                            </Stack>
+                                            <Stack
+                                                direction="row"
+                                                justifyContent="space-between"
+                                                alignItems="center"
+                                            >
+                                                <Typography
+                                                    variant="body1"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.9)",
+                                                    }}
+                                                >
+                                                    Total Time
+                                                </Typography>
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    {formatHours(
+                                                        sessionStats
+                                                            .sessionLengths
+                                                            .totalHours,
+                                                    )}
+                                                </Typography>
+                                            </Stack>
+                                            <Stack
+                                                direction="row"
+                                                justifyContent="space-between"
+                                                alignItems="center"
+                                            >
+                                                <Typography
+                                                    variant="body1"
+                                                    sx={{
+                                                        color: "rgba(255, 255, 255, 0.9)",
+                                                    }}
+                                                >
+                                                    Avg. Session
+                                                </Typography>
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight="bold"
+                                                    sx={{ color: "white" }}
+                                                >
+                                                    {formatHours(
+                                                        sessionStats
+                                                            .sessionLengths
+                                                            .averageHours,
+                                                    )}
+                                                </Typography>
+                                            </Stack>
+                                        </Stack>
+                                    )}
+                                </CardContent>
+                            </Card>
                         </Grid>
                     </Grid>
 
+                    {/* Footer */}
                     <Box
                         sx={{
-                            mt: 2,
-                            pt: 2,
+                            pt: 1.5,
                             borderTop: "1px solid rgba(255, 255, 255, 0.3)",
                         }}
                     >
                         <Typography
-                            variant="body1"
+                            variant="body2"
                             textAlign="center"
                             sx={{ color: "rgba(255, 255, 255, 0.9)" }}
                         >
-                            🎮 Create your own wrapped at
-                        </Typography>
-                        <Typography
-                            variant="h6"
-                            fontWeight="bold"
-                            textAlign="center"
-                            sx={{ color: "white" }}
-                        >
-                            prismoverlay.com/wrapped
+                            🎮 Create your own wrapped at{" "}
+                            <Typography
+                                component="span"
+                                variant="body2"
+                                fontWeight="bold"
+                                sx={{ color: "white" }}
+                            >
+                                prismoverlay.com/wrapped
+                            </Typography>
                         </Typography>
                     </Box>
                 </Stack>
@@ -2236,6 +2495,7 @@ function RouteComponent() {
                             yearStats: wrappedData.yearStats,
                         }}
                         username={username}
+                        uuid={uuid}
                     />
                 </Box>
             )}
