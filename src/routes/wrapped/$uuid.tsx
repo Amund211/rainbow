@@ -207,6 +207,10 @@ const renderDay = (day: Day): string => {
 };
 
 const CONFETTI_DURATION_SECONDS = 5;
+const MAX_CONFETTI_DELAY_SECONDS = 2;
+const MIN_CONFETTI_FALL_SECONDS = 3;
+const MAX_CONFETTI_FALL_SECONDS = 5;
+
 const ConfettiEffect: React.FC = () => {
     const [confetti, setConfetti] = React.useState<
         {
@@ -236,8 +240,11 @@ const ConfettiEffect: React.FC = () => {
         const pieces = Array.from({ length: 50 }, (_, i) => ({
             id: i,
             left: Math.random() * 100,
-            delay: Math.random() * 2,
-            duration: 3 + Math.random() * 2,
+            delay: Math.random() * MAX_CONFETTI_DELAY_SECONDS,
+            duration:
+                MIN_CONFETTI_FALL_SECONDS +
+                Math.random() *
+                    (MAX_CONFETTI_FALL_SECONDS - MIN_CONFETTI_FALL_SECONDS),
             hue: Math.random() * 360,
             rotation: 360 + Math.random() * 360,
         }));
@@ -245,8 +252,8 @@ const ConfettiEffect: React.FC = () => {
 
         // After the configured duration + max animation time (delay + duration),
         // clear confetti array to let all pieces complete their fall naturally
-        // Max delay (2s) + max duration (5s) = 7s additional time needed
-        const maxAnimationTime = 2 + 5;
+        const maxAnimationTime =
+            MAX_CONFETTI_DELAY_SECONDS + MAX_CONFETTI_FALL_SECONDS;
         const cleanupTimer = setTimeout(
             () => {
                 setConfetti([]);
