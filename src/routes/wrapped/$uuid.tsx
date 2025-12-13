@@ -167,6 +167,35 @@ const formatHours = (hours: number): string => {
     return `${wholeHours.toString()}h ${minutes.toString()}m`;
 };
 
+const renderHour = (hour: number): string => {
+    return new Date(2000, 0, 1, hour).toLocaleTimeString(undefined, {
+        hour: "numeric",
+    });
+};
+
+const DAYS = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+] as const;
+type Day = (typeof DAYS)[number];
+
+const renderDay = (day: Day): string => {
+    const index = DAYS.indexOf(day);
+    return new Date(
+        2026,
+        0,
+        // January 5, 2026 is a Monday
+        5 + index,
+    ).toLocaleDateString(undefined, {
+        weekday: "short",
+    });
+};
+
 const CONFETTI_DURATION_SECONDS = 5;
 const ConfettiEffect: React.FC = () => {
     const [confetti, setConfetti] = React.useState<
@@ -1100,6 +1129,10 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
         sessionStats.playtimeDistribution;
 
     const maxHourlyValue = Math.max(...hourlyDistribution, 0.01);
+    const maxDayHourlyValue = Math.max(
+        ...Object.values(dayHourDistribution).flat(),
+        0.01,
+    );
 
     // TODO: Use the tz from params or similar if we implement a selector
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1131,6 +1164,9 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                     gap: 0.5,
                                     alignItems: "flex-end",
                                     height: 80,
+                                    // To align the bars with the heatmap below
+                                    // 70 px text for day labels + 0.5 (4px) gap
+                                    paddingLeft: "74px",
                                 }}
                             >
                                 {hourlyDistribution.map((hours, hour) => {
@@ -1140,7 +1176,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                     return (
                                         <Tooltip
                                             key={hour}
-                                            title={`${hour.toString()}:00 - ${((hour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
+                                            title={`${renderHour(hour)}:00 - ${renderHour((hour + 1) % 24)}:00: ${hours.toFixed(1)} hours`}
                                         >
                                             <Box
                                                 sx={{
@@ -1173,21 +1209,37 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                                         },
                                                     }}
                                                 />
-                                                {hour % 6 === 0 && (
-                                                    <Typography
-                                                        variant="caption"
-                                                        sx={{
-                                                            fontSize: "0.65rem",
-                                                            mt: 0.5,
-                                                        }}
-                                                    >
-                                                        {hour.toString()}
-                                                    </Typography>
-                                                )}
                                             </Box>
                                         </Tooltip>
                                     );
                                 })}
+                            </Box>
+                            {/* Hour labels */}
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    gap: 0.25,
+                                    pt: 0.5,
+                                    ml: "74px",
+                                }}
+                            >
+                                {Array.from({ length: 24 }).map((_, hour) =>
+                                    hour % 6 === 0 ? (
+                                        <Typography
+                                            key={hour}
+                                            variant="caption"
+                                            sx={{
+                                                flex: 1,
+                                                fontSize: "0.6rem",
+                                                textAlign: "center",
+                                            }}
+                                        >
+                                            {renderHour(hour)}
+                                        </Typography>
+                                    ) : (
+                                        <Box key={hour} sx={{ flex: 1 }} />
+                                    ),
+                                )}
                             </Box>
                         </Box>
 
@@ -1207,22 +1259,18 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                     gap: 0.5,
                                 }}
                             >
-                                {[
-                                    "Monday",
-                                    "Tuesday",
-                                    "Wednesday",
-                                    "Thursday",
-                                    "Friday",
-                                    "Saturday",
-                                    "Sunday",
-                                ].map((day) => {
+                                {(
+                                    [
+                                        "Monday",
+                                        "Tuesday",
+                                        "Wednesday",
+                                        "Thursday",
+                                        "Friday",
+                                        "Saturday",
+                                        "Sunday",
+                                    ] as const
+                                ).map((day) => {
                                     const dayData = dayHourDistribution[day];
-                                    const maxDayValue = Math.max(
-                                        ...Object.values(
-                                            dayHourDistribution,
-                                        ).flat(),
-                                        0.01,
-                                    );
 
                                     return (
                                         <Box
@@ -1240,7 +1288,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                                     fontSize: "0.7rem",
                                                 }}
                                             >
-                                                {day.substring(0, 3)}
+                                                {renderDay(day)}
                                             </Typography>
                                             <Box
                                                 sx={{
@@ -1251,7 +1299,8 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                             >
                                                 {dayData.map((hours, hour) => {
                                                     const intensity =
-                                                        hours / maxDayValue;
+                                                        hours /
+                                                        maxDayHourlyValue;
                                                     const opacity =
                                                         hours > 0
                                                             ? 0.2 +
@@ -1261,7 +1310,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                                     return (
                                                         <Tooltip
                                                             key={hour}
-                                                            title={`${day} ${hour.toString()}:00 - ${((hour + 1) % 24).toString()}:00: ${hours.toFixed(1)} hours`}
+                                                            title={`${renderDay(day)} ${renderHour(hour)}:00 - ${renderHour(hour + (1 % 24))}:00: ${hours.toFixed(1)} hours`}
                                                         >
                                                             <Box
                                                                 sx={{
@@ -1294,7 +1343,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                     sx={{
                                         display: "flex",
                                         gap: 0.25,
-                                        ml: "70px",
+                                        ml: "74px",
                                     }}
                                 >
                                     {Array.from({ length: 24 }).map(
@@ -1309,7 +1358,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                                                         textAlign: "center",
                                                     }}
                                                 >
-                                                    {hour.toString()}
+                                                    {renderHour(hour)}
                                                 </Typography>
                                             ) : (
                                                 <Box
