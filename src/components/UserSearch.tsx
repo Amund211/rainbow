@@ -19,6 +19,7 @@ import React from "react";
 import { usePlayerVisits } from "#contexts/PlayerVisits/hooks.ts";
 import { useKnownAliases } from "#contexts/KnownAliases/hooks.ts";
 import { useCurrentUser } from "#contexts/CurrentUser/hooks.ts";
+import { PlayerHead } from "./player.tsx";
 
 interface UserSearchProps {
     onSubmit: (uuid: string) => void;
@@ -234,24 +235,25 @@ const useUserSearchOptions = <Multiple extends boolean = false>(
                     return null;
                 }
 
+                const username = uuidToUsername[option.uuid];
+
                 return (
                     <Chip
                         {...getItemProps({ index })}
                         key={option.uuid}
                         label={
-                            uuidToUsername[option.uuid] ?? (
-                                <Skeleton variant="text" width={60} />
-                            )
+                            username ?? <Skeleton variant="text" width={60} />
                         }
                         variant="outlined"
                         color="primary"
                         avatar={
+                            // NOTE: Duplicated from PlayerHead component due to issues with sizing
                             <img
                                 style={{
                                     backgroundColor: "rgba(0, 0, 0, 0)",
                                 }}
-                                src={`https://crafatar.com/renders/head/${option.uuid}?overlay`}
-                                alt={`Player head of ${uuidToUsername[option.uuid] ?? "unknown"}`}
+                                src={`https://api.mineatar.io/head/${option.uuid}?overlay=true`}
+                                alt={`${username ?? "unknown"}'s player head`}
                             />
                         }
                     />
@@ -274,10 +276,7 @@ const UserOption: React.FC<{
             alignItems="center"
             {...optionProps}
         >
-            <Avatar
-                src={`https://crafatar.com/renders/head/${uuid}?overlay`}
-                alt={`Player head of ${username ?? "unknown"}`}
-            />
+            <PlayerHead uuid={uuid} username={username} variant="cube" />
             <Typography variant="body1">{username}</Typography>
         </Stack>
     );
