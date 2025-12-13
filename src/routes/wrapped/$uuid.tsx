@@ -640,36 +640,68 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
 
 // Year Stats Cards Component
 interface YearStatsCardsProps {
-    wrappedData: WrappedData;
-    totalGames: number | null;
-    totalWins: number | null;
-    totalFinalKills: number | null;
-    totalBedsBroken: number | null;
-    startFKDR: number | null;
-    endFKDR: number | null;
-    starsEnd: number | null;
-    starsGained: number | null;
-    winRate: number;
+    wrappedData: WrappedData & {
+        yearStats: NonNullable<WrappedData["yearStats"]>;
+    };
 }
 
-const YearStatsCards: React.FC<YearStatsCardsProps> = ({
-    wrappedData,
-    totalGames,
-    totalWins,
-    totalFinalKills,
-    totalBedsBroken,
-    startFKDR,
-    endFKDR,
-    starsGained,
-    starsEnd,
-    winRate,
-}) => {
+const YearStatsCards: React.FC<YearStatsCardsProps> = ({ wrappedData }) => {
+    // Calculate year stats from yearStats
+    const startStats = wrappedData.yearStats.start;
+    const endStats = wrappedData.yearStats.end;
+
+    const totalGames = computeStat(
+        endStats,
+        "overall",
+        "gamesPlayed",
+        "session",
+        [startStats, endStats],
+    );
+    const totalWins = computeStat(endStats, "overall", "wins", "session", [
+        startStats,
+        endStats,
+    ]);
+    const totalFinalKills = computeStat(
+        endStats,
+        "overall",
+        "finalKills",
+        "session",
+        [startStats, endStats],
+    );
+    const totalBedsBroken = computeStat(
+        endStats,
+        "overall",
+        "bedsBroken",
+        "session",
+        [startStats, endStats],
+    );
+
+    const startFKDR = computeStat(startStats, "overall", "fkdr", "overall", [
+        startStats,
+        endStats,
+    ]);
+    const endFKDR = computeStat(endStats, "overall", "fkdr", "overall", [
+        startStats,
+        endStats,
+    ]);
+
+    const starsStart = computeStat(startStats, "overall", "stars", "overall", [
+        startStats,
+        endStats,
+    ]);
+    const starsEnd = computeStat(endStats, "overall", "stars", "overall", [
+        startStats,
+        endStats,
+    ]);
+    const starsGained = starsEnd - starsStart;
+
+    const winRate = totalGames !== 0 ? (totalWins / totalGames) * 100 : 0;
     return (
         <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <StatCard
                     title="Games Played"
-                    value={(totalGames ?? 0).toLocaleString()}
+                    value={totalGames.toLocaleString()}
                     subtitle={
                         wrappedData.sessionStats?.sessionCoverage
                             ? `${wrappedData.sessionStats.sessionCoverage.gamesPlayedPercentage.toFixed(1)}% in sessions`
@@ -683,7 +715,7 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <StatCard
                     title="Wins"
-                    value={(totalWins ?? 0).toLocaleString()}
+                    value={totalWins.toLocaleString()}
                     subtitle={`${winRate.toFixed(1)}% win rate`}
                     icon={<Star sx={{ fontSize: 48 }} />}
                     color="#4ECDC4"
@@ -693,7 +725,7 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <StatCard
                     title="Final Kills"
-                    value={(totalFinalKills ?? 0).toLocaleString()}
+                    value={totalFinalKills.toLocaleString()}
                     subtitle="enemies eliminated"
                     icon={<Whatshot sx={{ fontSize: 48 }} />}
                     color="#FFD93D"
@@ -703,7 +735,7 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <StatCard
                     title="Beds Broken"
-                    value={(totalBedsBroken ?? 0).toLocaleString()}
+                    value={totalBedsBroken.toLocaleString()}
                     subtitle="beds destroyed"
                     icon={<Celebration sx={{ fontSize: 48 }} />}
                     color="#95E1D3"
@@ -713,15 +745,11 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <StatCard
                     title="FKDR"
-                    value={(endFKDR ?? 0).toFixed(2)}
-                    subtitle={
-                        startFKDR && endFKDR
-                            ? (endFKDR - startFKDR).toLocaleString(undefined, {
-                                  signDisplay: "always",
-                                  maximumFractionDigits: 2,
-                              })
-                            : undefined
-                    }
+                    value={endFKDR.toFixed(2)}
+                    subtitle={(endFKDR - startFKDR).toLocaleString(undefined, {
+                        signDisplay: "always",
+                        maximumFractionDigits: 2,
+                    })}
                     icon={<TrendingUp sx={{ fontSize: 48 }} />}
                     color="#A8E6CF"
                     delay={500}
@@ -730,14 +758,8 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <StatCard
                     title="Stars Gained"
-                    value={
-                        starsGained ? `+${starsGained.toLocaleString()}` : "0"
-                    }
-                    subtitle={
-                        starsEnd
-                            ? `now at ${starsEnd.toLocaleString()} ⭐`
-                            : undefined
-                    }
+                    value={`+${starsGained.toLocaleString()}`}
+                    subtitle={`now at ${starsEnd.toLocaleString()} ⭐`}
                     icon={<Star sx={{ fontSize: 48 }} />}
                     color="#FFB6D9"
                     delay={600}
@@ -1431,7 +1453,9 @@ const SessionCoverage: React.FC<SessionCoverageProps> = ({ wrappedData }) => {
 };
 
 interface WrappedStatsContentProps {
-    wrappedData?: WrappedData;
+    wrappedData?:
+        | WrappedData
+        | (WrappedData & { yearStats: NonNullable<WrappedData["yearStats"]> });
     isLoading: boolean;
 }
 
@@ -1495,56 +1519,12 @@ function WrappedStatsContent({
         );
     }
 
-    // Calculate year stats from yearStats
-    const startStats = wrappedData.yearStats.start;
-    const endStats = wrappedData.yearStats.end;
-
-    const totalGames = computeStat(
-        endStats,
-        "overall",
-        "gamesPlayed",
-        "session",
-        [startStats, endStats],
+    const yearStatsCard = (
+        <YearStatsCards
+            // Ugly hack for TS to understand that yearStats is defined
+            wrappedData={{ ...wrappedData, yearStats: wrappedData.yearStats }}
+        />
     );
-    const totalWins = computeStat(endStats, "overall", "wins", "session", [
-        startStats,
-        endStats,
-    ]);
-    const totalFinalKills = computeStat(
-        endStats,
-        "overall",
-        "finalKills",
-        "session",
-        [startStats, endStats],
-    );
-    const totalBedsBroken = computeStat(
-        endStats,
-        "overall",
-        "bedsBroken",
-        "session",
-        [startStats, endStats],
-    );
-
-    const startFKDR = computeStat(startStats, "overall", "fkdr", "overall", [
-        startStats,
-        endStats,
-    ]);
-    const endFKDR = computeStat(endStats, "overall", "fkdr", "overall", [
-        startStats,
-        endStats,
-    ]);
-
-    const starsStart = computeStat(startStats, "overall", "stars", "overall", [
-        startStats,
-        endStats,
-    ]);
-    const starsEnd = computeStat(endStats, "overall", "stars", "overall", [
-        startStats,
-        endStats,
-    ]);
-    const starsGained = starsEnd - starsStart;
-
-    const winRate = totalGames !== 0 ? (totalWins / totalGames) * 100 : 0;
 
     if (wrappedData.totalSessions === 0) {
         return (
@@ -1565,18 +1545,7 @@ function WrappedStatsContent({
                     </Alert>
                 </Fade>
 
-                <YearStatsCards
-                    wrappedData={wrappedData}
-                    totalGames={totalGames}
-                    totalWins={totalWins}
-                    totalFinalKills={totalFinalKills}
-                    totalBedsBroken={totalBedsBroken}
-                    endFKDR={endFKDR}
-                    startFKDR={startFKDR}
-                    starsGained={starsGained}
-                    starsEnd={starsEnd}
-                    winRate={winRate}
-                />
+                {yearStatsCard}
             </>
         );
     }
@@ -1606,18 +1575,7 @@ function WrappedStatsContent({
 
             <SessionCoverage wrappedData={wrappedData} />
 
-            <YearStatsCards
-                wrappedData={wrappedData}
-                totalGames={totalGames}
-                totalWins={totalWins}
-                totalFinalKills={totalFinalKills}
-                totalBedsBroken={totalBedsBroken}
-                endFKDR={endFKDR}
-                startFKDR={startFKDR}
-                starsGained={starsGained}
-                starsEnd={starsEnd}
-                winRate={winRate}
-            />
+            {yearStatsCard}
 
             <AverageSessionStats wrappedData={wrappedData} />
 
@@ -1798,7 +1756,7 @@ function RouteComponent() {
                 wrappedData={wrappedData}
                 isLoading={isLoading}
             />
-            {wrappedData && (
+            {wrappedData?.year !== undefined && wrappedData.yearStats && (
                 <Fade in timeout={2000}>
                     <Card
                         variant="outlined"
@@ -1830,7 +1788,6 @@ function RouteComponent() {
                     </Card>
                 </Fade>
             )}
-            )
         </Stack>
     );
 }
