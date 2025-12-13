@@ -948,7 +948,6 @@ const BestSessions: React.FC<BestSessionsProps> = ({ wrappedData }) => {
     );
 };
 
-// Streaks Component
 interface StreaksProps {
     wrappedData: WrappedData;
 }
@@ -970,7 +969,7 @@ const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
                             <CardContent>
                                 <Stack gap={2}>
                                     <Typography variant="h6" textAlign="center">
-                                        Highest Winstreaks
+                                        Highest Ended Winstreaks
                                     </Typography>
                                     <Divider />
                                     {Object.entries(
@@ -1025,9 +1024,22 @@ const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
                         <Card variant="outlined">
                             <CardContent>
                                 <Stack gap={2}>
-                                    <Typography variant="h6" textAlign="center">
-                                        Highest Final Kill Streaks
-                                    </Typography>
+                                    <Stack
+                                        direction="row"
+                                        alignItems="center"
+                                        justifyContent="center"
+                                        gap={1}
+                                    >
+                                        <Typography variant="h6">
+                                            Highest Ended Final Kill Streaks
+                                        </Typography>
+                                        <Tooltip title="A final kill streak is the number of final kills in a row without taking a final death.">
+                                            <Info
+                                                color="info"
+                                                fontSize="small"
+                                            />
+                                        </Tooltip>
+                                    </Stack>
                                     <Divider />
                                     {Object.entries(
                                         sessionStats.finalKillStreaks,
