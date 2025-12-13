@@ -167,10 +167,7 @@ const formatHours = (hours: number): string => {
     return `${wholeHours.toString()}h ${minutes.toString()}m`;
 };
 
-// Confetti configuration
 const CONFETTI_DURATION_SECONDS = 5;
-
-// Confetti effect component
 const ConfettiEffect: React.FC = () => {
     const [confetti, setConfetti] = React.useState<
         {
@@ -404,7 +401,6 @@ const BestSessionCard: React.FC<BestSessionCardProps> = ({
     );
 };
 
-// Session Overview Component
 interface SessionOverviewProps {
     wrappedData: WrappedData;
 }
@@ -640,7 +636,6 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
     );
 };
 
-// Year Stats Cards Component
 interface YearStatsCardsProps {
     wrappedData: WrappedData & {
         yearStats: NonNullable<WrappedData["yearStats"]>;
@@ -761,7 +756,6 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({ wrappedData }) => {
     );
 };
 
-// Average Session Stats Component
 interface AverageSessionStatsProps {
     wrappedData: WrappedData;
 }
@@ -857,7 +851,6 @@ const AverageSessionStats: React.FC<AverageSessionStatsProps> = ({
     );
 };
 
-// Best Sessions Component
 interface BestSessionsProps {
     wrappedData: WrappedData;
 }
@@ -1093,8 +1086,6 @@ const Streaks: React.FC<StreaksProps> = ({ wrappedData }) => {
     );
 };
 
-// Favorite Play Times Component
-// Favorite Play Times Component
 interface FavoritePlayTimesProps {
     wrappedData: WrappedData;
 }
@@ -1337,7 +1328,6 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
     );
 };
 
-// Flawless Sessions Component
 interface FlawlessSessionsProps {
     wrappedData: WrappedData;
 }
@@ -1389,7 +1379,6 @@ const FlawlessSessions: React.FC<FlawlessSessionsProps> = ({ wrappedData }) => {
     );
 };
 
-// Session Coverage Component
 interface SessionCoverageProps {
     wrappedData: WrappedData;
 }
