@@ -1984,15 +1984,28 @@ function RouteComponent() {
 
             setIsExporting(true);
             try {
+                // Temporarily make the card visible for html2canvas
+                const cardElement = shareableCardRef.current;
+                const originalVisibility = cardElement.style.visibility;
+                cardElement.style.visibility = "visible";
+
+                // Wait a moment for styles to apply
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
                 // Dynamic import to avoid issues with SSR
                 const html2canvasModule = await import("html2canvas");
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
                 const html2canvas = html2canvasModule.default as any;
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-                const canvas = (await html2canvas(shareableCardRef.current, {
-                    backgroundColor: null,
+                const canvas = (await html2canvas(cardElement, {
+                    backgroundColor: "#667eea",
                     scale: 2,
+                    logging: false,
+                    useCORS: true,
                 })) as HTMLCanvasElement;
+
+                // Restore original visibility
+                cardElement.style.visibility = originalVisibility;
 
                 // Convert canvas to blob and download
                 canvas.toBlob((blob: Blob | null) => {
@@ -2202,8 +2215,9 @@ function RouteComponent() {
                 <Box
                     aria-hidden="true"
                     sx={{
-                        position: "absolute",
-                        visibility: "hidden",
+                        position: "fixed",
+                        left: "-9999px",
+                        top: 0,
                         zIndex: -1,
                         pointerEvents: "none",
                     }}
