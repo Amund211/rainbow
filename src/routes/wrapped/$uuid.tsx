@@ -44,6 +44,7 @@ import {
     Warning,
     CheckCircle,
     Info,
+    Error,
 } from "@mui/icons-material";
 
 export const Route = createFileRoute("/wrapped/$uuid")({
@@ -1438,7 +1439,7 @@ function WrappedStatsContent({
     wrappedData,
     isLoading,
 }: WrappedStatsContentProps) {
-    if (isLoading || !wrappedData) {
+    if (isLoading) {
         return (
             <Fade in timeout={1000}>
                 <Card variant="outlined">
@@ -1447,6 +1448,28 @@ function WrappedStatsContent({
                             Loading your year in review...
                         </Typography>
                         <LinearProgress sx={{ mt: 2 }} />
+                    </CardContent>
+                </Card>
+            </Fade>
+        );
+    }
+
+    if (!wrappedData) {
+        return (
+            <Fade in timeout={1000}>
+                <Card variant="outlined">
+                    <CardContent
+                        component={Stack}
+                        direction="row"
+                        gap={2}
+                        alignItems="center"
+                        justifyContent="center"
+                    >
+                        <Error color="error" />
+                        <Typography variant="h6" textAlign="center">
+                            Failed loading your year in review. Please try again
+                            later.
+                        </Typography>
                     </CardContent>
                 </Card>
             </Fade>
@@ -1858,8 +1881,34 @@ function RouteComponent() {
                                 >
                                     A year of Bed Wars achievements
                                 </Typography>
-                                <Tooltip title="Year in Review">
-                                    <CalendarMonth color="info" />
+                                <Tooltip
+                                    title={
+                                        wrappedData?.yearStats
+                                            ? `Based on stats from ${wrappedData.yearStats.start.queriedAt.toLocaleDateString(
+                                                  undefined,
+                                                  {
+                                                      month: "short",
+                                                      day: "numeric",
+                                                      year: "numeric",
+                                                  },
+                                              )} → ${wrappedData.yearStats.end.queriedAt.toLocaleDateString(
+                                                  undefined,
+                                                  {
+                                                      month: "short",
+                                                      day: "numeric",
+                                                      year: "numeric",
+                                                  },
+                                              )}.`
+                                            : undefined
+                                    }
+                                >
+                                    <CalendarMonth
+                                        color={
+                                            wrappedData?.yearStats
+                                                ? "info"
+                                                : "disabled"
+                                        }
+                                    />
                                 </Tooltip>
                             </Stack>
                         </Stack>
