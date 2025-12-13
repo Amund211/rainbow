@@ -1910,6 +1910,18 @@ function RouteComponent() {
                                         }
                                     />
                                 </Tooltip>
+                                {wrappedData?.yearStats &&
+                                    wrappedData.yearStats.end.queriedAt.getTime() -
+                                        wrappedData.yearStats.start.queriedAt.getTime() <
+                                        1000 * 60 * 60 * 24 * 30 * 8 && (
+                                        <Tooltip
+                                            title={
+                                                "The data for this year covers less than 8 months. Statistics may not accurately reflect the entire year."
+                                            }
+                                        >
+                                            <Warning color="warning" />
+                                        </Tooltip>
+                                    )}
                             </Stack>
                         </Stack>
                     </Stack>
