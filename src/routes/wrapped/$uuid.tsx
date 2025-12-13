@@ -220,8 +220,10 @@ const ConfettiEffect: React.FC = () => {
             duration: number;
             hue: number;
             rotation: number;
+            startTime: number;
         }[]
     >([]);
+    const [currentTime, setCurrentTime] = React.useState(0);
 
     // Check if user prefers reduced motion (only in browser environment)
     const prefersReducedMotion = React.useMemo(() => {
@@ -237,6 +239,7 @@ const ConfettiEffect: React.FC = () => {
             return;
         }
 
+        const startTime = Date.now();
         const pieces = Array.from({ length: 50 }, (_, i) => ({
             id: i,
             left: Math.random() * 100,
@@ -247,22 +250,17 @@ const ConfettiEffect: React.FC = () => {
                     (MAX_CONFETTI_FALL_SECONDS - MIN_CONFETTI_FALL_SECONDS),
             hue: Math.random() * 360,
             rotation: 360 + Math.random() * 360,
+            startTime,
         }));
         setConfetti(pieces);
 
-        // After the configured duration + max animation time (delay + duration),
-        // clear confetti array to let all pieces complete their fall naturally
-        const maxAnimationTime =
-            MAX_CONFETTI_DELAY_SECONDS + MAX_CONFETTI_FALL_SECONDS;
-        const cleanupTimer = setTimeout(
-            () => {
-                setConfetti([]);
-            },
-            (CONFETTI_DURATION_SECONDS + maxAnimationTime) * 1000,
-        );
+        // Update current time periodically to filter out old confetti
+        const intervalId = setInterval(() => {
+            setCurrentTime(Date.now());
+        }, 100);
 
         return () => {
-            clearTimeout(cleanupTimer);
+            clearInterval(intervalId);
         };
     }, [prefersReducedMotion]);
 
@@ -270,6 +268,37 @@ const ConfettiEffect: React.FC = () => {
     if (prefersReducedMotion) {
         return null;
     }
+
+    // Filter confetti to only show pieces that should still be visible
+    // After CONFETTI_DURATION_SECONDS, pieces gradually disappear as they complete their cycles
+    const visibleConfetti = confetti.filter((piece) => {
+        if (currentTime === 0) return true; // Show all initially
+        const elapsed = (currentTime - piece.startTime) / 1000; // in seconds
+        const cyclesSinceStart = Math.floor(
+            (elapsed - piece.delay) / piece.duration,
+        );
+        const timeInCurrentCycle = (elapsed - piece.delay) % piece.duration;
+
+        // Keep showing until CONFETTI_DURATION_SECONDS, then let current cycle finish
+        if (elapsed < CONFETTI_DURATION_SECONDS) {
+            return true;
+        }
+
+        // After duration, only show if in the middle of a cycle
+        const cutoffTime = CONFETTI_DURATION_SECONDS;
+        if (elapsed >= cutoffTime) {
+            // Check if this piece started a new cycle after the cutoff
+            const lastCycleStartTime =
+                piece.delay + cyclesSinceStart * piece.duration;
+            if (lastCycleStartTime >= cutoffTime) {
+                return false; // Started after cutoff, hide it
+            }
+            // In a cycle that started before cutoff, show it until cycle ends
+            return timeInCurrentCycle < piece.duration;
+        }
+
+        return true;
+    });
 
     // Always render the container to prevent layout shift
     return (
@@ -279,13 +308,13 @@ const ConfettiEffect: React.FC = () => {
                 top: 0,
                 left: 0,
                 width: "100%",
-                height: "100%",
+                height: 0, // Zero height to not take up space
                 pointerEvents: "none",
                 zIndex: 9999,
-                overflow: "hidden",
+                overflow: "visible", // Changed to visible so content can overflow
             }}
         >
-            {confetti.map((piece) => {
+            {visibleConfetti.map((piece) => {
                 return (
                     <Box
                         key={piece.id}
