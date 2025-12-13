@@ -45,9 +45,11 @@ import {
     Info,
     Error,
     PieChart,
+    Download,
 } from "@mui/icons-material";
 import type { StatKey } from "#stats/keys.ts";
 import { PlayerHead } from "#components/player.tsx";
+import { Button } from "@mui/material";
 
 const getDefaultTimeZone = (): string => {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1548,6 +1550,272 @@ const SessionCoverage: React.FC<SessionCoverageProps> = ({ wrappedData }) => {
     );
 };
 
+interface ShareableCardProps {
+    wrappedData: WrappedData & {
+        yearStats: NonNullable<WrappedData["yearStats"]>;
+    };
+    username?: string;
+}
+
+const ShareableCard = React.forwardRef<HTMLDivElement, ShareableCardProps>(
+    ({ wrappedData, username }, ref) => {
+        const getOverallSessionStats = (
+            stat: Exclude<StatKey, "winstreak">,
+        ): number => {
+            return computeStat(
+                wrappedData.yearStats.end,
+                "overall",
+                stat,
+                "session",
+                [wrappedData.yearStats.start],
+            );
+        };
+        const getCurrentStats = (
+            stat: Exclude<StatKey, "winstreak">,
+        ): number => {
+            return computeStat(
+                wrappedData.yearStats.end,
+                "overall",
+                stat,
+                "overall",
+                [],
+            );
+        };
+
+        const totalGames = getOverallSessionStats("gamesPlayed");
+        const totalWins = getOverallSessionStats("wins");
+        const totalFinalKills = getOverallSessionStats("finalKills");
+        const yearlyFKDR = computeStat(
+            wrappedData.yearStats.end,
+            "overall",
+            "fkdr",
+            "session",
+            [wrappedData.yearStats.start],
+        );
+        const totalStars = getOverallSessionStats("stars");
+        const eoyStars = getCurrentStats("stars");
+        const totalHours =
+            wrappedData.sessionStats?.sessionLengths.totalHours ?? 0;
+
+        return (
+            <Box
+                ref={ref}
+                sx={{
+                    background:
+                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    p: 4,
+                    borderRadius: 2,
+                    color: "white",
+                    minWidth: 600,
+                    maxWidth: 800,
+                }}
+            >
+                <Stack gap={3}>
+                    <Typography
+                        variant="h3"
+                        fontWeight="bold"
+                        textAlign="center"
+                        sx={{ color: "white" }}
+                    >
+                        {username
+                            ? `${username}'s ${wrappedData.year.toString()} Wrapped`
+                            : `${wrappedData.year.toString()} Wrapped`}
+                    </Typography>
+                    <Typography
+                        variant="h6"
+                        textAlign="center"
+                        sx={{ color: "rgba(255, 255, 255, 0.9)" }}
+                    >
+                        Bed Wars Year in Review
+                    </Typography>
+
+                    <Grid container spacing={2}>
+                        <Grid size={{ xs: 6 }}>
+                            <Box
+                                sx={{
+                                    bgcolor: "rgba(255, 255, 255, 0.15)",
+                                    p: 2,
+                                    borderRadius: 1,
+                                    textAlign: "center",
+                                }}
+                            >
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    sx={{ color: "white" }}
+                                >
+                                    {totalGames.toLocaleString()}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
+                                >
+                                    Games Played
+                                </Typography>
+                            </Box>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                            <Box
+                                sx={{
+                                    bgcolor: "rgba(255, 255, 255, 0.15)",
+                                    p: 2,
+                                    borderRadius: 1,
+                                    textAlign: "center",
+                                }}
+                            >
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    sx={{ color: "white" }}
+                                >
+                                    {totalWins.toLocaleString()}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
+                                >
+                                    Wins
+                                </Typography>
+                            </Box>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                            <Box
+                                sx={{
+                                    bgcolor: "rgba(255, 255, 255, 0.15)",
+                                    p: 2,
+                                    borderRadius: 1,
+                                    textAlign: "center",
+                                }}
+                            >
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    sx={{ color: "white" }}
+                                >
+                                    {totalFinalKills.toLocaleString()}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
+                                >
+                                    Final Kills
+                                </Typography>
+                            </Box>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                            <Box
+                                sx={{
+                                    bgcolor: "rgba(255, 255, 255, 0.15)",
+                                    p: 2,
+                                    borderRadius: 1,
+                                    textAlign: "center",
+                                }}
+                            >
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    sx={{ color: "white" }}
+                                >
+                                    {yearlyFKDR.toLocaleString(undefined, {
+                                        maximumFractionDigits: 2,
+                                    })}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
+                                >
+                                    FKDR
+                                </Typography>
+                            </Box>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                            <Box
+                                sx={{
+                                    bgcolor: "rgba(255, 255, 255, 0.15)",
+                                    p: 2,
+                                    borderRadius: 1,
+                                    textAlign: "center",
+                                }}
+                            >
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    sx={{ color: "white" }}
+                                >
+                                    +
+                                    {totalStars.toLocaleString(undefined, {
+                                        maximumFractionDigits: 1,
+                                    })}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
+                                >
+                                    Stars Gained (now{" "}
+                                    {eoyStars.toLocaleString(undefined, {
+                                        maximumFractionDigits: 1,
+                                    })}{" "}
+                                    ⭐)
+                                </Typography>
+                            </Box>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                            <Box
+                                sx={{
+                                    bgcolor: "rgba(255, 255, 255, 0.15)",
+                                    p: 2,
+                                    borderRadius: 1,
+                                    textAlign: "center",
+                                }}
+                            >
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    sx={{ color: "white" }}
+                                >
+                                    {formatHours(totalHours)}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{ color: "rgba(255, 255, 255, 0.8)" }}
+                                >
+                                    Time Played
+                                </Typography>
+                            </Box>
+                        </Grid>
+                    </Grid>
+
+                    <Box
+                        sx={{
+                            mt: 2,
+                            pt: 2,
+                            borderTop: "1px solid rgba(255, 255, 255, 0.3)",
+                        }}
+                    >
+                        <Typography
+                            variant="body1"
+                            textAlign="center"
+                            sx={{ color: "rgba(255, 255, 255, 0.9)" }}
+                        >
+                            🎮 Create your own wrapped at
+                        </Typography>
+                        <Typography
+                            variant="h6"
+                            fontWeight="bold"
+                            textAlign="center"
+                            sx={{ color: "white" }}
+                        >
+                            prismoverlay.com/wrapped
+                        </Typography>
+                    </Box>
+                </Stack>
+            </Box>
+        );
+    },
+);
+
+ShareableCard.displayName = "ShareableCard";
+
 interface WrappedStatsContentProps {
     wrappedData?:
         | WrappedData
@@ -1705,6 +1973,51 @@ function RouteComponent() {
         }),
     );
 
+    // Ref for the shareable card
+    const shareableCardRef = React.useRef<HTMLDivElement>(null);
+    const [isExporting, setIsExporting] = React.useState(false);
+
+    // Export to PNG functionality
+    const handleExportPNG = React.useCallback(() => {
+        void (async () => {
+            if (!shareableCardRef.current || !wrappedData?.yearStats) return;
+
+            setIsExporting(true);
+            try {
+                // Dynamic import to avoid issues with SSR
+                const html2canvasModule = await import("html2canvas");
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+                const html2canvas = html2canvasModule.default as any;
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+                const canvas = (await html2canvas(shareableCardRef.current, {
+                    backgroundColor: null,
+                    scale: 2,
+                })) as HTMLCanvasElement;
+
+                // Convert canvas to blob and download
+                canvas.toBlob((blob: Blob | null) => {
+                    if (!blob) return;
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `${username ?? "player"}-${year.toString()}-wrapped.png`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                });
+            } catch (error: unknown) {
+                captureException(error, {
+                    extra: {
+                        message: "Failed to export wrapped as PNG",
+                        uuid,
+                        year,
+                    },
+                });
+            } finally {
+                setIsExporting(false);
+            }
+        })();
+    }, [wrappedData, username, year, uuid]);
+
     // Register visits for player on page load
     const [initialUUID] = React.useState(uuid);
     const [initialVisitPlayer] = React.useState(() => visitPlayer);
@@ -1761,91 +2074,130 @@ function RouteComponent() {
             />
             <Fade in timeout={1000}>
                 <Box>
-                    <Stack
-                        direction="row"
-                        gap={2}
-                        alignItems="center"
-                        justifyContent="center"
-                    >
-                        <PlayerHead
-                            uuid={uuid}
-                            username={username}
-                            variant="face"
-                            width={80}
-                        />
-                        <Stack alignItems="center">
-                            <Typography
-                                variant="h3"
-                                fontWeight="bold"
-                                textAlign="center"
-                                sx={{
-                                    background:
-                                        "linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1)",
-                                    WebkitBackgroundClip: "text",
-                                    WebkitTextFillColor: "transparent",
-                                }}
-                            >
-                                {username
-                                    ? `${username}'s ${year.toString()} Wrapped`
-                                    : `${year.toString()} Wrapped`}
-                            </Typography>
-                            <Stack direction="row" alignItems="center" gap={1}>
+                    <Stack gap={2}>
+                        <Stack
+                            direction="row"
+                            gap={2}
+                            alignItems="center"
+                            justifyContent="center"
+                        >
+                            <PlayerHead
+                                uuid={uuid}
+                                username={username}
+                                variant="face"
+                                width={80}
+                            />
+                            <Stack alignItems="center">
                                 <Typography
-                                    variant="subtitle1"
-                                    color="textSecondary"
+                                    variant="h3"
+                                    fontWeight="bold"
+                                    textAlign="center"
+                                    sx={{
+                                        background:
+                                            "linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1)",
+                                        WebkitBackgroundClip: "text",
+                                        WebkitTextFillColor: "transparent",
+                                    }}
                                 >
-                                    A year of Bed Wars achievements
+                                    {username
+                                        ? `${username}'s ${year.toString()} Wrapped`
+                                        : `${year.toString()} Wrapped`}
                                 </Typography>
-                                <Tooltip
-                                    title={
-                                        wrappedData?.yearStats
-                                            ? `Based on stats from ${wrappedData.yearStats.start.queriedAt.toLocaleDateString(
-                                                  undefined,
-                                                  {
-                                                      month: "short",
-                                                      day: "numeric",
-                                                      year: "numeric",
-                                                  },
-                                              )} → ${wrappedData.yearStats.end.queriedAt.toLocaleDateString(
-                                                  undefined,
-                                                  {
-                                                      month: "short",
-                                                      day: "numeric",
-                                                      year: "numeric",
-                                                  },
-                                              )}.`
-                                            : undefined
-                                    }
+                                <Stack
+                                    direction="row"
+                                    alignItems="center"
+                                    gap={1}
                                 >
-                                    <CalendarMonth
-                                        color={
+                                    <Typography
+                                        variant="subtitle1"
+                                        color="textSecondary"
+                                    >
+                                        A year of Bed Wars achievements
+                                    </Typography>
+                                    <Tooltip
+                                        title={
                                             wrappedData?.yearStats
-                                                ? "info"
-                                                : "disabled"
+                                                ? `Based on stats from ${wrappedData.yearStats.start.queriedAt.toLocaleDateString(
+                                                      undefined,
+                                                      {
+                                                          month: "short",
+                                                          day: "numeric",
+                                                          year: "numeric",
+                                                      },
+                                                  )} → ${wrappedData.yearStats.end.queriedAt.toLocaleDateString(
+                                                      undefined,
+                                                      {
+                                                          month: "short",
+                                                          day: "numeric",
+                                                          year: "numeric",
+                                                      },
+                                                  )}.`
+                                                : undefined
                                         }
-                                    />
-                                </Tooltip>
-                                {wrappedData?.yearStats &&
-                                    wrappedData.yearStats.end.queriedAt.getTime() -
-                                        wrappedData.yearStats.start.queriedAt.getTime() <
-                                        1000 * 60 * 60 * 24 * 30 * 8 && (
-                                        <Tooltip
-                                            title={`The data for this year covers only ~${(
-                                                (wrappedData.yearStats.end.queriedAt.getTime() -
-                                                    wrappedData.yearStats.start.queriedAt.getTime()) /
-                                                (1000 * 60 * 60 * 24 * 30)
-                                            ).toLocaleString(undefined, {
-                                                maximumFractionDigits: 1,
-                                            })} month(s). Statistics may not accurately reflect the entire year.`}
-                                        >
-                                            <Warning color="warning" />
-                                        </Tooltip>
-                                    )}
+                                    >
+                                        <CalendarMonth
+                                            color={
+                                                wrappedData?.yearStats
+                                                    ? "info"
+                                                    : "disabled"
+                                            }
+                                        />
+                                    </Tooltip>
+                                    {wrappedData?.yearStats &&
+                                        wrappedData.yearStats.end.queriedAt.getTime() -
+                                            wrappedData.yearStats.start.queriedAt.getTime() <
+                                            1000 * 60 * 60 * 24 * 30 * 8 && (
+                                            <Tooltip
+                                                title={`The data for this year covers only ~${(
+                                                    (wrappedData.yearStats.end.queriedAt.getTime() -
+                                                        wrappedData.yearStats.start.queriedAt.getTime()) /
+                                                    (1000 * 60 * 60 * 24 * 30)
+                                                ).toLocaleString(undefined, {
+                                                    maximumFractionDigits: 1,
+                                                })} month(s). Statistics may not accurately reflect the entire year.`}
+                                            >
+                                                <Warning color="warning" />
+                                            </Tooltip>
+                                        )}
+                                </Stack>
                             </Stack>
                         </Stack>
+                        {wrappedData?.yearStats && (
+                            <Box display="flex" justifyContent="center">
+                                <Button
+                                    variant="contained"
+                                    startIcon={<Download />}
+                                    onClick={handleExportPNG}
+                                    disabled={isExporting}
+                                >
+                                    {isExporting
+                                        ? "Exporting..."
+                                        : "Export as PNG"}
+                                </Button>
+                            </Box>
+                        )}
                     </Stack>
                 </Box>
             </Fade>
+            {/* Hidden shareable card for PNG export */}
+            {wrappedData?.yearStats && (
+                <Box
+                    sx={{
+                        position: "absolute",
+                        left: "-9999px",
+                        top: "-9999px",
+                    }}
+                >
+                    <ShareableCard
+                        ref={shareableCardRef}
+                        wrappedData={{
+                            ...wrappedData,
+                            yearStats: wrappedData.yearStats,
+                        }}
+                        username={username}
+                    />
+                </Box>
+            )}
             <WrappedStatsContent
                 wrappedData={wrappedData}
                 isLoading={isLoading}
