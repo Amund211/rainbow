@@ -55,6 +55,10 @@ const getDefaultTimeZone = (): string => {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
 
+// Gradient colors for the shareable card
+const CARD_GRADIENT_START = "#667eea";
+const CARD_GRADIENT_END = "#764ba2";
+
 export const Route = createFileRoute("/wrapped/$uuid")({
     loaderDeps: ({ search: { year } }) => {
         return { year };
@@ -1601,8 +1605,7 @@ const ShareableCard = React.forwardRef<HTMLDivElement, ShareableCardProps>(
             <Box
                 ref={ref}
                 sx={{
-                    background:
-                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    background: `linear-gradient(135deg, ${CARD_GRADIENT_START} 0%, ${CARD_GRADIENT_END} 100%)`,
                     p: 4,
                     borderRadius: 2,
                     color: "white",
@@ -1989,8 +1992,12 @@ function RouteComponent() {
                 const originalVisibility = cardElement.style.visibility;
                 cardElement.style.visibility = "visible";
 
-                // Wait a moment for styles to apply
-                await new Promise((resolve) => setTimeout(resolve, 100));
+                // Wait for styles to apply using requestAnimationFrame for reliability
+                await new Promise((resolve) => {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(resolve);
+                    });
+                });
 
                 // Dynamic import to avoid issues with SSR
                 const html2canvasModule = await import("html2canvas");
@@ -1998,7 +2005,7 @@ function RouteComponent() {
                 const html2canvas = html2canvasModule.default as any;
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const canvas = (await html2canvas(cardElement, {
-                    backgroundColor: "#667eea",
+                    backgroundColor: CARD_GRADIENT_START,
                     scale: 2,
                     logging: false,
                     useCORS: true,
