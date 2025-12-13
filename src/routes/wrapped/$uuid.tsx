@@ -1996,13 +1996,31 @@ function RouteComponent() {
 
                 // Convert canvas to blob and download
                 canvas.toBlob((blob: Blob | null) => {
-                    if (!blob) return;
+                    if (!blob) {
+                        captureException(
+                            new globalThis.Error(
+                                "Failed to generate blob from canvas",
+                            ),
+                            {
+                                extra: {
+                                    message: "Blob generation returned null",
+                                    uuid,
+                                    year,
+                                },
+                            },
+                        );
+                        return;
+                    }
                     const url = URL.createObjectURL(blob);
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = `${username ?? "player"}-${year.toString()}-wrapped.png`;
-                    link.click();
-                    URL.revokeObjectURL(url);
+                    try {
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = `${username ?? "player"}-${year.toString()}-wrapped.png`;
+                        link.click();
+                    } finally {
+                        // Always cleanup the object URL
+                        URL.revokeObjectURL(url);
+                    }
                 });
             } catch (error: unknown) {
                 captureException(error, {
@@ -2182,10 +2200,12 @@ function RouteComponent() {
             {/* Hidden shareable card for PNG export */}
             {wrappedData?.yearStats && (
                 <Box
+                    aria-hidden="true"
                     sx={{
                         position: "absolute",
-                        left: "-9999px",
-                        top: "-9999px",
+                        visibility: "hidden",
+                        zIndex: -1,
+                        pointerEvents: "none",
                     }}
                 >
                     <ShareableCard
