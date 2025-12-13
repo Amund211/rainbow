@@ -1543,227 +1543,140 @@ function WrappedStatsContent({
     const winRate =
         totalGames && totalWins ? (totalWins / totalGames) * 100 : 0;
 
+    if (wrappedData.totalSessions === 0) {
+        return (
+            <>
+                <Fade in timeout={1000}>
+                    <Alert severity="info" icon={<Info />}>
+                        <Typography variant="body2">
+                            This player didn&apos;t record any sessions with the
+                            Prism Overlay in {wrappedData.year.toString()}.
+                            Showing overall year statistics instead.
+                        </Typography>
+                    </Alert>
+                </Fade>
+
+                {/* Show basic year stats without session data */}
+                {wrappedData.yearStats && (
+                    <>
+                        <YearStatsCards
+                            wrappedData={wrappedData}
+                            totalGames={totalGames}
+                            totalWins={totalWins}
+                            totalFinalKills={totalFinalKills}
+                            totalBedsBroken={totalBedsBroken}
+                            endFKDR={endFKDR}
+                            startFKDR={startFKDR}
+                            starsGained={starsGained}
+                            starsEnd={starsEnd}
+                            winRate={winRate}
+                        />
+
+                        <Fade in timeout={1800}>
+                            <Card variant="outlined">
+                                <CardContent>
+                                    <Stack gap={2} alignItems="center">
+                                        <Typography variant="h5">
+                                            🎉 {wrappedData.year.toString()}{" "}
+                                            Summary 🎉
+                                        </Typography>
+                                        <Typography
+                                            variant="body2"
+                                            color="textSecondary"
+                                            textAlign="center"
+                                        >
+                                            Enable the Prism Overlay to track
+                                            detailed session statistics in the
+                                            future!
+                                        </Typography>
+                                    </Stack>
+                                </CardContent>
+                            </Card>
+                        </Fade>
+                    </>
+                )}
+            </>
+        );
+    }
+
     const lowCoverage =
         wrappedData.sessionStats?.sessionCoverage !== undefined &&
         wrappedData.sessionStats.sessionCoverage.gamesPlayedPercentage < 50;
 
     return (
         <>
-            {wrappedData.totalSessions === 0 ? (
-                <>
-                    <Fade in timeout={1000}>
-                        <Alert severity="info" icon={<Info />}>
-                            <Typography variant="body2">
-                                This player didn&apos;t record any sessions with
-                                the Prism Overlay in{" "}
-                                {wrappedData.year.toString()}. Showing overall
-                                year statistics instead.
-                            </Typography>
-                        </Alert>
-                    </Fade>
-
-                    {/* Show basic year stats without session data */}
-                    {wrappedData.yearStats && (
-                        <>
-                            <Grid container spacing={2}>
-                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                    <StatCard
-                                        title="Games Played"
-                                        value={(
-                                            totalGames ?? 0
-                                        ).toLocaleString()}
-                                        icon={
-                                            <EmojiEvents
-                                                sx={{ fontSize: 48 }}
-                                            />
-                                        }
-                                        color="#FF6B6B"
-                                        delay={100}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                    <StatCard
-                                        title="Wins"
-                                        value={(
-                                            totalWins ?? 0
-                                        ).toLocaleString()}
-                                        subtitle={`${winRate.toFixed(1)}% win rate`}
-                                        icon={<Star sx={{ fontSize: 48 }} />}
-                                        color="#4ECDC4"
-                                        delay={200}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                    <StatCard
-                                        title="Final Kills"
-                                        value={(
-                                            totalFinalKills ?? 0
-                                        ).toLocaleString()}
-                                        subtitle="enemies eliminated"
-                                        icon={
-                                            <Whatshot sx={{ fontSize: 48 }} />
-                                        }
-                                        color="#FFD93D"
-                                        delay={300}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                    <StatCard
-                                        title="Beds Broken"
-                                        value={(
-                                            totalBedsBroken ?? 0
-                                        ).toLocaleString()}
-                                        subtitle="beds destroyed"
-                                        icon={
-                                            <Celebration
-                                                sx={{ fontSize: 48 }}
-                                            />
-                                        }
-                                        color="#95E1D3"
-                                        delay={400}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                    <StatCard
-                                        title="FKDR"
-                                        value={(endFKDR ?? 0).toFixed(2)}
-                                        subtitle={
-                                            startFKDR && endFKDR
-                                                ? (
-                                                      endFKDR - startFKDR
-                                                  ).toLocaleString(undefined, {
-                                                      signDisplay: "always",
-                                                      maximumFractionDigits: 2,
-                                                  })
-                                                : undefined
-                                        }
-                                        icon={
-                                            <TrendingUp sx={{ fontSize: 48 }} />
-                                        }
-                                        color="#A8E6CF"
-                                        delay={500}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                    <StatCard
-                                        title="Stars Gained"
-                                        value={
-                                            starsGained
-                                                ? `+${starsGained.toLocaleString()}`
-                                                : "0"
-                                        }
-                                        subtitle={
-                                            starsEnd
-                                                ? `now at ${starsEnd.toLocaleString()} ⭐`
-                                                : undefined
-                                        }
-                                        icon={<Star sx={{ fontSize: 48 }} />}
-                                        color="#FFB6D9"
-                                        delay={600}
-                                    />
-                                </Grid>
-                            </Grid>
-
-                            <Fade in timeout={1800}>
-                                <Card variant="outlined">
-                                    <CardContent>
-                                        <Stack gap={2} alignItems="center">
-                                            <Typography variant="h5">
-                                                🎉 {wrappedData.year.toString()}{" "}
-                                                Summary 🎉
-                                            </Typography>
-                                            <Typography
-                                                variant="body2"
-                                                color="textSecondary"
-                                                textAlign="center"
-                                            >
-                                                Enable the Prism Overlay to
-                                                track detailed session
-                                                statistics in the future!
-                                            </Typography>
-                                        </Stack>
-                                    </CardContent>
-                                </Card>
-                            </Fade>
-                        </>
-                    )}
-                </>
-            ) : (
-                <>
-                    {lowCoverage && (
-                        <Fade in timeout={800}>
-                            <Alert severity="warning" icon={<Warning />}>
-                                <Typography variant="body2">
-                                    Session coverage is low (
-                                    {wrappedData.sessionStats?.sessionCoverage.gamesPlayedPercentage.toFixed(
-                                        1,
-                                    ) ?? "0.0"}
-                                    % of games in sessions). Session statistics
-                                    may be inaccurate.
-                                </Typography>
-                            </Alert>
-                        </Fade>
-                    )}
-
-                    <SessionOverview wrappedData={wrappedData} />
-
-                    <SessionCoverage wrappedData={wrappedData} />
-
-                    <YearStatsCards
-                        wrappedData={wrappedData}
-                        totalGames={totalGames}
-                        totalWins={totalWins}
-                        totalFinalKills={totalFinalKills}
-                        totalBedsBroken={totalBedsBroken}
-                        endFKDR={endFKDR}
-                        startFKDR={startFKDR}
-                        starsGained={starsGained}
-                        starsEnd={starsEnd}
-                        winRate={winRate}
-                    />
-
-                    <AverageSessionStats wrappedData={wrappedData} />
-
-                    <BestSessions wrappedData={wrappedData} />
-
-                    <Streaks wrappedData={wrappedData} />
-
-                    <FavoritePlayTimes wrappedData={wrappedData} />
-
-                    <FlawlessSessions wrappedData={wrappedData} />
-
-                    <Fade in timeout={2000}>
-                        <Card
-                            variant="outlined"
-                            sx={{
-                                background:
-                                    "linear-gradient(135deg, #a8edea22 0%, #fed6e311 100%)",
-                                border: "2px solid #a8edea",
-                            }}
-                        >
-                            <CardContent>
-                                <Typography
-                                    variant="h5"
-                                    textAlign="center"
-                                    fontWeight="bold"
-                                    gutterBottom
-                                >
-                                    🎉 What a Year! 🎉
-                                </Typography>
-                                <Typography
-                                    variant="body1"
-                                    textAlign="center"
-                                    color="textSecondary"
-                                >
-                                    Thank you for an amazing{" "}
-                                    {wrappedData.year.toString()}! Here&apos;s
-                                    to even more victories in the next year.
-                                </Typography>
-                            </CardContent>
-                        </Card>
-                    </Fade>
-                </>
+            {lowCoverage && (
+                <Fade in timeout={800}>
+                    <Alert severity="warning" icon={<Warning />}>
+                        <Typography variant="body2">
+                            Session coverage is low (
+                            {wrappedData.sessionStats?.sessionCoverage.gamesPlayedPercentage.toFixed(
+                                1,
+                            ) ?? "0.0"}
+                            % of games in sessions). Session statistics may be
+                            inaccurate.
+                        </Typography>
+                    </Alert>
+                </Fade>
             )}
+
+            <SessionOverview wrappedData={wrappedData} />
+
+            <SessionCoverage wrappedData={wrappedData} />
+
+            <YearStatsCards
+                wrappedData={wrappedData}
+                totalGames={totalGames}
+                totalWins={totalWins}
+                totalFinalKills={totalFinalKills}
+                totalBedsBroken={totalBedsBroken}
+                endFKDR={endFKDR}
+                startFKDR={startFKDR}
+                starsGained={starsGained}
+                starsEnd={starsEnd}
+                winRate={winRate}
+            />
+
+            <AverageSessionStats wrappedData={wrappedData} />
+
+            <BestSessions wrappedData={wrappedData} />
+
+            <Streaks wrappedData={wrappedData} />
+
+            <FavoritePlayTimes wrappedData={wrappedData} />
+
+            <FlawlessSessions wrappedData={wrappedData} />
+
+            <Fade in timeout={2000}>
+                <Card
+                    variant="outlined"
+                    sx={{
+                        background:
+                            "linear-gradient(135deg, #a8edea22 0%, #fed6e311 100%)",
+                        border: "2px solid #a8edea",
+                    }}
+                >
+                    <CardContent>
+                        <Typography
+                            variant="h5"
+                            textAlign="center"
+                            fontWeight="bold"
+                            gutterBottom
+                        >
+                            🎉 What a Year! 🎉
+                        </Typography>
+                        <Typography
+                            variant="body1"
+                            textAlign="center"
+                            color="textSecondary"
+                        >
+                            Thank you for an amazing{" "}
+                            {wrappedData.year.toString()}! Here&apos;s to even
+                            more victories in the next year.
+                        </Typography>
+                    </CardContent>
+                </Card>
+            </Fade>
         </>
     );
 }
