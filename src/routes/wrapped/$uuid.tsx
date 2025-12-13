@@ -274,6 +274,13 @@ const ConfettiEffect: React.FC = () => {
     const visibleConfetti = confetti.filter((piece) => {
         if (currentTime === 0) return true; // Show all initially
         const elapsed = (currentTime - piece.startTime) / 1000; // in seconds
+
+        // Safety check for negative elapsed time
+        if (elapsed < 0) return false;
+
+        // Safety check for zero duration (shouldn't happen but prevents division by zero)
+        if (piece.duration <= 0) return false;
+
         const cyclesSinceStart = Math.floor(
             (elapsed - piece.delay) / piece.duration,
         );
@@ -284,20 +291,15 @@ const ConfettiEffect: React.FC = () => {
             return true;
         }
 
-        // After duration, only show if in the middle of a cycle
-        const cutoffTime = CONFETTI_DURATION_SECONDS;
-        if (elapsed >= cutoffTime) {
-            // Check if this piece started a new cycle after the cutoff
-            const lastCycleStartTime =
-                piece.delay + cyclesSinceStart * piece.duration;
-            if (lastCycleStartTime >= cutoffTime) {
-                return false; // Started after cutoff, hide it
-            }
-            // In a cycle that started before cutoff, show it until cycle ends
-            return timeInCurrentCycle < piece.duration;
+        // After duration, only show if in the middle of a cycle that started before cutoff
+        // Check if this piece started a new cycle after the cutoff
+        const lastCycleStartTime =
+            piece.delay + cyclesSinceStart * piece.duration;
+        if (lastCycleStartTime >= CONFETTI_DURATION_SECONDS) {
+            return false; // Started after cutoff, hide it
         }
-
-        return true;
+        // In a cycle that started before cutoff, show it until cycle ends
+        return timeInCurrentCycle < piece.duration;
     });
 
     // Always render the container to prevent layout shift
