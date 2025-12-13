@@ -218,8 +218,6 @@ const ConfettiEffect: React.FC = () => {
             rotation: number;
         }[]
     >([]);
-    const [shouldStopAnimation, setShouldStopAnimation] =
-        React.useState<boolean>(false);
 
     // Check if user prefers reduced motion (only in browser environment)
     const prefersReducedMotion = React.useMemo(() => {
@@ -245,14 +243,19 @@ const ConfettiEffect: React.FC = () => {
         }));
         setConfetti(pieces);
 
-        // Stop producing new confetti after configured duration
-        // but let existing confetti complete their animation
-        const timer = setTimeout(() => {
-            setShouldStopAnimation(true);
-        }, CONFETTI_DURATION_SECONDS * 1000);
+        // After the configured duration + max animation time (delay + duration),
+        // clear confetti array to let all pieces complete their fall naturally
+        // Max delay (2s) + max duration (5s) = 7s additional time needed
+        const maxAnimationTime = 2 + 5;
+        const cleanupTimer = setTimeout(
+            () => {
+                setConfetti([]);
+            },
+            (CONFETTI_DURATION_SECONDS + maxAnimationTime) * 1000,
+        );
 
         return () => {
-            clearTimeout(timer);
+            clearTimeout(cleanupTimer);
         };
     }, [prefersReducedMotion]);
 
@@ -261,6 +264,7 @@ const ConfettiEffect: React.FC = () => {
         return null;
     }
 
+    // Always render the container to prevent layout shift
     return (
         <Box
             sx={{
@@ -275,13 +279,6 @@ const ConfettiEffect: React.FC = () => {
             }}
         >
             {confetti.map((piece) => {
-                // Calculate iteration count based on whether we should stop animation
-                // If shouldStopAnimation is true, we stop the infinite animation
-                // and let the current iteration finish
-                const animationIterationCount = shouldStopAnimation
-                    ? "1"
-                    : "infinite";
-
                 return (
                     <Box
                         key={piece.id}
@@ -292,7 +289,7 @@ const ConfettiEffect: React.FC = () => {
                             width: "10px",
                             height: "10px",
                             backgroundColor: `hsl(${piece.hue.toString()}, 70%, 60%)`,
-                            animation: `fall ${piece.duration.toString()}s linear ${piece.delay.toString()}s ${animationIterationCount}`,
+                            animation: `fall ${piece.duration.toString()}s linear ${piece.delay.toString()}s infinite`,
                             "@keyframes fall": {
                                 "0%": {
                                     transform: "translateY(0) rotate(0deg)",
