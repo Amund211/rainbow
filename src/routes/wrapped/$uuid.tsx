@@ -1429,53 +1429,33 @@ const SessionCoverage: React.FC<SessionCoverageProps> = ({ wrappedData }) => {
     );
 };
 
-function RouteComponent() {
-    const { uuid: rawUUID } = Route.useParams();
-    const uuid = normalizeUUID(rawUUID);
-    const { year } = Route.useLoaderDeps();
+interface WrappedStatsContentProps {
+    wrappedData?: WrappedData;
+    isLoading: boolean;
+}
 
-    const navigate = Route.useNavigate();
-    const uuidToUsername = useUUIDToUsername(uuid ? [uuid] : []);
-    const username = uuid ? uuidToUsername[uuid] : undefined;
-    const { visitPlayer } = usePlayerVisits();
-
-    const { data: wrappedData, isLoading } = useQuery(
-        getWrappedQueryOptions({
-            uuid: uuid ?? "",
-            year,
-        }),
-    );
-
-    // Register visits for player on page load
-    const [initialUUID] = React.useState(uuid);
-    const [initialVisitPlayer] = React.useState(() => visitPlayer);
-    React.useEffect(() => {
-        if (!initialUUID) return;
-        initialVisitPlayer(initialUUID);
-    }, [initialVisitPlayer, initialUUID]);
-
-    if (!uuid) {
-        return <Navigate to="/wrapped" replace />;
-    }
-
-    if (uuid !== rawUUID) {
+function WrappedStatsContent({
+    wrappedData,
+    isLoading,
+}: WrappedStatsContentProps) {
+    if (isLoading || !wrappedData) {
         return (
-            <Navigate
-                from="/wrapped/$uuid"
-                to="/wrapped/$uuid"
-                replace
-                params={{ uuid }}
-                search={(oldSearch) => ({
-                    ...oldSearch,
-                    uuid,
-                })}
-            />
+            <Fade in timeout={1000}>
+                <Card variant="outlined">
+                    <CardContent>
+                        <Typography variant="h6" textAlign="center">
+                            Loading your year in review...
+                        </Typography>
+                        <LinearProgress sx={{ mt: 2 }} />
+                    </CardContent>
+                </Card>
+            </Fade>
         );
     }
 
     // Calculate year stats from yearStats
-    const startStats = wrappedData?.yearStats?.start;
-    const endStats = wrappedData?.yearStats?.end;
+    const startStats = wrappedData.yearStats?.start;
+    const endStats = wrappedData.yearStats?.end;
 
     const totalGames =
         startStats && endStats
@@ -1541,101 +1521,20 @@ function RouteComponent() {
         totalGames && totalWins ? (totalWins / totalGames) * 100 : 0;
 
     const lowCoverage =
-        wrappedData?.sessionStats?.sessionCoverage !== undefined &&
+        wrappedData.sessionStats?.sessionCoverage !== undefined &&
         wrappedData.sessionStats.sessionCoverage.gamesPlayedPercentage < 50;
 
     return (
-        <Stack spacing={3}>
-            <ConfettiEffect />
-            <meta
-                name="description"
-                content={`View ${username ?? "a player"}&apos;s year in review for ${year.toString()}, showcasing their achievements, milestones, and highlights.`}
-            />
-            <link
-                rel="canonical"
-                href={`https://prismoverlay.com/wrapped/${uuid}`}
-            />
-            <UserSearch
-                onSubmit={(uuid) => {
-                    visitPlayer(uuid);
-                    navigate({
-                        params: { uuid },
-                        search: (oldSearch) => oldSearch,
-                    }).catch((error: unknown) => {
-                        captureException(error, {
-                            tags: {
-                                param: "uuid",
-                            },
-                            extra: {
-                                message: "Failed to update search params",
-                                uuid,
-                            },
-                        });
-                    });
-                }}
-            />
-
-            <Fade in timeout={1000}>
-                <Box>
-                    <Stack
-                        direction="row"
-                        gap={2}
-                        alignItems="center"
-                        justifyContent="center"
-                    >
-                        <Avatar
-                            key={uuid}
-                            alt={`Profile picture for ${username ?? "unknown"}`}
-                            src={`https://crafatar.com/avatars/${uuid}?overlay`}
-                            variant="square"
-                            sx={{ width: 80, height: 80 }}
-                        />
-                        <Stack alignItems="center">
-                            <Typography
-                                variant="h3"
-                                fontWeight="bold"
-                                textAlign="center"
-                                sx={{
-                                    background:
-                                        "linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1)",
-                                    WebkitBackgroundClip: "text",
-                                    WebkitTextFillColor: "transparent",
-                                }}
-                            >
-                                {username
-                                    ? `${username}'s ${year.toString()} Wrapped`
-                                    : `${year.toString()} Wrapped`}
-                            </Typography>
-                            <Typography
-                                variant="subtitle1"
-                                color="textSecondary"
-                            >
-                                A year of Bed Wars achievements
-                            </Typography>
-                        </Stack>
-                    </Stack>
-                </Box>
-            </Fade>
-
-            {isLoading || !wrappedData ? (
-                <Fade in timeout={1000}>
-                    <Card variant="outlined">
-                        <CardContent>
-                            <Typography variant="h6" textAlign="center">
-                                Loading your year in review...
-                            </Typography>
-                            <LinearProgress sx={{ mt: 2 }} />
-                        </CardContent>
-                    </Card>
-                </Fade>
-            ) : wrappedData.totalSessions === 0 ? (
+        <>
+            {wrappedData.totalSessions === 0 ? (
                 <>
                     <Fade in timeout={1000}>
                         <Alert severity="info" icon={<Info />}>
                             <Typography variant="body2">
                                 This player didn&apos;t record any sessions with
-                                the Prism Overlay in {year.toString()}. Showing
-                                overall year statistics instead.
+                                the Prism Overlay in{" "}
+                                {wrappedData.year.toString()}. Showing overall
+                                year statistics instead.
                             </Typography>
                         </Alert>
                     </Fade>
@@ -1747,7 +1646,8 @@ function RouteComponent() {
                                     <CardContent>
                                         <Stack gap={2} alignItems="center">
                                             <Typography variant="h5">
-                                                🎉 {year.toString()} Summary 🎉
+                                                🎉 {wrappedData.year.toString()}{" "}
+                                                Summary 🎉
                                             </Typography>
                                             <Typography
                                                 variant="body2"
@@ -1767,26 +1667,25 @@ function RouteComponent() {
                 </>
             ) : (
                 <>
-                    {lowCoverage &&
-                        wrappedData.sessionStats?.sessionCoverage && (
-                            <Fade in timeout={800}>
-                                <Alert severity="warning" icon={<Warning />}>
-                                    <Typography variant="body2">
-                                        Session coverage is low (
-                                        {wrappedData.sessionStats.sessionCoverage.gamesPlayedPercentage.toFixed(
-                                            1,
-                                        )}
-                                        % of games in sessions). Many stats
-                                        gained outside recorded sessions.
-                                    </Typography>
-                                </Alert>
-                            </Fade>
-                        )}
+                    {lowCoverage && (
+                        <Fade in timeout={800}>
+                            <Alert severity="warning" icon={<Warning />}>
+                                <Typography variant="body2">
+                                    Session coverage is low (
+                                    {wrappedData.sessionStats?.sessionCoverage.gamesPlayedPercentage.toFixed(
+                                        1,
+                                    ) ?? "0.0"}
+                                    % of games in sessions). Session statistics
+                                    may be inaccurate.
+                                </Typography>
+                            </Alert>
+                        </Fade>
+                    )}
 
-                    {/* Session Overview */}
                     <SessionOverview wrappedData={wrappedData} />
 
-                    {/* Main Stats Grid */}
+                    <SessionCoverage wrappedData={wrappedData} />
+
                     <YearStatsCards
                         wrappedData={wrappedData}
                         totalGames={totalGames}
@@ -1800,25 +1699,16 @@ function RouteComponent() {
                         winRate={winRate}
                     />
 
-                    {/* Session Averages */}
                     <AverageSessionStats wrappedData={wrappedData} />
 
-                    {/* Best Sessions */}
                     <BestSessions wrappedData={wrappedData} />
 
-                    {/* Streaks Section */}
                     <Streaks wrappedData={wrappedData} />
 
-                    {/* Play Patterns */}
                     <FavoritePlayTimes wrappedData={wrappedData} />
 
-                    {/* Flawless Sessions */}
                     <FlawlessSessions wrappedData={wrappedData} />
 
-                    {/* Session Coverage Info */}
-                    <SessionCoverage wrappedData={wrappedData} />
-
-                    {/* Closing Message */}
                     <Fade in timeout={2000}>
                         <Card
                             variant="outlined"
@@ -1842,15 +1732,145 @@ function RouteComponent() {
                                     textAlign="center"
                                     color="textSecondary"
                                 >
-                                    Thank you for an amazing {year.toString()}!
-                                    Here&apos;s to even more victories in the
-                                    next year.
+                                    Thank you for an amazing{" "}
+                                    {wrappedData.year.toString()}! Here&apos;s
+                                    to even more victories in the next year.
                                 </Typography>
                             </CardContent>
                         </Card>
                     </Fade>
                 </>
             )}
+        </>
+    );
+}
+
+function RouteComponent() {
+    const { uuid: rawUUID } = Route.useParams();
+    const uuid = normalizeUUID(rawUUID);
+    const { year } = Route.useLoaderDeps();
+
+    const navigate = Route.useNavigate();
+    const uuidToUsername = useUUIDToUsername(uuid ? [uuid] : []);
+    const username = uuid ? uuidToUsername[uuid] : undefined;
+    const { visitPlayer } = usePlayerVisits();
+
+    const { data: wrappedData, isLoading } = useQuery(
+        getWrappedQueryOptions({
+            uuid: uuid ?? "",
+            year,
+        }),
+    );
+
+    // Register visits for player on page load
+    const [initialUUID] = React.useState(uuid);
+    const [initialVisitPlayer] = React.useState(() => visitPlayer);
+    React.useEffect(() => {
+        if (!initialUUID) return;
+        initialVisitPlayer(initialUUID);
+    }, [initialVisitPlayer, initialUUID]);
+
+    if (!uuid) {
+        return <Navigate to="/wrapped" replace />;
+    }
+
+    if (uuid !== rawUUID) {
+        return (
+            <Navigate
+                from="/wrapped/$uuid"
+                to="/wrapped/$uuid"
+                replace
+                params={{ uuid }}
+                search={(oldSearch) => ({
+                    ...oldSearch,
+                    uuid,
+                })}
+            />
+        );
+    }
+
+    return (
+        <Stack spacing={3}>
+            <meta
+                name="description"
+                content={`View ${username ?? "a player"}&apos;s year in review for ${year.toString()}, showcasing their achievements, milestones, and highlights.`}
+            />
+            <link
+                rel="canonical"
+                href={`https://prismoverlay.com/wrapped/${uuid}`}
+            />
+            <ConfettiEffect />
+            <UserSearch
+                onSubmit={(uuid) => {
+                    visitPlayer(uuid);
+                    navigate({
+                        params: { uuid },
+                        search: (oldSearch) => oldSearch,
+                    }).catch((error: unknown) => {
+                        captureException(error, {
+                            tags: {
+                                param: "uuid",
+                            },
+                            extra: {
+                                message: "Failed to update search params",
+                                uuid,
+                            },
+                        });
+                    });
+                }}
+            />
+
+            <Fade in timeout={1000}>
+                <Box>
+                    <Stack
+                        direction="row"
+                        gap={2}
+                        alignItems="center"
+                        justifyContent="center"
+                    >
+                        <Avatar
+                            key={uuid}
+                            alt={`Profile picture for ${username ?? "unknown"}`}
+                            src={`https://crafatar.com/avatars/${uuid}?overlay`}
+                            variant="square"
+                            sx={{ width: 80, height: 80 }}
+                        />
+                        <Stack alignItems="center">
+                            <Typography
+                                variant="h3"
+                                fontWeight="bold"
+                                textAlign="center"
+                                sx={{
+                                    background:
+                                        "linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1)",
+                                    WebkitBackgroundClip: "text",
+                                    WebkitTextFillColor: "transparent",
+                                }}
+                            >
+                                {username
+                                    ? `${username}'s ${year.toString()} Wrapped`
+                                    : `${year.toString()} Wrapped`}
+                            </Typography>
+                            <Stack direction="row" alignItems="center" gap={1}>
+                                <Typography
+                                    variant="subtitle1"
+                                    color="textSecondary"
+                                >
+                                    A year of Bed Wars achievements
+                                </Typography>
+                                <Tooltip title="Year in Review">
+                                    <CalendarMonth color="info" />
+                                </Tooltip>
+                            </Stack>
+                        </Stack>
+                    </Stack>
+                </Box>
+            </Fade>
+
+            <WrappedStatsContent
+                wrappedData={wrappedData}
+                isLoading={isLoading}
+            />
         </Stack>
     );
 }
