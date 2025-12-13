@@ -46,6 +46,7 @@ import {
     Info,
     Error,
 } from "@mui/icons-material";
+import type { StatKey } from "#stats/keys.ts";
 
 export const Route = createFileRoute("/wrapped/$uuid")({
     loaderDeps: ({ search: { year } }) => {
@@ -646,54 +647,44 @@ interface YearStatsCardsProps {
 }
 
 const YearStatsCards: React.FC<YearStatsCardsProps> = ({ wrappedData }) => {
-    // Calculate year stats from yearStats
-    const startStats = wrappedData.yearStats.start;
-    const endStats = wrappedData.yearStats.end;
+    const getOverallSessionStats = (
+        stat: Exclude<StatKey, "winstreak">,
+    ): number => {
+        return computeStat(
+            wrappedData.yearStats.end,
+            "overall",
+            stat,
+            "session",
+            [wrappedData.yearStats.start],
+        );
+    };
+    const getCurrentStats = (stat: Exclude<StatKey, "winstreak">): number => {
+        return computeStat(
+            wrappedData.yearStats.end,
+            "overall",
+            stat,
+            "overall",
+            [],
+        );
+    };
 
-    const totalGames = computeStat(
-        endStats,
-        "overall",
-        "gamesPlayed",
-        "session",
-        [startStats, endStats],
-    );
-    const totalWins = computeStat(endStats, "overall", "wins", "session", [
-        startStats,
-        endStats,
-    ]);
-    const totalFinalKills = computeStat(
-        endStats,
-        "overall",
-        "finalKills",
-        "session",
-        [startStats, endStats],
-    );
-    const totalBedsBroken = computeStat(
-        endStats,
-        "overall",
-        "bedsBroken",
-        "session",
-        [startStats, endStats],
-    );
+    const totalGames = getOverallSessionStats("gamesPlayed");
+    const totalWins = getOverallSessionStats("wins");
+    const totalFinalKills = getOverallSessionStats("finalKills");
+    const totalBedsBroken = getOverallSessionStats("bedsBroken");
 
-    const startFKDR = computeStat(startStats, "overall", "fkdr", "overall", [
-        startStats,
-        endStats,
-    ]);
-    const endFKDR = computeStat(endStats, "overall", "fkdr", "overall", [
-        startStats,
-        endStats,
-    ]);
+    const totalStars = getOverallSessionStats("stars");
+    const eoyStars = getCurrentStats("stars");
 
-    const starsStart = computeStat(startStats, "overall", "stars", "overall", [
-        startStats,
-        endStats,
-    ]);
-    const starsEnd = computeStat(endStats, "overall", "stars", "overall", [
-        startStats,
-        endStats,
-    ]);
-    const starsGained = starsEnd - starsStart;
+    const soyFKDR = computeStat(
+        wrappedData.yearStats.start,
+        "overall",
+        "fkdr",
+        "overall",
+        [],
+    );
+    const eoyFKDR = getCurrentStats("fkdr");
+    const fkdrGained = eoyFKDR - soyFKDR;
 
     const winRate = totalGames !== 0 ? (totalWins / totalGames) * 100 : 0;
     return (
@@ -745,8 +736,8 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({ wrappedData }) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <StatCard
                     title="FKDR"
-                    value={endFKDR.toFixed(2)}
-                    subtitle={(endFKDR - startFKDR).toLocaleString(undefined, {
+                    value={eoyFKDR.toFixed(2)}
+                    subtitle={fkdrGained.toLocaleString(undefined, {
                         signDisplay: "always",
                         maximumFractionDigits: 2,
                     })}
@@ -758,8 +749,8 @@ const YearStatsCards: React.FC<YearStatsCardsProps> = ({ wrappedData }) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <StatCard
                     title="Stars Gained"
-                    value={`+${starsGained.toLocaleString()}`}
-                    subtitle={`now at ${starsEnd.toLocaleString()} ⭐`}
+                    value={`+${totalStars.toLocaleString()}`}
+                    subtitle={`now at ${eoyStars.toLocaleString()} ⭐`}
                     icon={<Star sx={{ fontSize: 48 }} />}
                     color="#FFB6D9"
                     delay={600}
