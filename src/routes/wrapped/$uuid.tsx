@@ -218,12 +218,14 @@ const ConfettiEffect: React.FC = () => {
             rotation: number;
         }[]
     >([]);
-    const [stopProducingTime, setStopProducingTime] = React.useState<
-        number | null
-    >(null);
+    const [shouldStopAnimation, setShouldStopAnimation] =
+        React.useState<boolean>(false);
 
-    // Check if user prefers reduced motion
+    // Check if user prefers reduced motion (only in browser environment)
     const prefersReducedMotion = React.useMemo(() => {
+        if (typeof window === "undefined") {
+            return false;
+        }
         return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     }, []);
 
@@ -246,7 +248,7 @@ const ConfettiEffect: React.FC = () => {
         // Stop producing new confetti after configured duration
         // but let existing confetti complete their animation
         const timer = setTimeout(() => {
-            setStopProducingTime(Date.now());
+            setShouldStopAnimation(true);
         }, CONFETTI_DURATION_SECONDS * 1000);
 
         return () => {
@@ -273,11 +275,12 @@ const ConfettiEffect: React.FC = () => {
             }}
         >
             {confetti.map((piece) => {
-                // Calculate iteration count based on whether we should keep producing
-                // If stopProducingTime is set, we stop the infinite animation
+                // Calculate iteration count based on whether we should stop animation
+                // If shouldStopAnimation is true, we stop the infinite animation
                 // and let the current iteration finish
-                const animationIterationCount =
-                    stopProducingTime === null ? "infinite" : "1";
+                const animationIterationCount = shouldStopAnimation
+                    ? "1"
+                    : "infinite";
 
                 return (
                     <Box
