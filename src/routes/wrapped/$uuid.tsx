@@ -22,7 +22,7 @@ import {
     Alert,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import React, { type JSX } from "react";
 import { usePlayerVisits } from "#contexts/PlayerVisits/hooks.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
@@ -1476,72 +1476,75 @@ function WrappedStatsContent({
         );
     }
 
+    if (!wrappedData.yearStats) {
+        return (
+            <Fade in timeout={1000}>
+                <Alert severity="info" icon={<Info />}>
+                    <Typography variant="body2">
+                        This player didn&apos;t record any stats with the Prism
+                        Overlay in {wrappedData.year.toString()}. Download it{" "}
+                        {
+                            <Link to="/downloads" target="_blank">
+                                here
+                            </Link>
+                        }{" "}
+                        to start tracking your stats!
+                    </Typography>
+                </Alert>
+            </Fade>
+        );
+    }
+
     // Calculate year stats from yearStats
-    const startStats = wrappedData.yearStats?.start;
-    const endStats = wrappedData.yearStats?.end;
+    const startStats = wrappedData.yearStats.start;
+    const endStats = wrappedData.yearStats.end;
 
-    const totalGames =
-        startStats && endStats
-            ? computeStat(endStats, "overall", "gamesPlayed", "session", [
-                  startStats,
-                  endStats,
-              ])
-            : null;
-    const totalWins =
-        startStats && endStats
-            ? computeStat(endStats, "overall", "wins", "session", [
-                  startStats,
-                  endStats,
-              ])
-            : null;
-    const totalFinalKills =
-        startStats && endStats
-            ? computeStat(endStats, "overall", "finalKills", "session", [
-                  startStats,
-                  endStats,
-              ])
-            : null;
-    const totalBedsBroken =
-        startStats && endStats
-            ? computeStat(endStats, "overall", "bedsBroken", "session", [
-                  startStats,
-                  endStats,
-              ])
-            : null;
+    const totalGames = computeStat(
+        endStats,
+        "overall",
+        "gamesPlayed",
+        "session",
+        [startStats, endStats],
+    );
+    const totalWins = computeStat(endStats, "overall", "wins", "session", [
+        startStats,
+        endStats,
+    ]);
+    const totalFinalKills = computeStat(
+        endStats,
+        "overall",
+        "finalKills",
+        "session",
+        [startStats, endStats],
+    );
+    const totalBedsBroken = computeStat(
+        endStats,
+        "overall",
+        "bedsBroken",
+        "session",
+        [startStats, endStats],
+    );
 
-    const startFKDR =
-        startStats && endStats
-            ? computeStat(startStats, "overall", "fkdr", "overall", [
-                  startStats,
-                  endStats,
-              ])
-            : null;
-    const endFKDR =
-        startStats && endStats
-            ? computeStat(endStats, "overall", "fkdr", "overall", [
-                  startStats,
-                  endStats,
-              ])
-            : null;
+    const startFKDR = computeStat(startStats, "overall", "fkdr", "overall", [
+        startStats,
+        endStats,
+    ]);
+    const endFKDR = computeStat(endStats, "overall", "fkdr", "overall", [
+        startStats,
+        endStats,
+    ]);
 
-    const starsStart =
-        startStats && endStats
-            ? computeStat(startStats, "overall", "stars", "overall", [
-                  startStats,
-                  endStats,
-              ])
-            : null;
-    const starsEnd =
-        startStats && endStats
-            ? computeStat(endStats, "overall", "stars", "overall", [
-                  startStats,
-                  endStats,
-              ])
-            : null;
-    const starsGained = starsEnd && starsStart ? starsEnd - starsStart : null;
+    const starsStart = computeStat(startStats, "overall", "stars", "overall", [
+        startStats,
+        endStats,
+    ]);
+    const starsEnd = computeStat(endStats, "overall", "stars", "overall", [
+        startStats,
+        endStats,
+    ]);
+    const starsGained = starsEnd - starsStart;
 
-    const winRate =
-        totalGames && totalWins ? (totalWins / totalGames) * 100 : 0;
+    const winRate = totalGames !== 0 ? (totalWins / totalGames) * 100 : 0;
 
     if (wrappedData.totalSessions === 0) {
         return (
@@ -1551,50 +1554,29 @@ function WrappedStatsContent({
                         <Typography variant="body2">
                             This player didn&apos;t record any sessions with the
                             Prism Overlay in {wrappedData.year.toString()}.
-                            Showing overall year statistics instead.
+                            Showing overall year statistics instead. Download it{" "}
+                            {
+                                <Link to="/downloads" target="_blank">
+                                    here
+                                </Link>
+                            }{" "}
+                            to start tracking your stats!
                         </Typography>
                     </Alert>
                 </Fade>
 
-                {/* Show basic year stats without session data */}
-                {wrappedData.yearStats && (
-                    <>
-                        <YearStatsCards
-                            wrappedData={wrappedData}
-                            totalGames={totalGames}
-                            totalWins={totalWins}
-                            totalFinalKills={totalFinalKills}
-                            totalBedsBroken={totalBedsBroken}
-                            endFKDR={endFKDR}
-                            startFKDR={startFKDR}
-                            starsGained={starsGained}
-                            starsEnd={starsEnd}
-                            winRate={winRate}
-                        />
-
-                        <Fade in timeout={1800}>
-                            <Card variant="outlined">
-                                <CardContent>
-                                    <Stack gap={2} alignItems="center">
-                                        <Typography variant="h5">
-                                            🎉 {wrappedData.year.toString()}{" "}
-                                            Summary 🎉
-                                        </Typography>
-                                        <Typography
-                                            variant="body2"
-                                            color="textSecondary"
-                                            textAlign="center"
-                                        >
-                                            Enable the Prism Overlay to track
-                                            detailed session statistics in the
-                                            future!
-                                        </Typography>
-                                    </Stack>
-                                </CardContent>
-                            </Card>
-                        </Fade>
-                    </>
-                )}
+                <YearStatsCards
+                    wrappedData={wrappedData}
+                    totalGames={totalGames}
+                    totalWins={totalWins}
+                    totalFinalKills={totalFinalKills}
+                    totalBedsBroken={totalBedsBroken}
+                    endFKDR={endFKDR}
+                    startFKDR={startFKDR}
+                    starsGained={starsGained}
+                    starsEnd={starsEnd}
+                    winRate={winRate}
+                />
             </>
         );
     }
@@ -1646,37 +1628,6 @@ function WrappedStatsContent({
             <FavoritePlayTimes wrappedData={wrappedData} />
 
             <FlawlessSessions wrappedData={wrappedData} />
-
-            <Fade in timeout={2000}>
-                <Card
-                    variant="outlined"
-                    sx={{
-                        background:
-                            "linear-gradient(135deg, #a8edea22 0%, #fed6e311 100%)",
-                        border: "2px solid #a8edea",
-                    }}
-                >
-                    <CardContent>
-                        <Typography
-                            variant="h5"
-                            textAlign="center"
-                            fontWeight="bold"
-                            gutterBottom
-                        >
-                            🎉 What a Year! 🎉
-                        </Typography>
-                        <Typography
-                            variant="body1"
-                            textAlign="center"
-                            color="textSecondary"
-                        >
-                            Thank you for an amazing{" "}
-                            {wrappedData.year.toString()}! Here&apos;s to even
-                            more victories in the next year.
-                        </Typography>
-                    </CardContent>
-                </Card>
-            </Fade>
         </>
     );
 }
@@ -1755,7 +1706,6 @@ function RouteComponent() {
                     });
                 }}
             />
-
             <Fade in timeout={1000}>
                 <Box>
                     <Stack
@@ -1828,9 +1778,13 @@ function RouteComponent() {
                                         wrappedData.yearStats.start.queriedAt.getTime() <
                                         1000 * 60 * 60 * 24 * 30 * 8 && (
                                         <Tooltip
-                                            title={
-                                                "The data for this year covers less than 8 months. Statistics may not accurately reflect the entire year."
-                                            }
+                                            title={`The data for this year covers only ~${(
+                                                (wrappedData.yearStats.end.queriedAt.getTime() -
+                                                    wrappedData.yearStats.start.queriedAt.getTime()) /
+                                                (1000 * 60 * 60 * 24 * 30)
+                                            ).toFixed(
+                                                1,
+                                            )} month(s). Statistics may not accurately reflect the entire year.`}
                                         >
                                             <Warning color="warning" />
                                         </Tooltip>
@@ -1840,11 +1794,43 @@ function RouteComponent() {
                     </Stack>
                 </Box>
             </Fade>
-
             <WrappedStatsContent
                 wrappedData={wrappedData}
                 isLoading={isLoading}
             />
+            {wrappedData && (
+                <Fade in timeout={2000}>
+                    <Card
+                        variant="outlined"
+                        sx={{
+                            background:
+                                "linear-gradient(135deg, #a8edea22 0%, #fed6e311 100%)",
+                            border: "2px solid #a8edea",
+                        }}
+                    >
+                        <CardContent>
+                            <Typography
+                                variant="h5"
+                                textAlign="center"
+                                fontWeight="bold"
+                                gutterBottom
+                            >
+                                🎉 What a Year! 🎉
+                            </Typography>
+                            <Typography
+                                variant="body1"
+                                textAlign="center"
+                                color="textSecondary"
+                            >
+                                Thank you for an amazing{" "}
+                                {wrappedData.year.toString()}! Here&apos;s to
+                                even more victories in the next year.
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Fade>
+            )}
+            )
         </Stack>
     );
 }
