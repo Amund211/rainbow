@@ -218,9 +218,21 @@ const ConfettiEffect: React.FC = () => {
             rotation: number;
         }[]
     >([]);
-    const [showConfetti, setShowConfetti] = React.useState(true);
+    const [stopProducingTime, setStopProducingTime] = React.useState<
+        number | null
+    >(null);
+
+    // Check if user prefers reduced motion
+    const prefersReducedMotion = React.useMemo(() => {
+        return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }, []);
 
     React.useEffect(() => {
+        // Don't show confetti if user prefers reduced motion
+        if (prefersReducedMotion) {
+            return;
+        }
+
         const pieces = Array.from({ length: 50 }, (_, i) => ({
             id: i,
             left: Math.random() * 100,
@@ -231,17 +243,21 @@ const ConfettiEffect: React.FC = () => {
         }));
         setConfetti(pieces);
 
-        // Stop confetti after configured duration
+        // Stop producing new confetti after configured duration
+        // but let existing confetti complete their animation
         const timer = setTimeout(() => {
-            setShowConfetti(false);
+            setStopProducingTime(Date.now());
         }, CONFETTI_DURATION_SECONDS * 1000);
 
         return () => {
             clearTimeout(timer);
         };
-    }, []);
+    }, [prefersReducedMotion]);
 
-    if (!showConfetti) return null;
+    // Don't render anything if user prefers reduced motion
+    if (prefersReducedMotion) {
+        return null;
+    }
 
     return (
         <Box
@@ -256,30 +272,38 @@ const ConfettiEffect: React.FC = () => {
                 overflow: "hidden",
             }}
         >
-            {confetti.map((piece) => (
-                <Box
-                    key={piece.id}
-                    sx={{
-                        position: "absolute",
-                        top: "-10px",
-                        left: `${piece.left.toString()}%`,
-                        width: "10px",
-                        height: "10px",
-                        backgroundColor: `hsl(${piece.hue.toString()}, 70%, 60%)`,
-                        animation: `fall ${piece.duration.toString()}s linear ${piece.delay.toString()}s infinite`,
-                        "@keyframes fall": {
-                            "0%": {
-                                transform: "translateY(0) rotate(0deg)",
-                                opacity: 1,
+            {confetti.map((piece) => {
+                // Calculate iteration count based on whether we should keep producing
+                // If stopProducingTime is set, we stop the infinite animation
+                // and let the current iteration finish
+                const animationIterationCount =
+                    stopProducingTime === null ? "infinite" : "1";
+
+                return (
+                    <Box
+                        key={piece.id}
+                        sx={{
+                            position: "absolute",
+                            top: "-10px",
+                            left: `${piece.left.toString()}%`,
+                            width: "10px",
+                            height: "10px",
+                            backgroundColor: `hsl(${piece.hue.toString()}, 70%, 60%)`,
+                            animation: `fall ${piece.duration.toString()}s linear ${piece.delay.toString()}s ${animationIterationCount}`,
+                            "@keyframes fall": {
+                                "0%": {
+                                    transform: "translateY(0) rotate(0deg)",
+                                    opacity: 1,
+                                },
+                                "100%": {
+                                    transform: `translateY(100vh) rotate(${piece.rotation.toString()}deg)`,
+                                    opacity: 0,
+                                },
                             },
-                            "100%": {
-                                transform: `translateY(100vh) rotate(${piece.rotation.toString()}deg)`,
-                                opacity: 0,
-                            },
-                        },
-                    }}
-                />
-            ))}
+                        }}
+                    />
+                );
+            })}
         </Box>
     );
 };
