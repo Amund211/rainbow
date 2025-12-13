@@ -421,7 +421,7 @@ const SessionOverview: React.FC<SessionOverviewProps> = ({ wrappedData }) => {
                 <CardContent>
                     <Stack gap={2}>
                         <Stack direction="row" alignItems="center" gap={1}>
-                            <Schedule color="primary" />
+                            <Schedule color="action" />
                             <Typography variant="h6">
                                 Session Overview
                             </Typography>
@@ -778,7 +778,7 @@ const AverageSessionStats: React.FC<AverageSessionStatsProps> = ({
                 <CardContent>
                     <Stack gap={2}>
                         <Stack direction="row" alignItems="center" gap={1}>
-                            <ShowChart color="primary" />
+                            <ShowChart color="action" />
                             <Typography variant="h6">
                                 Average Session Stats
                             </Typography>
@@ -1119,7 +1119,7 @@ const FavoritePlayTimes: React.FC<FavoritePlayTimesProps> = ({
                 <CardContent>
                     <Stack gap={2}>
                         <Stack direction="row" alignItems="center" gap={1}>
-                            <CalendarMonth color="primary" />
+                            <CalendarMonth color="action" />
                             <Typography variant="h6">
                                 {`Play Time Patterns (${tz})`}
                             </Typography>
@@ -1404,7 +1404,7 @@ const SessionCoverage: React.FC<SessionCoverageProps> = ({ wrappedData }) => {
                 <CardContent>
                     <Stack gap={2}>
                         <Stack direction="row" alignItems="center" gap={1}>
-                            <PieChart color="primary" />
+                            <PieChart color="action" />
                             <Typography variant="h6">
                                 Session Coverage
                             </Typography>
