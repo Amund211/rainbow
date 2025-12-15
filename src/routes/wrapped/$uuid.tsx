@@ -2057,10 +2057,12 @@ function RouteComponent() {
         null,
     );
     const [isExporting, setIsExporting] = React.useState(false);
+    const [exportError, setExportError] = React.useState<string | null>(null);
 
     const handleExport = async () => {
         if (!exportAPI) return;
         setIsExporting(true);
+        setExportError(null);
         try {
             await exportAPI.download();
         } catch (error) {
@@ -2071,6 +2073,9 @@ function RouteComponent() {
                     year,
                 },
             });
+            setExportError(
+                "Failed to export summary. Please try again or check your browser console for details.",
+            );
         } finally {
             setIsExporting(false);
         }
@@ -2236,28 +2241,40 @@ function RouteComponent() {
                     </Box>
                 </Fade>
                 {wrappedData?.yearStats && exportAPI && (
-                    <Box display="flex" justifyContent="center">
-                        <Button
-                            variant="contained"
-                            startIcon={<Download />}
-                            onClick={() => {
-                                void handleExport();
-                            }}
-                            disabled={isExporting}
-                            sx={{
-                                background:
-                                    "linear-gradient(45deg, #FF6B6B, #4ECDC4)",
-                                "&:hover": {
+                    <Stack spacing={2}>
+                        <Box display="flex" justifyContent="center">
+                            <Button
+                                variant="contained"
+                                startIcon={<Download />}
+                                onClick={() => {
+                                    void handleExport();
+                                }}
+                                disabled={isExporting}
+                                sx={{
                                     background:
-                                        "linear-gradient(45deg, #FF5252, #3DBDB4)",
-                                },
-                            }}
-                        >
-                            {isExporting
-                                ? "Exporting..."
-                                : "Export Summary as Image"}
-                        </Button>
-                    </Box>
+                                        "linear-gradient(45deg, #FF6B6B, #4ECDC4)",
+                                    "&:hover": {
+                                        background:
+                                            "linear-gradient(45deg, #FF5252, #3DBDB4)",
+                                    },
+                                }}
+                            >
+                                {isExporting
+                                    ? "Exporting..."
+                                    : "Export Summary as Image"}
+                            </Button>
+                        </Box>
+                        {exportError && (
+                            <Alert
+                                severity="error"
+                                onClose={() => {
+                                    setExportError(null);
+                                }}
+                            >
+                                {exportError}
+                            </Alert>
+                        )}
+                    </Stack>
                 )}
                 <WrappedStatsContent
                     wrappedData={wrappedData}
