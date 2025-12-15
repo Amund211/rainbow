@@ -6,6 +6,7 @@ import { useUUIDToUsername } from "#queries/username.ts";
 import { computeStat } from "#stats/index.ts";
 import {
     Box,
+    Button,
     Card,
     CardContent,
     Chip,
@@ -45,9 +46,14 @@ import {
     Info,
     Error,
     PieChart,
+    Download,
 } from "@mui/icons-material";
 import type { StatKey } from "#stats/keys.ts";
 import { PlayerHead } from "#components/player.tsx";
+import {
+    ExportImageMount,
+    type ExportImageAPI,
+} from "#helpers/exportImage.tsx";
 
 const getDefaultTimeZone = (): string => {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1692,6 +1698,343 @@ function WrappedStatsContent({
     );
 }
 
+interface ExportSummaryProps {
+    username?: string;
+    uuid: string;
+    year: number;
+    wrappedData?: WrappedData;
+}
+
+/**
+ * ExportSummary component for image export
+ * Re-uses existing components from the wrapped page with minimal code duplication
+ */
+const ExportSummary: React.FC<ExportSummaryProps> = ({
+    username,
+    uuid,
+    year,
+    wrappedData,
+}) => {
+    if (!wrappedData?.yearStats) {
+        return null;
+    }
+
+    const yearStats = wrappedData.yearStats;
+
+    const getOverallSessionStats = (
+        stat: Exclude<StatKey, "winstreak">,
+    ): number => {
+        return computeStat(yearStats.end, "overall", stat, "session", [
+            yearStats.start,
+        ]);
+    };
+    const getCurrentStats = (stat: Exclude<StatKey, "winstreak">): number => {
+        return computeStat(yearStats.end, "overall", stat, "overall", []);
+    };
+
+    const totalGames = getOverallSessionStats("gamesPlayed");
+    const totalWins = getOverallSessionStats("wins");
+    const totalFinalKills = getOverallSessionStats("finalKills");
+    const yearlyFKDR = computeStat(
+        yearStats.end,
+        "overall",
+        "fkdr",
+        "session",
+        [yearStats.start],
+    );
+    const totalBedsBroken = getOverallSessionStats("bedsBroken");
+    const totalStars = getOverallSessionStats("stars");
+    const eoyStars = getCurrentStats("stars");
+    const winRate = totalGames !== 0 ? (totalWins / totalGames) * 100 : 0;
+
+    return (
+        <Box
+            sx={{
+                width: 1200,
+                padding: 4,
+                background: "white",
+                fontFamily:
+                    "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+            }}
+        >
+            {/* Header with player info */}
+            <Stack direction="row" gap={2} alignItems="center" mb={3}>
+                <PlayerHead
+                    uuid={uuid}
+                    username={username}
+                    variant="face"
+                    width={80}
+                />
+                <Stack>
+                    <Typography
+                        variant="h3"
+                        fontWeight="bold"
+                        sx={{
+                            background:
+                                "linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                        }}
+                    >
+                        {username
+                            ? `${username}'s ${year.toString()} Wrapped`
+                            : `${year.toString()} Wrapped`}
+                    </Typography>
+                    <Typography variant="subtitle1" color="textSecondary">
+                        A year of Bed Wars achievements
+                    </Typography>
+                </Stack>
+            </Stack>
+
+            {/* Stats Grid - reusing StatCard styling */}
+            <Grid container spacing={2}>
+                <Grid size={{ xs: 6 }}>
+                    <Card
+                        variant="outlined"
+                        sx={{
+                            background:
+                                "linear-gradient(135deg, #FF6B6B22 0%, #FF6B6B11 100%)",
+                            border: "2px solid #FF6B6B",
+                        }}
+                    >
+                        <CardContent>
+                            <Stack
+                                gap={1}
+                                alignItems="center"
+                                justifyContent="center"
+                            >
+                                <EmojiEvents
+                                    sx={{ fontSize: 48, color: "#FF6B6B" }}
+                                />
+                                <Typography
+                                    variant="subtitle2"
+                                    color="textSecondary"
+                                    textAlign="center"
+                                >
+                                    Games Played
+                                </Typography>
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    textAlign="center"
+                                    sx={{
+                                        background:
+                                            "linear-gradient(45deg, #FF6B6B, #FF6B6Bdd)",
+                                        WebkitBackgroundClip: "text",
+                                        WebkitTextFillColor: "transparent",
+                                    }}
+                                >
+                                    {totalGames.toLocaleString()}
+                                </Typography>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                    <Card
+                        variant="outlined"
+                        sx={{
+                            background:
+                                "linear-gradient(135deg, #4ECDC422 0%, #4ECDC411 100%)",
+                            border: "2px solid #4ECDC4",
+                        }}
+                    >
+                        <CardContent>
+                            <Stack
+                                gap={1}
+                                alignItems="center"
+                                justifyContent="center"
+                            >
+                                <Star sx={{ fontSize: 48, color: "#4ECDC4" }} />
+                                <Typography
+                                    variant="subtitle2"
+                                    color="textSecondary"
+                                    textAlign="center"
+                                >
+                                    Wins
+                                </Typography>
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    textAlign="center"
+                                    sx={{
+                                        background:
+                                            "linear-gradient(45deg, #4ECDC4, #4ECDC4dd)",
+                                        WebkitBackgroundClip: "text",
+                                        WebkitTextFillColor: "transparent",
+                                    }}
+                                >
+                                    {totalWins.toLocaleString()}
+                                </Typography>
+                                <Typography
+                                    variant="caption"
+                                    color="textSecondary"
+                                    textAlign="center"
+                                >
+                                    {winRate.toLocaleString(undefined, {
+                                        maximumFractionDigits: 1,
+                                    })}
+                                    % win rate
+                                </Typography>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                    <Card
+                        variant="outlined"
+                        sx={{
+                            background:
+                                "linear-gradient(135deg, #FFD93D22 0%, #FFD93D11 100%)",
+                            border: "2px solid #FFD93D",
+                        }}
+                    >
+                        <CardContent>
+                            <Stack
+                                gap={1}
+                                alignItems="center"
+                                justifyContent="center"
+                            >
+                                <Whatshot
+                                    sx={{ fontSize: 48, color: "#FFD93D" }}
+                                />
+                                <Typography
+                                    variant="subtitle2"
+                                    color="textSecondary"
+                                    textAlign="center"
+                                >
+                                    Final Kills
+                                </Typography>
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    textAlign="center"
+                                    sx={{
+                                        background:
+                                            "linear-gradient(45deg, #FFD93D, #FFD93Ddd)",
+                                        WebkitBackgroundClip: "text",
+                                        WebkitTextFillColor: "transparent",
+                                    }}
+                                >
+                                    {totalFinalKills.toLocaleString()}
+                                </Typography>
+                                <Typography
+                                    variant="caption"
+                                    color="textSecondary"
+                                    textAlign="center"
+                                >
+                                    {yearlyFKDR.toLocaleString(undefined, {
+                                        maximumFractionDigits: 2,
+                                    })}{" "}
+                                    yearly FKDR
+                                </Typography>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                    <Card
+                        variant="outlined"
+                        sx={{
+                            background:
+                                "linear-gradient(135deg, #95E1D322 0%, #95E1D311 100%)",
+                            border: "2px solid #95E1D3",
+                        }}
+                    >
+                        <CardContent>
+                            <Stack
+                                gap={1}
+                                alignItems="center"
+                                justifyContent="center"
+                            >
+                                <Celebration
+                                    sx={{ fontSize: 48, color: "#95E1D3" }}
+                                />
+                                <Typography
+                                    variant="subtitle2"
+                                    color="textSecondary"
+                                    textAlign="center"
+                                >
+                                    Beds Broken
+                                </Typography>
+                                <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    textAlign="center"
+                                    sx={{
+                                        background:
+                                            "linear-gradient(45deg, #95E1D3, #95E1D3dd)",
+                                        WebkitBackgroundClip: "text",
+                                        WebkitTextFillColor: "transparent",
+                                    }}
+                                >
+                                    {totalBedsBroken.toLocaleString()}
+                                </Typography>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
+
+            {/* Stars section */}
+            <Box mt={3}>
+                <Card
+                    variant="outlined"
+                    sx={{
+                        background:
+                            "linear-gradient(135deg, #FFB6D922 0%, #FFB6D911 100%)",
+                        border: "2px solid #FFB6D9",
+                    }}
+                >
+                    <CardContent>
+                        <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                        >
+                            <Stack direction="row" gap={1} alignItems="center">
+                                <Star sx={{ fontSize: 32, color: "#FFB6D9" }} />
+                                <Typography variant="h6">
+                                    Stars Gained
+                                </Typography>
+                            </Stack>
+                            <Stack alignItems="flex-end">
+                                <Typography
+                                    variant="h5"
+                                    fontWeight="bold"
+                                    color="#FFB6D9"
+                                >
+                                    +
+                                    {totalStars.toLocaleString(undefined, {
+                                        maximumFractionDigits: 1,
+                                    })}
+                                </Typography>
+                                <Typography
+                                    variant="caption"
+                                    color="textSecondary"
+                                >
+                                    now at{" "}
+                                    {eoyStars.toLocaleString(undefined, {
+                                        maximumFractionDigits: 1,
+                                    })}{" "}
+                                    ⭐
+                                </Typography>
+                            </Stack>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </Box>
+
+            {/* Footer with link */}
+            <Box mt={3} textAlign="center">
+                <Typography variant="body2" color="textSecondary">
+                    View more at prismoverlay.com/wrapped
+                </Typography>
+            </Box>
+        </Box>
+    );
+};
+
 function RouteComponent() {
     const { uuid: rawUUID } = Route.useParams();
     const uuid = normalizeUUID(rawUUID);
@@ -1709,6 +2052,29 @@ function RouteComponent() {
             timezone: getDefaultTimeZone(),
         }),
     );
+
+    const [exportAPI, setExportAPI] = React.useState<ExportImageAPI | null>(
+        null,
+    );
+    const [isExporting, setIsExporting] = React.useState(false);
+
+    const handleExport = async () => {
+        if (!exportAPI) return;
+        setIsExporting(true);
+        try {
+            await exportAPI.download();
+        } catch (error) {
+            captureException(error, {
+                extra: {
+                    message: "Failed to export wrapped summary",
+                    uuid,
+                    year,
+                },
+            });
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     // Register visits for player on page load
     const [initialUUID] = React.useState(uuid);
@@ -1737,6 +2103,19 @@ function RouteComponent() {
     return (
         <>
             <ConfettiEffect />
+            {wrappedData?.yearStats && (
+                <ExportImageMount
+                    onReady={setExportAPI}
+                    filename={`${username ?? "player"}-${year.toString()}-wrapped.png`}
+                >
+                    <ExportSummary
+                        username={username}
+                        uuid={uuid}
+                        year={year}
+                        wrappedData={wrappedData}
+                    />
+                </ExportImageMount>
+            )}
             <Stack spacing={3}>
                 <meta
                     name="description"
@@ -1856,6 +2235,30 @@ function RouteComponent() {
                         </Stack>
                     </Box>
                 </Fade>
+                {wrappedData?.yearStats && exportAPI && (
+                    <Box display="flex" justifyContent="center">
+                        <Button
+                            variant="contained"
+                            startIcon={<Download />}
+                            onClick={() => {
+                                void handleExport();
+                            }}
+                            disabled={isExporting}
+                            sx={{
+                                background:
+                                    "linear-gradient(45deg, #FF6B6B, #4ECDC4)",
+                                "&:hover": {
+                                    background:
+                                        "linear-gradient(45deg, #FF5252, #3DBDB4)",
+                                },
+                            }}
+                        >
+                            {isExporting
+                                ? "Exporting..."
+                                : "Export Summary as Image"}
+                        </Button>
+                    </Box>
+                )}
                 <WrappedStatsContent
                     wrappedData={wrappedData}
                     isLoading={isLoading}
