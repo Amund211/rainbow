@@ -1967,11 +1967,6 @@ const ExportButton: React.FC<ExportButtonProps> = ({
                     r(null);
                 });
             });
-            await new Promise((r) => {
-                requestAnimationFrame(() => {
-                    r(null);
-                });
-            });
 
             const node = captureRef.current;
             if (!node) {
@@ -2197,10 +2192,16 @@ function RouteComponent() {
                             uuid={uuid}
                             username={username}
                             year={year}
-                            wrappedData={{
-                                ...wrappedData,
-                                yearStats: wrappedData.yearStats,
-                            }}
+                            wrappedData={
+                                {
+                                    ...wrappedData,
+                                    yearStats: wrappedData.yearStats,
+                                } as WrappedData & {
+                                    yearStats: NonNullable<
+                                        WrappedData["yearStats"]
+                                    >;
+                                }
+                            }
                         />
                     </Box>
                 )}
