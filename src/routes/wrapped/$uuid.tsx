@@ -6,6 +6,7 @@ import { useUUIDToUsername } from "#queries/username.ts";
 import { computeStat } from "#stats/index.ts";
 import {
     Box,
+    Button,
     Card,
     CardContent,
     Chip,
@@ -43,11 +44,17 @@ import {
     Warning,
     CheckCircle,
     Info,
-    Error,
+    Error as ErrorIcon,
     PieChart,
+    Download,
 } from "@mui/icons-material";
 import type { StatKey } from "#stats/keys.ts";
 import { PlayerHead } from "#components/player.tsx";
+import {
+    useOffscreenContainer,
+    captureAndDownload,
+} from "#helpers/exportImage.tsx";
+import { createPortal } from "react-dom";
 
 const getDefaultTimeZone = (): string => {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1590,7 +1597,7 @@ function WrappedStatsContent({
                         alignItems="center"
                         justifyContent="center"
                     >
-                        <Error color="error" />
+                        <ErrorIcon color="error" />
                         <Typography variant="h6" textAlign="center">
                             Failed loading your year in review. Please try again
                             later.
@@ -1691,6 +1698,334 @@ function WrappedStatsContent({
         </>
     );
 }
+
+interface WrappedSummaryProps {
+    uuid: string;
+    username?: string;
+    year: number;
+    wrappedData: WrappedData & {
+        yearStats: NonNullable<WrappedData["yearStats"]>;
+    };
+}
+
+const WrappedSummary: React.FC<WrappedSummaryProps> = ({
+    uuid,
+    username,
+    year,
+    wrappedData,
+}) => {
+    const getOverallSessionStats = (
+        stat: Exclude<StatKey, "winstreak">,
+    ): number => {
+        return computeStat(
+            wrappedData.yearStats.end,
+            "overall",
+            stat,
+            "session",
+            [wrappedData.yearStats.start],
+        );
+    };
+
+    const totalGames = getOverallSessionStats("gamesPlayed");
+    const totalWins = getOverallSessionStats("wins");
+    const totalFinalKills = getOverallSessionStats("finalKills");
+    const yearlyFKDR = computeStat(
+        wrappedData.yearStats.end,
+        "overall",
+        "fkdr",
+        "session",
+        [wrappedData.yearStats.start],
+    );
+
+    return (
+        <Box
+            sx={{
+                width: 1200,
+                padding: 4,
+                background: "white",
+                fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
+                borderRadius: 3,
+            }}
+        >
+            <Stack gap={3} alignItems="center">
+                <Stack direction="row" gap={2} alignItems="center">
+                    <PlayerHead
+                        uuid={uuid}
+                        username={username}
+                        variant="face"
+                        width={80}
+                    />
+                    <Typography
+                        variant="h3"
+                        fontWeight="bold"
+                        sx={{
+                            background:
+                                "linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                        }}
+                    >
+                        {username
+                            ? `${username}'s ${year.toString()} Wrapped`
+                            : `${year.toString()} Wrapped`}
+                    </Typography>
+                </Stack>
+
+                <Grid container spacing={2}>
+                    <Grid size={{ xs: 6, md: 3 }}>
+                        <Card
+                            variant="outlined"
+                            sx={{
+                                background:
+                                    "linear-gradient(135deg, #FF6B6B22 0%, #FF6B6B11 100%)",
+                                border: "2px solid #FF6B6B",
+                            }}
+                        >
+                            <CardContent>
+                                <Stack gap={1} alignItems="center">
+                                    <EmojiEvents
+                                        sx={{ fontSize: 48, color: "#FF6B6B" }}
+                                    />
+                                    <Typography
+                                        variant="subtitle2"
+                                        color="textSecondary"
+                                        textAlign="center"
+                                    >
+                                        Games Played
+                                    </Typography>
+                                    <Typography
+                                        variant="h4"
+                                        fontWeight="bold"
+                                        sx={{ color: "#FF6B6B" }}
+                                    >
+                                        {totalGames.toLocaleString()}
+                                    </Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid size={{ xs: 6, md: 3 }}>
+                        <Card
+                            variant="outlined"
+                            sx={{
+                                background:
+                                    "linear-gradient(135deg, #4ECDC422 0%, #4ECDC411 100%)",
+                                border: "2px solid #4ECDC4",
+                            }}
+                        >
+                            <CardContent>
+                                <Stack gap={1} alignItems="center">
+                                    <Star
+                                        sx={{ fontSize: 48, color: "#4ECDC4" }}
+                                    />
+                                    <Typography
+                                        variant="subtitle2"
+                                        color="textSecondary"
+                                        textAlign="center"
+                                    >
+                                        Wins
+                                    </Typography>
+                                    <Typography
+                                        variant="h4"
+                                        fontWeight="bold"
+                                        sx={{ color: "#4ECDC4" }}
+                                    >
+                                        {totalWins.toLocaleString()}
+                                    </Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid size={{ xs: 6, md: 3 }}>
+                        <Card
+                            variant="outlined"
+                            sx={{
+                                background:
+                                    "linear-gradient(135deg, #FFD93D22 0%, #FFD93D11 100%)",
+                                border: "2px solid #FFD93D",
+                            }}
+                        >
+                            <CardContent>
+                                <Stack gap={1} alignItems="center">
+                                    <Whatshot
+                                        sx={{ fontSize: 48, color: "#FFD93D" }}
+                                    />
+                                    <Typography
+                                        variant="subtitle2"
+                                        color="textSecondary"
+                                        textAlign="center"
+                                    >
+                                        Final Kills
+                                    </Typography>
+                                    <Typography
+                                        variant="h4"
+                                        fontWeight="bold"
+                                        sx={{ color: "#FFD93D" }}
+                                    >
+                                        {totalFinalKills.toLocaleString()}
+                                    </Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid size={{ xs: 6, md: 3 }}>
+                        <Card
+                            variant="outlined"
+                            sx={{
+                                background:
+                                    "linear-gradient(135deg, #A8E6CF22 0%, #A8E6CF11 100%)",
+                                border: "2px solid #A8E6CF",
+                            }}
+                        >
+                            <CardContent>
+                                <Stack gap={1} alignItems="center">
+                                    <TrendingUp
+                                        sx={{ fontSize: 48, color: "#A8E6CF" }}
+                                    />
+                                    <Typography
+                                        variant="subtitle2"
+                                        color="textSecondary"
+                                        textAlign="center"
+                                    >
+                                        FKDR
+                                    </Typography>
+                                    <Typography
+                                        variant="h4"
+                                        fontWeight="bold"
+                                        sx={{ color: "#A8E6CF" }}
+                                    >
+                                        {yearlyFKDR.toLocaleString(undefined, {
+                                            maximumFractionDigits: 2,
+                                        })}
+                                    </Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                </Grid>
+
+                <Typography
+                    variant="body1"
+                    color="textSecondary"
+                    textAlign="center"
+                    sx={{ mt: 2 }}
+                >
+                    View more at{" "}
+                    <Link
+                        to="/wrapped"
+                        style={{
+                            color: "#4ECDC4",
+                            textDecoration: "none",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        prismoverlay.com/wrapped
+                    </Link>
+                </Typography>
+            </Stack>
+        </Box>
+    );
+};
+
+interface ExportButtonProps {
+    uuid: string;
+    username?: string;
+    year: number;
+    wrappedData: WrappedData & {
+        yearStats: NonNullable<WrappedData["yearStats"]>;
+    };
+}
+
+const ExportButton: React.FC<ExportButtonProps> = ({
+    uuid,
+    username,
+    year,
+    wrappedData,
+}) => {
+    const host = useOffscreenContainer();
+    const captureRef = React.useRef<HTMLDivElement | null>(null);
+    const [isExporting, setIsExporting] = React.useState(false);
+
+    const portal = createPortal(
+        <div ref={captureRef} style={{ padding: 40 }}>
+            <WrappedSummary
+                uuid={uuid}
+                username={username}
+                year={year}
+                wrappedData={wrappedData}
+            />
+        </div>,
+        host,
+    );
+
+    async function handleDownload() {
+        setIsExporting(true);
+        try {
+            // Let React commit + browser layout happen.
+            await new Promise((r) => {
+                requestAnimationFrame(() => {
+                    r(null);
+                });
+            });
+            await new Promise((r) => {
+                requestAnimationFrame(() => {
+                    r(null);
+                });
+            });
+
+            const node = captureRef.current;
+            if (!node) {
+                throw new Error("Export node not found");
+            }
+
+            await captureAndDownload(
+                node,
+                `${username ?? "player"}-${year.toString()}-wrapped.png`,
+            );
+        } catch (error) {
+            captureException(error, {
+                extra: {
+                    message: "Failed to export wrapped summary",
+                    uuid,
+                    year,
+                    username,
+                },
+            });
+            // You could add a toast notification here if you have one
+            console.error("Failed to export wrapped summary:", error);
+        } finally {
+            setIsExporting(false);
+        }
+    }
+
+    const handleDownloadClick = () => {
+        handleDownload().catch((error: unknown) => {
+            captureException(error, {
+                extra: {
+                    message: "Failed to handle download click",
+                    uuid,
+                    year,
+                    username,
+                },
+            });
+        });
+    };
+
+    return (
+        <>
+            {portal}
+            <Button
+                variant="contained"
+                startIcon={<Download />}
+                onClick={handleDownloadClick}
+                disabled={isExporting}
+                sx={{ mt: 2 }}
+            >
+                {isExporting ? "Exporting..." : "Export Summary"}
+            </Button>
+        </>
+    );
+};
 
 function RouteComponent() {
     const { uuid: rawUUID } = Route.useParams();
@@ -1856,6 +2191,19 @@ function RouteComponent() {
                         </Stack>
                     </Box>
                 </Fade>
+                {wrappedData?.yearStats && (
+                    <Box sx={{ display: "flex", justifyContent: "center" }}>
+                        <ExportButton
+                            uuid={uuid}
+                            username={username}
+                            year={year}
+                            wrappedData={{
+                                ...wrappedData,
+                                yearStats: wrappedData.yearStats,
+                            }}
+                        />
+                    </Box>
+                )}
                 <WrappedStatsContent
                     wrappedData={wrappedData}
                     isLoading={isLoading}
