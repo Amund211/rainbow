@@ -12,6 +12,72 @@ const RouterLinkButton = createLink(Button);
 
 export const Route = createFileRoute("/")({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: "Prism Overlay - Statistics Overlay for Hypixel BedWars",
+            },
+            {
+                name: "description",
+                content:
+                    "The Prism Overlay for Hypixel Bedwars shows the stats of all players in your game and automatically tracks your progress. View your session stats and compare your stats with other players.",
+            },
+            {
+                property: "og:type",
+                content: "website",
+            },
+            {
+                property: "og:url",
+                content: "https://prismoverlay.com",
+            },
+            {
+                property: "og:title",
+                content:
+                    "Prism Overlay - Statistics Overlay for Hypixel BedWars",
+            },
+            {
+                property: "og:description",
+                content:
+                    "The Prism Overlay for Hypixel Bedwars shows the stats of all players in your game and automatically tracks your progress. View your session stats and compare your stats with other players.",
+            },
+            {
+                property: "og:image",
+                content: "https://prismoverlay.com/who.png",
+            },
+            {
+                property: "og:site_name",
+                content: "Prism Overlay",
+            },
+            {
+                property: "twitter:card",
+                content: "summary",
+            },
+            {
+                property: "twitter:url",
+                content: "https://prismoverlay.com",
+            },
+            {
+                property: "twitter:title",
+                content:
+                    "Prism Overlay - Statistics Overlay for Hypixel BedWars",
+            },
+            {
+                property: "twitter:description",
+                content:
+                    "The Prism Overlay for Hypixel Bedwars shows the stats of all players in your game and automatically tracks your progress. View your session stats and compare your stats with other players.",
+            },
+            {
+                property: "twitter:image",
+                content: "https://prismoverlay.com/who.png",
+            },
+        ],
+        links: [
+            {
+                rel: "canonical",
+                href: "https://prismoverlay.com",
+            },
+        ],
+    }),
 });
 
 function RouteComponent() {
@@ -34,11 +100,6 @@ function RouteComponent() {
             alignItems="center"
             gap={2}
         >
-            <meta
-                name="description"
-                content="The Prism Overlay for Hypixel Bedwars shows the stats of all players in your game and automatically tracks your progress. View your session stats and compare your stats with other players."
-            />
-            <link rel="canonical" href="https://prismoverlay.com" />
             <UserSearch
                 onSubmit={(uuid) => {
                     navigate({

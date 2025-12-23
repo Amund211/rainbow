@@ -84,6 +84,94 @@ export const Route = createFileRoute("/wrapped/$uuid")({
     },
     validateSearch: wrappedSearchSchema,
     component: RouteComponent,
+    head: ({ params: { uuid: rawUUID } }) => {
+        const uuid = normalizeUUID(rawUUID);
+        if (!uuid) {
+            return {
+                meta: [
+                    {
+                        title: "Wrapped - Prism Overlay",
+                    },
+                    {
+                        name: "description",
+                        content:
+                            "View a summary of Bed Wars stats for the past year, showcasing achievements, milestones, and highlights.",
+                    },
+                ],
+            };
+        }
+
+        const usernameQueryData = queryClient.getQueryData(
+            getUsernameQueryOptions(uuid).queryKey,
+        );
+        const username =
+            usernameQueryData !== undefined ? usernameQueryData.username : uuid;
+        const title = `${username}'s Wrapped - Prism Overlay`;
+        const description = `View ${username}'s Hypixel Bed Wars Wrapped, showcasing their achievements, milestones, and highlights from the past year.`;
+        const url = `https://prismoverlay.com/wrapped/${uuid}`;
+
+        return {
+            meta: [
+                {
+                    title,
+                },
+                {
+                    name: "description",
+                    content: description,
+                },
+                {
+                    property: "og:type",
+                    content: "website",
+                },
+                {
+                    property: "og:url",
+                    content: url,
+                },
+                {
+                    property: "og:title",
+                    content: title,
+                },
+                {
+                    property: "og:description",
+                    content: description,
+                },
+                {
+                    property: "og:image",
+                    content: "https://prismoverlay.com/who.png",
+                },
+                {
+                    property: "og:site_name",
+                    content: "Prism Overlay",
+                },
+                {
+                    property: "twitter:card",
+                    content: "summary",
+                },
+                {
+                    property: "twitter:url",
+                    content: url,
+                },
+                {
+                    property: "twitter:title",
+                    content: title,
+                },
+                {
+                    property: "twitter:description",
+                    content: description,
+                },
+                {
+                    property: "twitter:image",
+                    content: "https://prismoverlay.com/who.png",
+                },
+            ],
+            links: [
+                {
+                    rel: "canonical",
+                    href: url,
+                },
+            ],
+        };
+    },
 });
 
 interface StatCardProps {
