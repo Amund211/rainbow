@@ -35,7 +35,7 @@ const computeQuotientProgression = (
     gamemode: GamemodeKey,
 ): QuotientProgression | { error: true; reason: string } => {
     const [start, end] = trackingHistory;
-    const currentStats = trackingHistory[trackingHistory.length - 1];
+    const currentStats = end;
     const startDate = start.queriedAt;
     const endDate = trackingEnd;
     const daysElapsed =
