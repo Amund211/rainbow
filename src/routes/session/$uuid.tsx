@@ -1141,14 +1141,7 @@ const StatProgressionCard: React.FC<StatProgressionCardProps> = ({
     }
     const currentStats = trackingHistory[trackingHistory.length - 1];
 
-    const currentDate = trackingInterval.end;
     const now = new Date();
-
-    const currentDateIsToday =
-        now.getFullYear() === currentDate.getFullYear() &&
-        now.getMonth() === currentDate.getMonth() &&
-        now.getDate() === currentDate.getDate();
-    const referenceDate = currentDateIsToday ? now : currentDate;
 
     const progression = computeStatProgression(
         trackingHistory,
