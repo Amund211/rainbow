@@ -44,8 +44,6 @@ const computeQuotientProgression = (
     const startDivisor = getStat(start, gamemode, divisorStat);
     const endDividend = getStat(end, gamemode, dividendStat);
     const endDivisor = getStat(end, gamemode, divisorStat);
-    const currentDividend = getStat(end, gamemode, dividendStat);
-    const currentDivisor = getStat(end, gamemode, divisorStat);
 
     const sessionDividend = endDividend - startDividend;
     const sessionDivisor = endDivisor - startDivisor;
@@ -55,15 +53,13 @@ const computeQuotientProgression = (
             ? sessionDividend
             : sessionDividend / sessionDivisor;
 
-    const currentQuotient =
-        currentDivisor === 0
-            ? currentDividend
-            : currentDividend / currentDivisor;
+    const endQuotient =
+        endDivisor === 0 ? endDividend : endDividend / endDivisor;
 
     const dividendPerDay = sessionDividend / daysElapsed;
     const divisorPerDay = sessionDivisor / daysElapsed;
 
-    if (currentDivisor === 0 && sessionDivisor === 0) {
+    if (endDivisor === 0 && sessionDivisor === 0) {
         // Currently have "infinite" ratio -> ratio is computed as just dividend
         const dividendProgression = computeStatProgression(
             trackingHistory,
@@ -85,19 +81,19 @@ const computeQuotientProgression = (
     }
 
     const noSessionProgress = sessionDividend === 0 && sessionDivisor === 0;
-    // Trend upwards if the session quotient is greater than the current quotient
+    // Trend upwards if the session quotient is greater than the end quotient
     // OR: if no progress was made during the tracking session -> just need somewhere to trend
     const trendingUpward =
-        sessionQuotient >= currentQuotient || noSessionProgress;
+        sessionQuotient >= endQuotient || noSessionProgress;
 
     // TODO: Smaller steps for smaller quotients
     const nextMilestoneValue = trendingUpward
-        ? Math.floor(currentQuotient) + 1
-        : Math.ceil(currentQuotient) - 1;
+        ? Math.floor(endQuotient) + 1
+        : Math.ceil(endQuotient) - 1;
 
     if (
         // Will make no progress since the quotients are equal
-        sessionQuotient === currentQuotient ||
+        sessionQuotient === endQuotient ||
         // No progress is being made on the divisor or the dividend -> No progress on the quotient
         noSessionProgress
     ) {
@@ -105,7 +101,7 @@ const computeQuotientProgression = (
         return {
             stat,
             trackingDataTimeInterval: { start: startDate, end: endDate },
-            currentValue: currentQuotient,
+            currentValue: endQuotient,
             nextMilestoneValue,
             daysUntilMilestone: Infinity,
             // NOTE: Progres per day changes over time
@@ -118,9 +114,9 @@ const computeQuotientProgression = (
     }
 
     // Variables:
-    // k0 = currentDividend
+    // k0 = endDividend
     // k  = dividendPerDay
-    // d0 = currentDivisor
+    // d0 = endDivisor
     // d  = divisorPerDay
     // t  = daysToNextMilestone
     // M  = nextMilestoneValue
@@ -149,7 +145,7 @@ const computeQuotientProgression = (
         return {
             stat,
             trackingDataTimeInterval: { start: startDate, end: endDate },
-            currentValue: currentQuotient,
+            currentValue: endQuotient,
             nextMilestoneValue,
             daysUntilMilestone: Infinity,
             // NOTE: Progres per day changes over time
@@ -164,18 +160,18 @@ const computeQuotientProgression = (
     // t = (Md0 - k0) / (k - Md)
     // NOTE: May be infinite
     const daysUntilMilestone =
-        (nextMilestoneValue * currentDivisor - currentDividend) /
+        (nextMilestoneValue * endDivisor - endDividend) /
         (dividendPerDay - nextMilestoneValue * divisorPerDay);
 
     return {
         stat,
         trackingDataTimeInterval: { start: startDate, end: endDate },
-        currentValue: currentQuotient,
+        currentValue: endQuotient,
         nextMilestoneValue,
         daysUntilMilestone,
         // NOTE: Progres per day changes over time
         progressPerDay:
-            (nextMilestoneValue - currentQuotient) / daysUntilMilestone,
+            (nextMilestoneValue - endQuotient) / daysUntilMilestone,
         sessionQuotient,
         dividendPerDay,
         divisorPerDay,
@@ -214,22 +210,21 @@ export const computeStatProgression = (
         case "stars": {
             const startExp = getStat(start, gamemode, "experience");
             const endExp = getStat(end, gamemode, "experience");
-            const currentExp = getStat(end, gamemode, "experience");
-            const currentStars = getStat(end, gamemode, "stars");
+            const endStars = getStat(end, gamemode, "stars");
 
             const expPerDay = (endExp - startExp) / daysElapsed;
 
             // NOTE: Slightly inaccurate over short distances as it does not account for the different exp requirements for different levels
             const starsPerDay = expPerDay / (PRESTIGE_EXP / 100);
 
-            const nextPrestige = Math.floor(currentStars / 100) + 1;
+            const nextPrestige = Math.floor(endStars / 100) + 1;
             const nextPrestigeExp = nextPrestige * PRESTIGE_EXP;
-            const expToNextPrestige = nextPrestigeExp - currentExp;
+            const expToNextPrestige = nextPrestigeExp - endExp;
             const daysToNextPrestige = expToNextPrestige / expPerDay;
             return {
                 stat,
                 trackingDataTimeInterval: { start: startDate, end: endDate },
-                currentValue: currentStars,
+                currentValue: endStars,
                 nextMilestoneValue: nextPrestige * 100,
                 daysUntilMilestone: daysToNextPrestige,
                 progressPerDay: starsPerDay,
@@ -275,7 +270,6 @@ export const computeStatProgression = (
         case "deaths": {
             const startValue = getStat(start, gamemode, stat);
             const endValue = getStat(end, gamemode, stat);
-            const currentValue = getStat(end, gamemode, stat);
             const increasePerDay = (endValue - startValue) / daysElapsed;
 
             if (increasePerDay === 0) {
@@ -289,21 +283,21 @@ export const computeStatProgression = (
 
             const currentMagniture = Math.pow(
                 10,
-                Math.floor(Math.log10(currentValue)),
+                Math.floor(Math.log10(endValue)),
             );
             // TODO: More meaningful milestones (e.g. 100, 250, 500, 1000, 2500, 5000, 10000, 20000, 30000, ...)
             // TODO: Pick your own milestone
             const nextMilestoneValue =
-                (Math.floor(currentValue / currentMagniture) + 1) *
+                (Math.floor(endValue / currentMagniture) + 1) *
                 currentMagniture;
 
             const daysUntilMilestone =
-                (nextMilestoneValue - currentValue) / increasePerDay;
+                (nextMilestoneValue - endValue) / increasePerDay;
 
             return {
                 stat,
                 trackingDataTimeInterval: { start: startDate, end: endDate },
-                currentValue,
+                currentValue: endValue,
                 nextMilestoneValue,
                 daysUntilMilestone,
                 progressPerDay: increasePerDay,
