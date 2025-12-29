@@ -4,7 +4,6 @@ import {
     computeStatProgression,
     ERR_NO_DATA,
     ERR_TRACKING_STARTED,
-    type StatProgression,
 } from "./progression.ts";
 import type { PlayerDataPIT, StatsPIT } from "#queries/playerdata.ts";
 import type { GamemodeKey, StatKey } from "./keys.ts";
@@ -187,9 +186,10 @@ function buildStatsForLinearStat(
 // Test Cases
 // ============================================================================
 
-const LINEAR_STATS: Array<
-    Exclude<StatKey, "stars" | "fkdr" | "kdr" | "index" | "winstreak">
-> = [
+const LINEAR_STATS: Exclude<
+    StatKey,
+    "stars" | "fkdr" | "kdr" | "index" | "winstreak"
+>[] = [
     "experience",
     "gamesPlayed",
     "wins",
@@ -202,7 +202,7 @@ const LINEAR_STATS: Array<
     "deaths",
 ];
 
-const QUOTIENT_STATS: Array<"fkdr" | "kdr"> = ["fkdr", "kdr"];
+const QUOTIENT_STATS: ("fkdr" | "kdr")[] = ["fkdr", "kdr"];
 
 const GAMEMODES: GamemodeKey[] = [
     "solo",
@@ -415,7 +415,7 @@ await test("computeStatProgression - linear stats", async (t) => {
                         );
                     }
 
-                    const progression = result as StatProgression;
+                    const progression = result;
                     assert.strictEqual(progression.stat, stat);
                     assert.strictEqual(progression.trendingUpward, true);
 
@@ -435,7 +435,8 @@ await test("computeStatProgression - linear stats", async (t) => {
                     );
 
                     assert.ok(
-                        progression.nextMilestoneValue > progression.currentValue,
+                        progression.nextMilestoneValue >
+                            progression.currentValue,
                     );
                     assert.ok(progression.daysUntilMilestone > 0);
                     assert.ok(progression.daysUntilMilestone < Infinity);
@@ -569,7 +570,8 @@ await test("computeStatProgression - quotient stats (fkdr, kdr)", async (t) => {
 
                     const currentRatio = 450 / 105;
                     assert.ok(
-                        Math.abs(progression.currentValue - currentRatio) < 0.01,
+                        Math.abs(progression.currentValue - currentRatio) <
+                            0.01,
                     );
 
                     if ("sessionQuotient" in progression) {
@@ -837,7 +839,10 @@ await test("computeStatProgression - quotient stats (fkdr, kdr)", async (t) => {
 
                     const progression = result;
                     assert.strictEqual(progression.stat, stat);
-                    assert.strictEqual(progression.daysUntilMilestone, Infinity);
+                    assert.strictEqual(
+                        progression.daysUntilMilestone,
+                        Infinity,
+                    );
                     assert.strictEqual(progression.progressPerDay, 0);
                 });
             }
@@ -918,7 +923,8 @@ await test("computeStatProgression - quotient stats (fkdr, kdr)", async (t) => {
 
                     const currentRatio = 610 / 205;
                     assert.ok(
-                        Math.abs(progression.currentValue - currentRatio) < 0.01,
+                        Math.abs(progression.currentValue - currentRatio) <
+                            0.01,
                     );
 
                     if ("sessionQuotient" in progression) {
@@ -1011,7 +1017,8 @@ await test("computeStatProgression - quotient stats (fkdr, kdr)", async (t) => {
 
                     const currentRatio = 260 / 104;
                     assert.ok(
-                        Math.abs(progression.currentValue - currentRatio) < 0.01,
+                        Math.abs(progression.currentValue - currentRatio) <
+                            0.01,
                     );
 
                     if ("sessionQuotient" in progression) {
@@ -1021,7 +1028,10 @@ await test("computeStatProgression - quotient stats (fkdr, kdr)", async (t) => {
                     }
 
                     assert.strictEqual(progression.nextMilestoneValue, 3);
-                    assert.strictEqual(progression.daysUntilMilestone, Infinity);
+                    assert.strictEqual(
+                        progression.daysUntilMilestone,
+                        Infinity,
+                    );
                 });
             }
         });
