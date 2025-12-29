@@ -35,7 +35,6 @@ const computeQuotientProgression = (
     gamemode: GamemodeKey,
 ): QuotientProgression | { error: true; reason: string } => {
     const [start, end] = trackingHistory;
-    const currentStats = end;
     const startDate = start.queriedAt;
     const endDate = trackingEnd;
     const daysElapsed =
@@ -45,8 +44,8 @@ const computeQuotientProgression = (
     const startDivisor = getStat(start, gamemode, divisorStat);
     const endDividend = getStat(end, gamemode, dividendStat);
     const endDivisor = getStat(end, gamemode, divisorStat);
-    const currentDividend = getStat(currentStats, gamemode, dividendStat);
-    const currentDivisor = getStat(currentStats, gamemode, divisorStat);
+    const currentDividend = getStat(end, gamemode, dividendStat);
+    const currentDivisor = getStat(end, gamemode, divisorStat);
 
     const sessionDividend = endDividend - startDividend;
     const sessionDivisor = endDivisor - startDivisor;
@@ -206,7 +205,6 @@ export const computeStatProgression = (
     }
 
     const [start, end] = trackingHistory;
-    const currentStats = end;
     const startDate = start.queriedAt;
     const endDate = trackingEnd;
     const daysElapsed =
@@ -216,8 +214,8 @@ export const computeStatProgression = (
         case "stars": {
             const startExp = getStat(start, gamemode, "experience");
             const endExp = getStat(end, gamemode, "experience");
-            const currentExp = getStat(currentStats, gamemode, "experience");
-            const currentStars = getStat(currentStats, gamemode, "stars");
+            const currentExp = getStat(end, gamemode, "experience");
+            const currentStars = getStat(end, gamemode, "stars");
 
             const expPerDay = (endExp - startExp) / daysElapsed;
 
@@ -277,7 +275,7 @@ export const computeStatProgression = (
         case "deaths": {
             const startValue = getStat(start, gamemode, stat);
             const endValue = getStat(end, gamemode, stat);
-            const currentValue = getStat(currentStats, gamemode, stat);
+            const currentValue = getStat(end, gamemode, stat);
             const increasePerDay = (endValue - startValue) / daysElapsed;
 
             if (increasePerDay === 0) {
