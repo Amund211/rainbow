@@ -14,6 +14,43 @@ import { type GamemodeKey, type StatKey } from "./keys.ts";
 // ============================================================================
 
 /**
+ * Helper function to set a stat value on a StatsBuilder
+ */
+function setStatOnBuilder(
+    builder: StatsBuilder,
+    stat: Exclude<
+        StatKey,
+        "fkdr" | "kdr" | "stars" | "index" | "winstreak" | "experience"
+    >,
+    value: number,
+): StatsBuilder {
+    switch (stat) {
+        case "gamesPlayed":
+            return builder.with_games_played(value);
+        case "wins":
+            return builder.with_wins(value);
+        case "losses":
+            return builder.with_losses(value);
+        case "bedsBroken":
+            return builder.with_beds_broken(value);
+        case "bedsLost":
+            return builder.with_beds_lost(value);
+        case "finalKills":
+            return builder.with_final_kills(value);
+        case "finalDeaths":
+            return builder.with_final_deaths(value);
+        case "kills":
+            return builder.with_kills(value);
+        case "deaths":
+            return builder.with_deaths(value);
+        default: {
+            const exhaustiveCheck: never = stat;
+            throw new Error(`Unknown stat: ${String(exhaustiveCheck)}`);
+        }
+    }
+}
+
+/**
  * Fluent interface builder for StatsPIT instances
  */
 class StatsBuilder {
@@ -188,7 +225,6 @@ await test("computeStatProgression - error cases", async (t) => {
             "overall",
         );
         assert.strictEqual(result.error, true);
-        assert.ok(result.error);
         assert.strictEqual(result.reason, ERR_NO_DATA);
     });
 
@@ -201,7 +237,6 @@ await test("computeStatProgression - error cases", async (t) => {
             "overall",
         );
         assert.strictEqual(result.error, true);
-        assert.ok(result.error);
         assert.strictEqual(result.reason, ERR_NO_DATA);
     });
 
@@ -217,7 +252,6 @@ await test("computeStatProgression - error cases", async (t) => {
             "overall",
         );
         assert.strictEqual(result.error, true);
-        assert.ok(result.error);
         assert.strictEqual(result.reason, ERR_TRACKING_STARTED);
     });
 
@@ -234,7 +268,6 @@ await test("computeStatProgression - error cases", async (t) => {
             "overall",
         );
         assert.strictEqual(result.error, true);
-        assert.ok(result.error);
         assert.strictEqual(result.reason, "No current stats");
     });
 
@@ -259,7 +292,6 @@ await test("computeStatProgression - error cases", async (t) => {
             "overall",
         );
         assert.strictEqual(result.error, true);
-        assert.ok(result.error);
         assert.strictEqual(result.reason, "No progress");
     });
 });
@@ -315,27 +347,21 @@ await test("computeStatProgression - linear stats", async (t) => {
                             endStats = new StatsBuilder().build();
                             currentStats = new StatsBuilder().build();
                         } else {
-                            const builder = new StatsBuilder();
-                            const statMethod =
-                                `with_${stat.replace(/([A-Z])/g, "_$1").toLowerCase()}` as keyof StatsBuilder;
-
-                            startStats = (
-                                builder[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(100).build();
-
-                            endStats = (
-                                new StatsBuilder()[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(200).build(); // +100 in 10 days = 10/day
-
-                            currentStats = (
-                                new StatsBuilder()[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(250).build(); // +50 in 5 days
+                            startStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                100,
+                            ).build();
+                            endStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                200,
+                            ).build(); // +100 in 10 days = 10/day
+                            currentStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                250,
+                            ).build(); // +50 in 5 days
                         }
 
                         const history: History = [
@@ -421,27 +447,21 @@ await test("computeStatProgression - linear stats", async (t) => {
                             endStats = new StatsBuilder().build();
                             currentStats = new StatsBuilder().build();
                         } else {
-                            const builder = new StatsBuilder();
-                            const statMethod =
-                                `with_${stat.replace(/([A-Z])/g, "_$1").toLowerCase()}` as keyof StatsBuilder;
-
-                            startStats = (
-                                builder[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(0).build();
-
-                            endStats = (
-                                new StatsBuilder()[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(100).build();
-
-                            currentStats = (
-                                new StatsBuilder()[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(150).build();
+                            startStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                0,
+                            ).build();
+                            endStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                100,
+                            ).build();
+                            currentStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                150,
+                            ).build();
                         }
 
                         const history: History = [
@@ -510,27 +530,21 @@ await test("computeStatProgression - linear stats", async (t) => {
                             endStats = new StatsBuilder().build();
                             currentStats = new StatsBuilder().build();
                         } else {
-                            const builder = new StatsBuilder();
-                            const statMethod =
-                                `with_${stat.replace(/([A-Z])/g, "_$1").toLowerCase()}` as keyof StatsBuilder;
-
-                            startStats = (
-                                builder[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(100000).build();
-
-                            endStats = (
-                                new StatsBuilder()[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(110000).build();
-
-                            currentStats = (
-                                new StatsBuilder()[statMethod] as (
-                                    val: number,
-                                ) => StatsBuilder
-                            )(115000).build();
+                            startStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                100000,
+                            ).build();
+                            endStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                110000,
+                            ).build();
+                            currentStats = setStatOnBuilder(
+                                new StatsBuilder(),
+                                stat,
+                                115000,
+                            ).build();
                         }
 
                         const history: History = [
