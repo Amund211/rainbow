@@ -26,23 +26,23 @@ function setStatOnBuilder(
 ): StatsBuilder {
     switch (stat) {
         case "gamesPlayed":
-            return builder.with_games_played(value);
+            return builder.withGamesPlayed(value);
         case "wins":
-            return builder.with_wins(value);
+            return builder.withWins(value);
         case "losses":
-            return builder.with_losses(value);
+            return builder.withLosses(value);
         case "bedsBroken":
-            return builder.with_beds_broken(value);
+            return builder.withBedsBroken(value);
         case "bedsLost":
-            return builder.with_beds_lost(value);
+            return builder.withBedsLost(value);
         case "finalKills":
-            return builder.with_final_kills(value);
+            return builder.withFinalKills(value);
         case "finalDeaths":
-            return builder.with_final_deaths(value);
+            return builder.withFinalDeaths(value);
         case "kills":
-            return builder.with_kills(value);
+            return builder.withKills(value);
         case "deaths":
-            return builder.with_deaths(value);
+            return builder.withDeaths(value);
         default: {
             const exhaustiveCheck: never = stat;
             throw new Error(`Unknown stat: ${String(exhaustiveCheck)}`);
@@ -71,52 +71,52 @@ class StatsBuilder {
         };
     }
 
-    with_winstreak(winstreak: number | null): this {
+    withWinstreak(winstreak: number | null): this {
         this.stats.winstreak = winstreak;
         return this;
     }
 
-    with_games_played(gamesPlayed: number): this {
+    withGamesPlayed(gamesPlayed: number): this {
         this.stats.gamesPlayed = gamesPlayed;
         return this;
     }
 
-    with_wins(wins: number): this {
+    withWins(wins: number): this {
         this.stats.wins = wins;
         return this;
     }
 
-    with_losses(losses: number): this {
+    withLosses(losses: number): this {
         this.stats.losses = losses;
         return this;
     }
 
-    with_beds_broken(bedsBroken: number): this {
+    withBedsBroken(bedsBroken: number): this {
         this.stats.bedsBroken = bedsBroken;
         return this;
     }
 
-    with_beds_lost(bedsLost: number): this {
+    withBedsLost(bedsLost: number): this {
         this.stats.bedsLost = bedsLost;
         return this;
     }
 
-    with_final_kills(finalKills: number): this {
+    withFinalKills(finalKills: number): this {
         this.stats.finalKills = finalKills;
         return this;
     }
 
-    with_final_deaths(finalDeaths: number): this {
+    withFinalDeaths(finalDeaths: number): this {
         this.stats.finalDeaths = finalDeaths;
         return this;
     }
 
-    with_kills(kills: number): this {
+    withKills(kills: number): this {
         this.stats.kills = kills;
         return this;
     }
 
-    with_deaths(deaths: number): this {
+    withDeaths(deaths: number): this {
         this.stats.deaths = deaths;
         return this;
     }
@@ -159,37 +159,37 @@ class PlayerDataBuilder {
         };
     }
 
-    with_experience(experience: number): this {
+    withExperience(experience: number): this {
         this.player.experience = experience;
         return this;
     }
 
-    with_solo(stats: StatsPIT): this {
+    withSolo(stats: StatsPIT): this {
         this.player.solo = { ...stats };
         return this;
     }
 
-    with_doubles(stats: StatsPIT): this {
+    withDoubles(stats: StatsPIT): this {
         this.player.doubles = { ...stats };
         return this;
     }
 
-    with_threes(stats: StatsPIT): this {
+    withThrees(stats: StatsPIT): this {
         this.player.threes = { ...stats };
         return this;
     }
 
-    with_fours(stats: StatsPIT): this {
+    withFours(stats: StatsPIT): this {
         this.player.fours = { ...stats };
         return this;
     }
 
-    with_overall(stats: StatsPIT): this {
+    withOverall(stats: StatsPIT): this {
         this.player.overall = { ...stats };
         return this;
     }
 
-    with_gamemode_stats(gamemode: GamemodeKey, stats: StatsPIT): this {
+    withGamemodeStats(gamemode: GamemodeKey, stats: StatsPIT): this {
         this.player[gamemode] = { ...stats };
         return this;
     }
@@ -272,17 +272,15 @@ await test("computeStatProgression - error cases", async (t) => {
     });
 
     await t.test("should return error for no progress", () => {
-        const stats = new StatsBuilder().with_wins(100).build();
+        const stats = new StatsBuilder().withWins(100).build();
         const history: History = [
             new PlayerDataBuilder(testUuid, startDate)
-                .with_overall(stats)
+                .withOverall(stats)
                 .build(),
-            new PlayerDataBuilder(testUuid, endDate)
-                .with_overall(stats)
-                .build(),
+            new PlayerDataBuilder(testUuid, endDate).withOverall(stats).build(),
         ];
         const current = new PlayerDataBuilder(testUuid, endDate)
-            .with_overall(stats)
+            .withOverall(stats)
             .build();
         const result = computeStatProgression(
             history,
@@ -366,12 +364,12 @@ await test("computeStatProgression - linear stats", async (t) => {
 
                         const history: History = [
                             new PlayerDataBuilder(testUuid, startDate)
-                                .with_experience(startExp)
-                                .with_gamemode_stats(gamemode, startStats)
+                                .withExperience(startExp)
+                                .withGamemodeStats(gamemode, startStats)
                                 .build(),
                             new PlayerDataBuilder(testUuid, endDate)
-                                .with_experience(endExp)
-                                .with_gamemode_stats(gamemode, endStats)
+                                .withExperience(endExp)
+                                .withGamemodeStats(gamemode, endStats)
                                 .build(),
                         ];
 
@@ -379,8 +377,8 @@ await test("computeStatProgression - linear stats", async (t) => {
                             testUuid,
                             currentDate,
                         )
-                            .with_experience(currentExp)
-                            .with_gamemode_stats(gamemode, currentStats)
+                            .withExperience(currentExp)
+                            .withGamemodeStats(gamemode, currentStats)
                             .build();
 
                         const result = computeStatProgression(
@@ -466,12 +464,12 @@ await test("computeStatProgression - linear stats", async (t) => {
 
                         const history: History = [
                             new PlayerDataBuilder(testUuid, startDate)
-                                .with_experience(startExp)
-                                .with_gamemode_stats(gamemode, startStats)
+                                .withExperience(startExp)
+                                .withGamemodeStats(gamemode, startStats)
                                 .build(),
                             new PlayerDataBuilder(testUuid, endDate)
-                                .with_experience(endExp)
-                                .with_gamemode_stats(gamemode, endStats)
+                                .withExperience(endExp)
+                                .withGamemodeStats(gamemode, endStats)
                                 .build(),
                         ];
 
@@ -479,8 +477,8 @@ await test("computeStatProgression - linear stats", async (t) => {
                             testUuid,
                             currentDate,
                         )
-                            .with_experience(currentExp)
-                            .with_gamemode_stats(gamemode, currentStats)
+                            .withExperience(currentExp)
+                            .withGamemodeStats(gamemode, currentStats)
                             .build();
 
                         const result = computeStatProgression(
@@ -549,12 +547,12 @@ await test("computeStatProgression - linear stats", async (t) => {
 
                         const history: History = [
                             new PlayerDataBuilder(testUuid, startDate)
-                                .with_experience(startExp)
-                                .with_gamemode_stats(gamemode, startStats)
+                                .withExperience(startExp)
+                                .withGamemodeStats(gamemode, startStats)
                                 .build(),
                             new PlayerDataBuilder(testUuid, endDate)
-                                .with_experience(endExp)
-                                .with_gamemode_stats(gamemode, endStats)
+                                .withExperience(endExp)
+                                .withGamemodeStats(gamemode, endStats)
                                 .build(),
                         ];
 
@@ -562,8 +560,8 @@ await test("computeStatProgression - linear stats", async (t) => {
                             testUuid,
                             currentDate,
                         )
-                            .with_experience(currentExp)
-                            .with_gamemode_stats(gamemode, currentStats)
+                            .withExperience(currentExp)
+                            .withGamemodeStats(gamemode, currentStats)
                             .build();
 
                         const result = computeStatProgression(
@@ -629,32 +627,27 @@ await test("computeStatProgression - quotient stats", async (t) => {
                         // Current: 250/95 = ~2.63
                         if (isDividendFinal) {
                             startBuilder
-                                .with_final_kills(100)
-                                .with_final_deaths(50);
-                            endBuilder
-                                .with_final_kills(200)
-                                .with_final_deaths(80);
+                                .withFinalKills(100)
+                                .withFinalDeaths(50);
+                            endBuilder.withFinalKills(200).withFinalDeaths(80);
                             currentBuilder
-                                .with_final_kills(250)
-                                .with_final_deaths(95);
+                                .withFinalKills(250)
+                                .withFinalDeaths(95);
                         } else {
-                            startBuilder.with_kills(100).with_deaths(50);
-                            endBuilder.with_kills(200).with_deaths(80);
-                            currentBuilder.with_kills(250).with_deaths(95);
+                            startBuilder.withKills(100).withDeaths(50);
+                            endBuilder.withKills(200).withDeaths(80);
+                            currentBuilder.withKills(250).withDeaths(95);
                         }
 
                         const history: History = [
                             new PlayerDataBuilder(testUuid, startDate)
-                                .with_gamemode_stats(
+                                .withGamemodeStats(
                                     gamemode,
                                     startBuilder.build(),
                                 )
                                 .build(),
                             new PlayerDataBuilder(testUuid, endDate)
-                                .with_gamemode_stats(
-                                    gamemode,
-                                    endBuilder.build(),
-                                )
+                                .withGamemodeStats(gamemode, endBuilder.build())
                                 .build(),
                         ];
 
@@ -662,10 +655,7 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             testUuid,
                             currentDate,
                         )
-                            .with_gamemode_stats(
-                                gamemode,
-                                currentBuilder.build(),
-                            )
+                            .withGamemodeStats(gamemode, currentBuilder.build())
                             .build();
 
                         const result = computeStatProgression(
@@ -717,32 +707,27 @@ await test("computeStatProgression - quotient stats", async (t) => {
                         // Current: 175/125 = 1.4
                         if (isDividendFinal) {
                             startBuilder
-                                .with_final_kills(100)
-                                .with_final_deaths(50);
-                            endBuilder
-                                .with_final_kills(150)
-                                .with_final_deaths(100);
+                                .withFinalKills(100)
+                                .withFinalDeaths(50);
+                            endBuilder.withFinalKills(150).withFinalDeaths(100);
                             currentBuilder
-                                .with_final_kills(175)
-                                .with_final_deaths(125);
+                                .withFinalKills(175)
+                                .withFinalDeaths(125);
                         } else {
-                            startBuilder.with_kills(100).with_deaths(50);
-                            endBuilder.with_kills(150).with_deaths(100);
-                            currentBuilder.with_kills(175).with_deaths(125);
+                            startBuilder.withKills(100).withDeaths(50);
+                            endBuilder.withKills(150).withDeaths(100);
+                            currentBuilder.withKills(175).withDeaths(125);
                         }
 
                         const history: History = [
                             new PlayerDataBuilder(testUuid, startDate)
-                                .with_gamemode_stats(
+                                .withGamemodeStats(
                                     gamemode,
                                     startBuilder.build(),
                                 )
                                 .build(),
                             new PlayerDataBuilder(testUuid, endDate)
-                                .with_gamemode_stats(
-                                    gamemode,
-                                    endBuilder.build(),
-                                )
+                                .withGamemodeStats(gamemode, endBuilder.build())
                                 .build(),
                         ];
 
@@ -750,10 +735,7 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             testUuid,
                             currentDate,
                         )
-                            .with_gamemode_stats(
-                                gamemode,
-                                currentBuilder.build(),
-                            )
+                            .withGamemodeStats(gamemode, currentBuilder.build())
                             .build();
 
                         const result = computeStatProgression(
@@ -794,29 +776,29 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             // Zero divisor throughout
                             if (isDividendFinal) {
                                 startBuilder
-                                    .with_final_kills(100)
-                                    .with_final_deaths(0);
+                                    .withFinalKills(100)
+                                    .withFinalDeaths(0);
                                 endBuilder
-                                    .with_final_kills(200)
-                                    .with_final_deaths(0);
+                                    .withFinalKills(200)
+                                    .withFinalDeaths(0);
                                 currentBuilder
-                                    .with_final_kills(250)
-                                    .with_final_deaths(0);
+                                    .withFinalKills(250)
+                                    .withFinalDeaths(0);
                             } else {
-                                startBuilder.with_kills(100).with_deaths(0);
-                                endBuilder.with_kills(200).with_deaths(0);
-                                currentBuilder.with_kills(250).with_deaths(0);
+                                startBuilder.withKills(100).withDeaths(0);
+                                endBuilder.withKills(200).withDeaths(0);
+                                currentBuilder.withKills(250).withDeaths(0);
                             }
 
                             const history: History = [
                                 new PlayerDataBuilder(testUuid, startDate)
-                                    .with_gamemode_stats(
+                                    .withGamemodeStats(
                                         gamemode,
                                         startBuilder.build(),
                                     )
                                     .build(),
                                 new PlayerDataBuilder(testUuid, endDate)
-                                    .with_gamemode_stats(
+                                    .withGamemodeStats(
                                         gamemode,
                                         endBuilder.build(),
                                     )
@@ -827,7 +809,7 @@ await test("computeStatProgression - quotient stats", async (t) => {
                                 testUuid,
                                 currentDate,
                             )
-                                .with_gamemode_stats(
+                                .withGamemodeStats(
                                     gamemode,
                                     currentBuilder.build(),
                                 )
@@ -877,29 +859,29 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             // Maintain ratio of 2.0 throughout
                             if (isDividendFinal) {
                                 startBuilder
-                                    .with_final_kills(100)
-                                    .with_final_deaths(50);
+                                    .withFinalKills(100)
+                                    .withFinalDeaths(50);
                                 endBuilder
-                                    .with_final_kills(200)
-                                    .with_final_deaths(100);
+                                    .withFinalKills(200)
+                                    .withFinalDeaths(100);
                                 currentBuilder
-                                    .with_final_kills(250)
-                                    .with_final_deaths(125);
+                                    .withFinalKills(250)
+                                    .withFinalDeaths(125);
                             } else {
-                                startBuilder.with_kills(100).with_deaths(50);
-                                endBuilder.with_kills(200).with_deaths(100);
-                                currentBuilder.with_kills(250).with_deaths(125);
+                                startBuilder.withKills(100).withDeaths(50);
+                                endBuilder.withKills(200).withDeaths(100);
+                                currentBuilder.withKills(250).withDeaths(125);
                             }
 
                             const history: History = [
                                 new PlayerDataBuilder(testUuid, startDate)
-                                    .with_gamemode_stats(
+                                    .withGamemodeStats(
                                         gamemode,
                                         startBuilder.build(),
                                     )
                                     .build(),
                                 new PlayerDataBuilder(testUuid, endDate)
-                                    .with_gamemode_stats(
+                                    .withGamemodeStats(
                                         gamemode,
                                         endBuilder.build(),
                                     )
@@ -910,7 +892,7 @@ await test("computeStatProgression - quotient stats", async (t) => {
                                 testUuid,
                                 currentDate,
                             )
-                                .with_gamemode_stats(
+                                .withGamemodeStats(
                                     gamemode,
                                     currentBuilder.build(),
                                 )
@@ -960,31 +942,31 @@ await test("computeStatProgression - quotient stats", async (t) => {
                         // Next milestone would be 3, but session quotient is 2.0
                         if (isDividendFinal) {
                             startBuilder
-                                .with_final_kills(100)
-                                .with_final_deaths(50);
+                                .withFinalKills(100)
+                                .withFinalDeaths(50);
                             endBuilder
-                                .with_final_kills(200)
-                                .with_final_deaths(100);
+                                .withFinalKills(200)
+                                .withFinalDeaths(100);
                             currentBuilder
-                                .with_final_kills(200)
-                                .with_final_deaths(100);
+                                .withFinalKills(200)
+                                .withFinalDeaths(100);
                         } else {
-                            startBuilder.with_kills(100).with_deaths(50);
-                            endBuilder.with_kills(200).with_deaths(100);
-                            currentBuilder.with_kills(200).with_deaths(100);
+                            startBuilder.withKills(100).withDeaths(50);
+                            endBuilder.withKills(200).withDeaths(100);
+                            currentBuilder.withKills(200).withDeaths(100);
                         }
 
                         const history: History = [
-                            new PlayerDataBuilder(testUuid, startDate).with_gamemode_stats(gamemode, startBuilder.build())
+                            new PlayerDataBuilder(testUuid, startDate).withGamemodeStats(gamemode, startBuilder.build())
                                 .build(),
-                            new PlayerDataBuilder(testUuid, endDate).with_gamemode_stats(gamemode, endBuilder.build())
+                            new PlayerDataBuilder(testUuid, endDate).withGamemodeStats(gamemode, endBuilder.build())
                                 .build(),
                         ];
 
                         const current = new PlayerDataBuilder(
                             testUuid,
                             currentDate,
-                        ).with_gamemode_stats(gamemode, currentBuilder.build())
+                        ).withGamemodeStats(gamemode, currentBuilder.build())
                             .build();
 
                         const result = computeStatProgression(
@@ -1034,15 +1016,15 @@ await test("computeStatProgression - stars stat", async (t) => {
                 // Start at 500 exp (1 star), gain 5000 exp in 10 days
                 const history: History = [
                     new PlayerDataBuilder(testUuid, startDate)
-                        .with_experience(500)
+                        .withExperience(500)
                         .build(),
                     new PlayerDataBuilder(testUuid, endDate)
-                        .with_experience(5500)
+                        .withExperience(5500)
                         .build(),
                 ];
 
                 const current = new PlayerDataBuilder(testUuid, currentDate)
-                    .with_experience(8000)
+                    .withExperience(8000)
                     .build();
 
                 const result = computeStatProgression(
@@ -1084,15 +1066,15 @@ await test("computeStatProgression - stars stat", async (t) => {
                 // High level: around 1000 stars
                 const history: History = [
                     new PlayerDataBuilder(testUuid, startDate)
-                        .with_experience(4870000)
+                        .withExperience(4870000)
                         .build(),
                     new PlayerDataBuilder(testUuid, endDate)
-                        .with_experience(4920000)
+                        .withExperience(4920000)
                         .build(),
                 ];
 
                 const current = new PlayerDataBuilder(testUuid, currentDate)
-                    .with_experience(4945000)
+                    .withExperience(4945000)
                     .build();
 
                 const result = computeStatProgression(
