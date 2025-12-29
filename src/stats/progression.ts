@@ -38,7 +38,7 @@ const computeQuotientProgression = (
 ): QuotientProgression | { error: true; reason: string } => {
     const [start, end] = trackingHistory;
     const startDate = start.queriedAt;
-    const endDate = trackingEnd;
+    const endDate = end.queriedAt;
     const daysElapsed =
         (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000);
 
@@ -90,8 +90,11 @@ const computeQuotientProgression = (
     const noSessionProgress = sessionDividend === 0 && sessionDivisor === 0;
     // Trend upwards if the session quotient is greater than the current quotient
     // OR: if no progress was made during the tracking session -> just need somewhere to trend
+    // OR: if the divisor didn't change during the session (meaning no new deaths, so FKDR is maintained or increased)
     const trendingUpward =
-        sessionQuotient >= currentQuotient || noSessionProgress;
+        sessionQuotient >= currentQuotient ||
+        noSessionProgress ||
+        (sessionDivisor === 0 && sessionDividend >= 0);
 
     // TODO: Smaller steps for smaller quotients
     const nextMilestoneValue = trendingUpward
@@ -214,7 +217,7 @@ export const computeStatProgression = (
 
     const [start, end] = trackingHistory;
     const startDate = start.queriedAt;
-    const endDate = trackingEnd;
+    const endDate = end.queriedAt;
     const daysElapsed =
         (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000);
 

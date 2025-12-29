@@ -1204,8 +1204,11 @@ const StatProgressionCard: React.FC<StatProgressionCardProps> = ({
         );
     }
 
+    // The progression calculation uses currentStats.queriedAt as the reference point
+    // for when the milestone will be reached, so we should use that same reference
+    // when displaying the projected date
     const projectedMilestoneDate = new Date(
-        referenceDate.getTime() +
+        currentStats.queriedAt.getTime() +
             progression.daysUntilMilestone * 24 * 60 * 60 * 1000,
     );
 
