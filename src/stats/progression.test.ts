@@ -156,64 +156,79 @@ await test("computeStatProgression - error cases", async (t) => {
     const startDate = new Date("2024-01-01T00:00:00Z");
     const endDate = new Date("2024-01-02T00:00:00Z");
 
-    await t.test("should return error for undefined history", () => {
-        const result = computeStatProgression(
-            undefined,
-            endDate,
-            "wins",
-            "overall",
-        );
-        assert.deepStrictEqual(result, {
-            error: true,
-            reason: ERR_NO_DATA,
-        });
-    });
-
-    await t.test("should return error for empty history", () => {
-        const result = computeStatProgression([], endDate, "wins", "overall");
-        assert.deepStrictEqual(result, {
-            error: true,
-            reason: ERR_NO_DATA,
-        });
-    });
-
-    await t.test("should return error for single history point", () => {
-        const history: History = [
-            new PlayerDataBuilder(TEST_UUID, startDate).build(),
-        ];
-        const result = computeStatProgression(
-            history,
-            endDate,
-            "wins",
-            "overall",
-        );
-        assert.deepStrictEqual(result, {
-            error: true,
+    const cases: {
+        name: string;
+        history: History | undefined;
+        reason: string;
+    }[] = [
+        { name: "undefined history", history: undefined, reason: ERR_NO_DATA },
+        { name: "empty history", history: [], reason: ERR_NO_DATA },
+        {
+            name: "one element history",
+            history: [new PlayerDataBuilder(TEST_UUID, startDate).build()],
             reason: ERR_TRACKING_STARTED,
-        });
-    });
-
-    await t.test("should return error for no progress", () => {
-        const stats = new StatsBuilder().withStat("wins", 100).build();
-        const history: History = [
-            new PlayerDataBuilder(TEST_UUID, startDate)
-                .withGamemodeStats("overall", stats)
-                .build(),
-            new PlayerDataBuilder(TEST_UUID, endDate)
-                .withGamemodeStats("overall", stats)
-                .build(),
-        ];
-        const result = computeStatProgression(
-            history,
-            endDate,
-            "wins",
-            "overall",
-        );
-        assert.deepStrictEqual(result, {
-            error: true,
+        },
+        {
+            name: "no progress",
+            history: [
+                new PlayerDataBuilder(TEST_UUID, startDate)
+                    .withGamemodeStats(
+                        "overall",
+                        new StatsBuilder().withStat("wins", 100).build(),
+                    )
+                    .build(),
+                new PlayerDataBuilder(TEST_UUID, endDate)
+                    .withGamemodeStats(
+                        "overall",
+                        new StatsBuilder().withStat("wins", 100).build(),
+                    )
+                    .build(),
+            ],
             reason: "No progress",
+        },
+        {
+            name: "three element history",
+            history: [
+                new PlayerDataBuilder(TEST_UUID, startDate)
+                    .withGamemodeStats(
+                        "overall",
+                        new StatsBuilder().withStat("wins", 100).build(),
+                    )
+                    .build(),
+                new PlayerDataBuilder(
+                    TEST_UUID,
+                    new Date("2024-01-01T12:00:00Z"),
+                )
+                    .withGamemodeStats(
+                        "overall",
+                        new StatsBuilder().withStat("wins", 150).build(),
+                    )
+                    .build(),
+                new PlayerDataBuilder(TEST_UUID, endDate)
+                    .withGamemodeStats(
+                        "overall",
+                        new StatsBuilder().withStat("wins", 200).build(),
+                    )
+                    .build(),
+            ],
+            reason: "Expected at most 2 data points",
+        },
+    ];
+
+    for (const c of cases) {
+        await t.test(`should return error for ${c.name}`, () => {
+            const result = computeStatProgression(
+                c.history,
+                endDate,
+                "wins",
+                "overall",
+            );
+            assert.deepStrictEqual(result, {
+                error: true,
+                reason: c.reason,
+            });
         });
-    });
+    }
 });
 
 await test("computeStatProgression - linear gamemode stats", async (t) => {
