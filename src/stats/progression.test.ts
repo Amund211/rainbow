@@ -11,9 +11,6 @@ import { ALL_GAMEMODE_KEYS, type GamemodeKey, type StatKey } from "./keys.ts";
 
 const TEST_UUID = "0123e456-7890-1234-5678-90abcdef1234";
 
-// Tolerance for floating-point comparisons in quotient stats (fkdr, kdr)
-const QUOTIENT_TOLERANCE = 0.01;
-
 class StatsBuilder {
     private stats: StatsPIT;
 
@@ -505,7 +502,6 @@ await test("computeStatProgression - quotient stats", async (t) => {
                 const divisorStat = getDivisorStat(stat);
 
                 await t.test(`stat: ${stat}`, async (t) => {
-                    // Basic case: improving quotient
                     await t.test("basic - improving quotient", () => {
                         const startDate = new Date("2024-01-01T00:00:00Z");
                         const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
@@ -513,13 +509,13 @@ await test("computeStatProgression - quotient stats", async (t) => {
                         const endBuilder = new StatsBuilder();
 
                         // Start: 100/50 = 2.0
-                        // End: 200/80 = 2.5 (improving)
+                        // End: 200/75 = 2.66... (improving)
                         startBuilder
                             .withStat(dividendStat, 100)
                             .withStat(divisorStat, 50);
                         endBuilder
                             .withStat(dividendStat, 200)
-                            .withStat(divisorStat, 80);
+                            .withStat(divisorStat, 75);
 
                         const history: History = [
                             new PlayerDataBuilder(TEST_UUID, startDate)
@@ -546,28 +542,27 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             );
                         }
 
-                        assert.strictEqual(
-                            result.trendingUpward,
-                            true,
-                            "should be trending upward",
-                        );
-                        assert.strictEqual(
-                            Math.abs(result.endValue - 200 / 80) <
-                                QUOTIENT_TOLERANCE,
-                            true,
-                            "end value should be 2.5",
-                        );
-                        if ("sessionQuotient" in result) {
-                            assert.strictEqual(
-                                Math.abs(result.sessionQuotient - 100 / 30) <
-                                    0.01,
-                                true,
-                                "session quotient should be ~3.33",
-                            );
-                        }
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 200 / 75,
+                            sessionQuotient: 100 / 25,
+                            // (Goal - current) / days to reach
+                            // NOTE: This will be higher at first and decrease over time,
+                            // especially if the session quotient is close to the next milestone,
+                            // but this is the current simple way of calculating something sensible here
+                            progressPerDay: (3 - 200 / 75) / 10,
+                            dividendPerDay: 100 / 10,
+                            divisorPerDay: 25 / 10,
+                            nextMilestoneValue: 3,
+                            daysUntilMilestone: 10, // 100 more dividend and 25 more divisor
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
                     });
 
-                    // Basic case: declining quotient
                     await t.test("basic - declining quotient", () => {
                         const startDate = new Date("2024-01-01T00:00:00Z");
                         const endDate = new Date("2024-01-11T00:00:00Z");
@@ -575,13 +570,13 @@ await test("computeStatProgression - quotient stats", async (t) => {
                         const endBuilder = new StatsBuilder();
 
                         // Start: 100/50 = 2.0
-                        // End: 150/100 = 1.5 (declining)
+                        // End: 150/125 = 1.2 (declining)
                         startBuilder
                             .withStat(dividendStat, 100)
                             .withStat(divisorStat, 50);
                         endBuilder
                             .withStat(dividendStat, 150)
-                            .withStat(divisorStat, 100);
+                            .withStat(divisorStat, 125);
 
                         const history: History = [
                             new PlayerDataBuilder(TEST_UUID, startDate)
@@ -608,157 +603,58 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             );
                         }
 
-                        assert.strictEqual(
-                            result.trendingUpward,
-                            false,
-                            "should be trending downward",
-                        );
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 150 / 125,
+                            sessionQuotient: 50 / 75,
+                            // (Goal - current) / days to reach
+                            progressPerDay: (1 - 1.2) / 10,
+                            dividendPerDay: 50 / 10,
+                            divisorPerDay: 75 / 10,
+                            nextMilestoneValue: 1,
+                            daysUntilMilestone: 10, // 50 more dividend and 75 more divisor
+                            trendingUpward: false,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
                     });
 
-                    // Edge case: zero divisor (infinite ratio)
-                    await t.test(
-                        "edge case - zero divisor infinite ratio",
-                        () => {
-                            const startDate = new Date("2024-01-01T00:00:00Z");
-                            const endDate = new Date("2024-01-11T00:00:00Z");
-                            const startBuilder = new StatsBuilder();
-                            const endBuilder = new StatsBuilder();
-
-                            // Zero divisor throughout
-                            startBuilder
-                                .withStat(dividendStat, 100)
-                                .withStat(divisorStat, 0);
-                            endBuilder
-                                .withStat(dividendStat, 200)
-                                .withStat(divisorStat, 0);
-
-                            const history: History = [
-                                new PlayerDataBuilder(TEST_UUID, startDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        startBuilder.build(),
-                                    )
-                                    .build(),
-                                new PlayerDataBuilder(TEST_UUID, endDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        endBuilder.build(),
-                                    )
-                                    .build(),
-                            ];
-
-                            const result = computeStatProgression(
-                                history,
-                                endDate,
-                                stat,
-                                gamemode,
-                            );
-
-                            if (result.error) {
-                                assert.fail(
-                                    `Expected success but got error: ${result.reason}`,
-                                );
-                            }
-
-                            assert.strictEqual(
-                                result.endValue,
-                                200,
-                                "end value should be just the dividend",
-                            );
-                            assert.strictEqual(
-                                result.trendingUpward,
-                                true,
-                                "should be trending upward",
-                            );
-                        },
-                    );
-
-                    // Edge case: same quotient (no progress)
-                    await t.test(
-                        "edge case - same quotient no progress",
-                        () => {
-                            const startDate = new Date("2024-01-01T00:00:00Z");
-                            const endDate = new Date("2024-01-11T00:00:00Z");
-                            const startBuilder = new StatsBuilder();
-                            const endBuilder = new StatsBuilder();
-
-                            // Maintain ratio of 2.0 throughout
-                            startBuilder
-                                .withStat(dividendStat, 100)
-                                .withStat(divisorStat, 50);
-                            endBuilder
-                                .withStat(dividendStat, 200)
-                                .withStat(divisorStat, 100);
-
-                            const history: History = [
-                                new PlayerDataBuilder(TEST_UUID, startDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        startBuilder.build(),
-                                    )
-                                    .build(),
-                                new PlayerDataBuilder(TEST_UUID, endDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        endBuilder.build(),
-                                    )
-                                    .build(),
-                            ];
-
-                            const result = computeStatProgression(
-                                history,
-                                endDate,
-                                stat,
-                                gamemode,
-                            );
-
-                            if (result.error) {
-                                assert.fail(
-                                    `Expected success but got error: ${result.reason}`,
-                                );
-                            }
-
-                            assert.strictEqual(
-                                result.daysUntilMilestone,
-                                Infinity,
-                                "should have infinite days to milestone",
-                            );
-                            assert.strictEqual(
-                                result.progressPerDay,
-                                0,
-                                "should have zero progress per day",
-                            );
-                        },
-                    );
-
-                    // Edge case: milestone out of reach
-                    // TODO: This test fails - the code doesn't handle this case correctly
-                    // when the milestone is exactly equal to the session quotient
-                    /*
-                    await t.test("edge case - milestone out of reach", () => {
+                    await t.test("edge case - zero divisor overall", () => {
+                        // With a zero divisor overall, the quotient is defined as just the dividend
+                        // This means that this is equivalent to a linear stat progression on the dividend stat
                         const startDate = new Date("2024-01-01T00:00:00Z");
                         const endDate = new Date("2024-01-11T00:00:00Z");
                         const startBuilder = new StatsBuilder();
                         const endBuilder = new StatsBuilder();
 
-                        // End: 200/100 = 2.0, Session: 100/50 = 2.0
-                        // Next milestone would be 3, but session quotient is 2.0
+                        // Zero divisor overall (also withing tracking interval)
                         startBuilder
                             .withStat(dividendStat, 100)
-                            .withStat(divisorStat, 50);
+                            .withStat(divisorStat, 0);
                         endBuilder
                             .withStat(dividendStat, 200)
-                            .withStat(divisorStat, 100);
+                            .withStat(divisorStat, 0);
 
                         const history: History = [
-                            new PlayerDataBuilder(TEST_UUID, startDate).withGamemodeStats(gamemode, startBuilder.build())
+                            new PlayerDataBuilder(TEST_UUID, startDate)
+                                .withGamemodeStats(
+                                    gamemode,
+                                    startBuilder.build(),
+                                )
                                 .build(),
-                            new PlayerDataBuilder(TEST_UUID, endDate).withGamemodeStats(gamemode, endBuilder.build())
+                            new PlayerDataBuilder(TEST_UUID, endDate)
+                                .withGamemodeStats(gamemode, endBuilder.build())
                                 .build(),
                         ];
 
-
-                        const result = computeStatProgression(history, endDate, stat, gamemode);
+                        const result = computeStatProgression(
+                            history,
+                            endDate,
+                            stat,
+                            gamemode,
+                        );
 
                         if (result.error) {
                             assert.fail(
@@ -766,13 +662,382 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             );
                         }
 
-                        assert.strictEqual(
-                            result.daysUntilMilestone,
-                            Infinity,
-                            "should have infinite days to milestone",
-                        );
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 200,
+                            sessionQuotient: 100, // Quotient is just dividend when divisor is zero
+                            progressPerDay: 10, // Linear progress of dividend
+                            dividendPerDay: 10,
+                            divisorPerDay: 0,
+                            nextMilestoneValue: 300,
+                            daysUntilMilestone: 10,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
                     });
-                    */
+
+                    await t.test(
+                        "edge case - zero session divisor",
+                        async (t) => {
+                            // NOTE: Milestones are kind of awkward for high quotients
+                            const cases = [
+                                /*
+                                 * TODO: FIXME: This case incorrectly trends downward because
+                                 * the session quotient is "too low". This does not matter as we
+                                 * are doing linear progression due to the constant divisor, and
+                                 * we should always be trending upwards
+                                {
+                                    divisor: 1,
+                                    goal: 201, // 200 -> 201
+                                    daysToReach: 0.1, // 1 dividend => 1/10 days
+                                },
+                                */
+                                {
+                                    divisor: 5,
+                                    goal: 41, // 40 -> 41
+                                    daysToReach: 0.5, // 5 dividend => 5/10 days
+                                },
+                                {
+                                    divisor: 10,
+                                    goal: 21, // 20 -> 21
+                                    daysToReach: 1, // 10 dividend => 10/10 days
+                                },
+                                {
+                                    divisor: 100,
+                                    goal: 3, // 2 -> 3
+                                    daysToReach: 10, // 100 dividend => 100/10 days
+                                },
+                            ];
+                            for (const {
+                                divisor,
+                                goal,
+                                daysToReach,
+                            } of cases) {
+                                await t.test(
+                                    `divisor constant at ${divisor.toString()}`,
+                                    () => {
+                                        // The player did not gain any divisor during the tracking interval
+                                        // The quotient will grow linearly with the dividend, divided by the constant divisor
+                                        const startDate = new Date(
+                                            "2024-01-01T00:00:00Z",
+                                        );
+                                        const endDate = new Date(
+                                            "2024-01-11T00:00:00Z",
+                                        );
+                                        const startBuilder = new StatsBuilder();
+                                        const endBuilder = new StatsBuilder();
+
+                                        startBuilder
+                                            .withStat(dividendStat, 100)
+                                            .withStat(divisorStat, divisor);
+                                        endBuilder
+                                            .withStat(dividendStat, 200)
+                                            .withStat(divisorStat, divisor);
+
+                                        const history: History = [
+                                            new PlayerDataBuilder(
+                                                TEST_UUID,
+                                                startDate,
+                                            )
+                                                .withGamemodeStats(
+                                                    gamemode,
+                                                    startBuilder.build(),
+                                                )
+                                                .build(),
+                                            new PlayerDataBuilder(
+                                                TEST_UUID,
+                                                endDate,
+                                            )
+                                                .withGamemodeStats(
+                                                    gamemode,
+                                                    endBuilder.build(),
+                                                )
+                                                .build(),
+                                        ];
+
+                                        const result = computeStatProgression(
+                                            history,
+                                            endDate,
+                                            stat,
+                                            gamemode,
+                                        );
+
+                                        if (result.error) {
+                                            assert.fail(
+                                                `Expected success but got error: ${result.reason}`,
+                                            );
+                                        }
+
+                                        assert.deepStrictEqual(result, {
+                                            stat,
+                                            endValue: 200 / divisor,
+                                            sessionQuotient: 100, // Quotient is just dividend when divisor is 0
+                                            // (goal - current) / days to reach
+                                            progressPerDay:
+                                                (goal - 200 / divisor) /
+                                                daysToReach,
+                                            dividendPerDay: 10,
+                                            divisorPerDay: 0,
+                                            nextMilestoneValue: goal,
+                                            daysUntilMilestone: daysToReach,
+                                            trendingUpward: true,
+                                            trackingDataTimeInterval: {
+                                                start: startDate,
+                                                end: endDate,
+                                            },
+                                        });
+                                    },
+                                );
+                            }
+                        },
+                    );
+
+                    await t.test(
+                        "edge case - goal quotient equal to session quotient (up)",
+                        () => {
+                            const startDate = new Date("2024-01-01T00:00:00Z");
+                            const endDate = new Date("2024-01-11T00:00:00Z");
+                            const startBuilder = new StatsBuilder();
+                            const endBuilder = new StatsBuilder();
+
+                            startBuilder
+                                .withStat(dividendStat, 0)
+                                .withStat(divisorStat, 5);
+                            endBuilder
+                                .withStat(dividendStat, 10)
+                                .withStat(divisorStat, 10);
+
+                            const history: History = [
+                                new PlayerDataBuilder(TEST_UUID, startDate)
+                                    .withGamemodeStats(
+                                        gamemode,
+                                        startBuilder.build(),
+                                    )
+                                    .build(),
+                                new PlayerDataBuilder(TEST_UUID, endDate)
+                                    .withGamemodeStats(
+                                        gamemode,
+                                        endBuilder.build(),
+                                    )
+                                    .build(),
+                            ];
+
+                            const result = computeStatProgression(
+                                history,
+                                endDate,
+                                stat,
+                                gamemode,
+                            );
+
+                            if (result.error) {
+                                assert.fail(
+                                    `Expected success but got error: ${result.reason}`,
+                                );
+                            }
+
+                            assert.deepStrictEqual(result, {
+                                stat,
+                                endValue: 1,
+                                sessionQuotient: 2,
+                                progressPerDay: 0,
+                                dividendPerDay: 1,
+                                divisorPerDay: 0.5,
+                                nextMilestoneValue: 2,
+                                daysUntilMilestone: Infinity,
+                                trendingUpward: true,
+                                trackingDataTimeInterval: {
+                                    start: startDate,
+                                    end: endDate,
+                                },
+                            });
+                        },
+                    );
+
+                    await t.test(
+                        "edge case - goal quotient equal to session quotient (down)",
+                        () => {
+                            const startDate = new Date("2024-01-01T00:00:00Z");
+                            const endDate = new Date("2024-01-11T00:00:00Z");
+                            const startBuilder = new StatsBuilder();
+                            const endBuilder = new StatsBuilder();
+
+                            startBuilder
+                                .withStat(dividendStat, 5)
+                                .withStat(divisorStat, 0);
+                            endBuilder
+                                .withStat(dividendStat, 10)
+                                .withStat(divisorStat, 5);
+
+                            const history: History = [
+                                new PlayerDataBuilder(TEST_UUID, startDate)
+                                    .withGamemodeStats(
+                                        gamemode,
+                                        startBuilder.build(),
+                                    )
+                                    .build(),
+                                new PlayerDataBuilder(TEST_UUID, endDate)
+                                    .withGamemodeStats(
+                                        gamemode,
+                                        endBuilder.build(),
+                                    )
+                                    .build(),
+                            ];
+
+                            const result = computeStatProgression(
+                                history,
+                                endDate,
+                                stat,
+                                gamemode,
+                            );
+
+                            if (result.error) {
+                                assert.fail(
+                                    `Expected success but got error: ${result.reason}`,
+                                );
+                            }
+
+                            assert.deepStrictEqual(result, {
+                                stat,
+                                endValue: 2,
+                                sessionQuotient: 1,
+                                progressPerDay: 0,
+                                dividendPerDay: 0.5,
+                                divisorPerDay: 0.5,
+                                nextMilestoneValue: 1,
+                                daysUntilMilestone: Infinity,
+                                trendingUpward: false,
+                                trackingDataTimeInterval: {
+                                    start: startDate,
+                                    end: endDate,
+                                },
+                            });
+                        },
+                    );
+
+                    await t.test(
+                        "edge case - goal quotient higher than session quotient (up)",
+                        () => {
+                            const startDate = new Date("2024-01-01T00:00:00Z");
+                            const endDate = new Date("2024-01-11T00:00:00Z");
+                            const startBuilder = new StatsBuilder();
+                            const endBuilder = new StatsBuilder();
+
+                            startBuilder
+                                .withStat(dividendStat, 1)
+                                .withStat(divisorStat, 5);
+                            endBuilder
+                                .withStat(dividendStat, 10)
+                                .withStat(divisorStat, 10);
+
+                            const history: History = [
+                                new PlayerDataBuilder(TEST_UUID, startDate)
+                                    .withGamemodeStats(
+                                        gamemode,
+                                        startBuilder.build(),
+                                    )
+                                    .build(),
+                                new PlayerDataBuilder(TEST_UUID, endDate)
+                                    .withGamemodeStats(
+                                        gamemode,
+                                        endBuilder.build(),
+                                    )
+                                    .build(),
+                            ];
+
+                            const result = computeStatProgression(
+                                history,
+                                endDate,
+                                stat,
+                                gamemode,
+                            );
+
+                            if (result.error) {
+                                assert.fail(
+                                    `Expected success but got error: ${result.reason}`,
+                                );
+                            }
+
+                            assert.deepStrictEqual(result, {
+                                stat,
+                                endValue: 1,
+                                sessionQuotient: 9 / 5,
+                                progressPerDay: 0,
+                                dividendPerDay: 0.9,
+                                divisorPerDay: 0.5,
+                                nextMilestoneValue: 2,
+                                daysUntilMilestone: Infinity,
+                                trendingUpward: true,
+                                trackingDataTimeInterval: {
+                                    start: startDate,
+                                    end: endDate,
+                                },
+                            });
+                        },
+                    );
+
+                    await t.test(
+                        "edge case - goal quotient lower than session quotient (down)",
+                        () => {
+                            const startDate = new Date("2024-01-01T00:00:00Z");
+                            const endDate = new Date("2024-01-11T00:00:00Z");
+                            const startBuilder = new StatsBuilder();
+                            const endBuilder = new StatsBuilder();
+
+                            startBuilder
+                                .withStat(dividendStat, 4)
+                                .withStat(divisorStat, 0);
+                            endBuilder
+                                .withStat(dividendStat, 10)
+                                .withStat(divisorStat, 5);
+
+                            const history: History = [
+                                new PlayerDataBuilder(TEST_UUID, startDate)
+                                    .withGamemodeStats(
+                                        gamemode,
+                                        startBuilder.build(),
+                                    )
+                                    .build(),
+                                new PlayerDataBuilder(TEST_UUID, endDate)
+                                    .withGamemodeStats(
+                                        gamemode,
+                                        endBuilder.build(),
+                                    )
+                                    .build(),
+                            ];
+
+                            const result = computeStatProgression(
+                                history,
+                                endDate,
+                                stat,
+                                gamemode,
+                            );
+
+                            if (result.error) {
+                                assert.fail(
+                                    `Expected success but got error: ${result.reason}`,
+                                );
+                            }
+
+                            assert.deepStrictEqual(result, {
+                                stat,
+                                endValue: 2,
+                                sessionQuotient: 1.2,
+                                progressPerDay: 0,
+                                dividendPerDay: 0.6,
+                                divisorPerDay: 0.5,
+                                nextMilestoneValue: 1,
+                                daysUntilMilestone: Infinity,
+                                trendingUpward: false,
+                                trackingDataTimeInterval: {
+                                    start: startDate,
+                                    end: endDate,
+                                },
+                            });
+                        },
+                    );
                 });
             }
         });
