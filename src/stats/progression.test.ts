@@ -629,7 +629,7 @@ await test("computeStatProgression - quotient stats", async (t) => {
                         const startBuilder = new StatsBuilder();
                         const endBuilder = new StatsBuilder();
 
-                        // Zero divisor overall (also withing tracking interval)
+                        // Zero divisor overall (also within tracking interval)
                         startBuilder
                             .withStat(dividendStat, 100)
                             .withStat(divisorStat, 0);
