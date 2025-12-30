@@ -232,10 +232,8 @@ await test("computeStatProgression - error cases", async (t) => {
 });
 
 await test("computeStatProgression - linear gamemode stats", async (t) => {
-    const linearStats: Exclude<
-        StatKey,
-        "fkdr" | "kdr" | "stars" | "index" | "winstreak" | "experience"
-    >[] = [
+    // Stats that are linear (not fkdr) and gamemode-specific (not stars)
+    const linearGamemodeStats = [
         "gamesPlayed",
         "wins",
         "losses",
@@ -245,13 +243,13 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
         "finalDeaths",
         "kills",
         "deaths",
-    ];
+    ] as const;
 
     const gamemodes = ALL_GAMEMODE_KEYS;
 
     for (const gamemode of gamemodes) {
         await t.test(`gamemode: ${gamemode}`, async (t) => {
-            for (const stat of linearStats) {
+            for (const stat of linearGamemodeStats) {
                 await t.test(`stat: ${stat}`, async (t) => {
                     // Basic case: steady progress
                     await t.test("basic - steady progress", () => {
