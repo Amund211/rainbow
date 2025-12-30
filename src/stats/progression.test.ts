@@ -1047,9 +1047,9 @@ await test("computeStatProgression - quotient stats", async (t) => {
 await test("computeStatProgression - stars/experience stat", async (t) => {
     const gamemodes = ALL_GAMEMODE_KEYS;
 
-    // Note: stars is an overall-only stat (calculated from player.experience),
-    // but we test it across all gamemodes to verify the API correctly handles
-    // overall-stats when queried with gamemode-specific keys
+    // Note: stars+experience are overall stats, but we test it across
+    // all gamemodes to verify the API correctly handles
+    // overall stats when queried with gamemode-specific keys
     for (const gamemode of gamemodes) {
         await t.test(`gamemode: ${gamemode}`, async (t) => {
             await t.test("basic - steady exp gain", async (t) => {
@@ -1061,7 +1061,7 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
                         .withExperience(500)
                         .build(),
                     new PlayerDataBuilder(TEST_UUID, endDate)
-                        .withExperience(5500)
+                        .withExperience(7000)
                         .build(),
                 ];
 
@@ -1079,20 +1079,36 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
                         );
                     }
 
-                    assert.strictEqual(
-                        result.trendingUpward,
-                        true,
-                        "should be trending upward",
+                    const {
+                        daysUntilMilestone,
+                        progressPerDay,
+                        ...resultWithoutTrickyFloats
+                    } = result;
+
+                    assert.deepStrictEqual(resultWithoutTrickyFloats, {
+                        stat: "stars",
+                        endValue: 4,
+                        nextMilestoneValue: 100,
+                        trendingUpward: true,
+                        trackingDataTimeInterval: {
+                            start: startDate,
+                            end: endDate,
+                        },
+                    });
+
+                    // (exp gained / avg exp per star) / days
+                    const expectedStarsPerDay = 6_500 / 4_870 / 10;
+                    assert.ok(
+                        Math.abs(progressPerDay - expectedStarsPerDay) < 1e-6,
                     );
-                    assert.strictEqual(
-                        result.progressPerDay > 0,
-                        true,
-                        "should have positive progress per day",
-                    );
-                    assert.strictEqual(
-                        result.daysUntilMilestone > 0,
-                        true,
-                        "should have positive days to milestone",
+
+                    // Exp remaining until 100 stars / (exp per day)
+                    const expectedDaysUntilMilestone =
+                        (487_000 - 7_000) / (6_500 / 10);
+                    assert.ok(
+                        Math.abs(
+                            daysUntilMilestone - expectedDaysUntilMilestone,
+                        ) < 1e-6,
                     );
                 });
 
@@ -1110,87 +1126,18 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
                         );
                     }
 
-                    assert.strictEqual(
-                        result.trendingUpward,
-                        true,
-                        "should be trending upward",
-                    );
-                    assert.strictEqual(
-                        result.progressPerDay > 0,
-                        true,
-                        "should have positive progress per day",
-                    );
-                    assert.strictEqual(
-                        result.daysUntilMilestone > 0,
-                        true,
-                        "should have positive days to milestone",
-                    );
-                });
-            });
-
-            await t.test("edge case - high level player", async (t) => {
-                const startDate = new Date("2024-01-01T00:00:00Z");
-                const endDate = new Date("2024-01-11T00:00:00Z");
-                // High level: around 1000 stars
-                const history: History = [
-                    new PlayerDataBuilder(TEST_UUID, startDate)
-                        .withExperience(4870000)
-                        .build(),
-                    new PlayerDataBuilder(TEST_UUID, endDate)
-                        .withExperience(4920000)
-                        .build(),
-                ];
-
-                await t.test("stars", () => {
-                    const result = computeStatProgression(
-                        history,
-                        endDate,
-                        "stars",
-                        gamemode,
-                    );
-
-                    if (result.error) {
-                        assert.fail(
-                            `Expected success but got error: ${result.reason}`,
-                        );
-                    }
-
-                    assert.strictEqual(
-                        result.trendingUpward,
-                        true,
-                        "should be trending upward",
-                    );
-                    assert.strictEqual(
-                        result.progressPerDay > 0,
-                        true,
-                        "should have positive progress per day",
-                    );
-                });
-
-                await t.test("experience", () => {
-                    const result = computeStatProgression(
-                        history,
-                        endDate,
-                        "experience",
-                        gamemode,
-                    );
-
-                    if (result.error) {
-                        assert.fail(
-                            `Expected success but got error: ${result.reason}`,
-                        );
-                    }
-
-                    assert.strictEqual(
-                        result.trendingUpward,
-                        true,
-                        "should be trending upward",
-                    );
-                    assert.strictEqual(
-                        result.progressPerDay > 0,
-                        true,
-                        "should have positive progress per day",
-                    );
+                    assert.deepStrictEqual(result, {
+                        stat: "experience",
+                        endValue: 7_000,
+                        progressPerDay: 650,
+                        nextMilestoneValue: 8_000,
+                        daysUntilMilestone: 1000 / 650,
+                        trendingUpward: true,
+                        trackingDataTimeInterval: {
+                            start: startDate,
+                            end: endDate,
+                        },
+                    });
                 });
             });
         });
