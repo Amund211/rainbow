@@ -11,6 +11,9 @@ import { ALL_GAMEMODE_KEYS, type GamemodeKey, type StatKey } from "./keys.ts";
 
 const TEST_UUID = "0123e456-7890-1234-5678-90abcdef1234";
 
+// Tolerance for floating-point comparisons in quotient stats (fkdr, kdr)
+const QUOTIENT_TOLERANCE = 0.01;
+
 class StatsBuilder {
     private stats: StatsPIT;
 
@@ -482,7 +485,8 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             "should be trending upward",
                         );
                         assert.strictEqual(
-                            Math.abs(result.endValue - 200 / 80) < 0.01,
+                            Math.abs(result.endValue - 200 / 80) <
+                                QUOTIENT_TOLERANCE,
                             true,
                             "end value should be 2.5",
                         );
@@ -711,6 +715,9 @@ await test("computeStatProgression - quotient stats", async (t) => {
 await test("computeStatProgression - stars/experience stat", async (t) => {
     const gamemodes = ALL_GAMEMODE_KEYS;
 
+    // Note: stars is an overall-only stat (calculated from player.experience),
+    // but we test it across all gamemodes to verify the API correctly handles
+    // overall-stats when queried with gamemode-specific keys
     for (const gamemode of gamemodes) {
         await t.test(`gamemode: ${gamemode}`, async (t) => {
             await t.test("basic - steady exp gain", async (t) => {
