@@ -406,6 +406,68 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
                             },
                         });
                     });
+
+                    await t.test("edge case - late tracking end", () => {
+                        // The tracking interval usually contains the whole current day
+                        // This means we will in general always get a trackingEndDate after endDate
+                        // In cases where the Hypixel API is down, this effect can be exacerbated as
+                        // the endDate (the date of the last recorded stats instance in the tracking interval)
+                        // can be many days old, and not just some hours earlier than trackingEndDate.
+                        // This can lead to e.g. predicted milestone dates being earlier than trackingEndDate
+                        const startDate = new Date("2025-01-01T00:00:00Z");
+                        const endDate = new Date("2025-01-06T00:00:00Z");
+                        const trackingEndDate = new Date(
+                            "2025-01-11T00:00:00Z",
+                        );
+                        const startBuilder = new PlayerDataBuilder(
+                            TEST_UUID,
+                            startDate,
+                        );
+                        const endBuilder = new PlayerDataBuilder(
+                            TEST_UUID,
+                            endDate,
+                        );
+                        startBuilder.withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder().withStat(stat, 100).build(),
+                        );
+                        endBuilder.withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder().withStat(stat, 200).build(),
+                        );
+
+                        const history: History = [
+                            startBuilder.build(),
+                            endBuilder.build(),
+                        ];
+
+                        const result = computeStatProgression(
+                            history,
+                            trackingEndDate,
+                            stat,
+                            gamemode,
+                        );
+
+                        if (result.error) {
+                            assert.fail(
+                                `Expected success but got error: ${result.reason}`,
+                            );
+                        }
+
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 200,
+                            progressPerDay: 10,
+                            nextMilestoneValue: 300,
+                            // NOTE: This is from the endDate, so this would be just 5 days after trackingEndDate
+                            daysUntilMilestone: 10,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: trackingEndDate,
+                            },
+                        });
+                    });
                 });
             }
         });
