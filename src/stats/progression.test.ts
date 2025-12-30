@@ -251,7 +251,6 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
         await t.test(`gamemode: ${gamemode}`, async (t) => {
             for (const stat of linearGamemodeStats) {
                 await t.test(`stat: ${stat}`, async (t) => {
-                    // Basic case: steady progress
                     await t.test("basic - steady progress", () => {
                         const startDate = new Date("2024-01-01T00:00:00Z");
                         const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
@@ -290,33 +289,23 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
                             );
                         }
 
-                        assert.strictEqual(result.endValue, 200, "end value");
-                        assert.strictEqual(
-                            result.trendingUpward,
-                            true,
-                            "trending upward",
-                        );
-                        assert.strictEqual(
-                            result.progressPerDay > 0,
-                            true,
-                            "progress per day should be positive",
-                        );
-                        assert.strictEqual(
-                            result.daysUntilMilestone > 0,
-                            true,
-                            "days until milestone should be positive",
-                        );
-                        assert.strictEqual(
-                            result.nextMilestoneValue > result.endValue,
-                            true,
-                            "next milestone should be greater than end",
-                        );
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 200,
+                            progressPerDay: 10,
+                            nextMilestoneValue: 300,
+                            daysUntilMilestone: 10,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
                     });
 
-                    // Edge case: zero starting value
                     await t.test("edge case - zero starting value", () => {
                         const startDate = new Date("2024-01-01T00:00:00Z");
-                        const endDate = new Date("2024-01-11T00:00:00Z");
+                        const endDate = new Date("2024-01-06T00:00:00Z");
                         const startBuilder = new PlayerDataBuilder(
                             TEST_UUID,
                             startDate,
@@ -352,22 +341,23 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
                             );
                         }
 
-                        assert.strictEqual(
-                            result.trendingUpward,
-                            true,
-                            "trending upward",
-                        );
-                        assert.strictEqual(
-                            result.progressPerDay > 0,
-                            true,
-                            "progress per day should be positive",
-                        );
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 100,
+                            progressPerDay: 20,
+                            nextMilestoneValue: 200,
+                            daysUntilMilestone: 5,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
                     });
 
-                    // Edge case: large values
                     await t.test("edge case - large values", () => {
-                        const startDate = new Date("2024-01-01T00:00:00Z");
-                        const endDate = new Date("2024-01-11T00:00:00Z");
+                        const startDate = new Date("2025-01-01T00:00:00Z");
+                        const endDate = new Date("2025-01-21T00:00:00Z");
                         const startBuilder = new PlayerDataBuilder(
                             TEST_UUID,
                             startDate,
@@ -403,16 +393,18 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
                             );
                         }
 
-                        assert.strictEqual(
-                            result.trendingUpward,
-                            true,
-                            "trending upward",
-                        );
-                        assert.strictEqual(
-                            result.progressPerDay > 0,
-                            true,
-                            "progress per day should be positive",
-                        );
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 110000,
+                            progressPerDay: 500,
+                            nextMilestoneValue: 200000,
+                            daysUntilMilestone: 180,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
                     });
                 });
             }
