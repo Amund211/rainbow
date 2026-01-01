@@ -1186,16 +1186,29 @@ await test("computeStatProgression - index stat", async (t) => {
                     );
                 }
 
+                const {
+                    daysUntilMilestone,
+                    progressPerDay,
+                    endValue,
+                    ...resultWithoutTrickyFloats
+                } = result;
+
+                assert.deepStrictEqual(resultWithoutTrickyFloats, {
+                    stat: "index",
+                    nextMilestoneValue: 100,
+                    trendingUpward: true,
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                });
+
                 // endFkdr = 200/75 = 2.666...
                 // endStars = bedwarsLevelFromExp(50500) = 12.7 (fractional stars include progress)
                 // endIndex = 2.666...^2 * 12.7 = ~90.31
-                // Next milestone should be 100
-                assert.strictEqual(result.stat, "index");
-                assert.ok(Math.abs(result.endValue - 90.31) < 0.01);
-                assert.strictEqual(result.nextMilestoneValue, 100);
-                assert.strictEqual(result.trendingUpward, true);
-                assert.ok(result.daysUntilMilestone > 0);
-                assert.ok(result.daysUntilMilestone < Infinity);
+                assert.ok(Math.abs(endValue - 90.31) < 0.01);
+                assert.ok(daysUntilMilestone > 0);
+                assert.ok(daysUntilMilestone < Infinity);
             });
 
             await t.test("edge case - no progress", () => {
@@ -1279,12 +1292,28 @@ await test("computeStatProgression - index stat", async (t) => {
                     );
                 }
 
+                const {
+                    daysUntilMilestone,
+                    progressPerDay,
+                    ...resultWithoutTrickyFloats
+                } = result;
+
                 // fkdr = 2.0 constant, stars growing
                 // index = 4 * stars, linear growth
-                assert.strictEqual(result.stat, "index");
-                assert.ok(result.daysUntilMilestone > 0);
-                assert.ok(result.daysUntilMilestone < Infinity);
-                assert.strictEqual(result.trendingUpward, true);
+                assert.deepStrictEqual(resultWithoutTrickyFloats, {
+                    stat: "index",
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                    endValue: 50.8,
+                    nextMilestoneValue: 60,
+                    trendingUpward: true,
+                });
+
+                assert.ok(Math.abs(progressPerDay - 4.106776180698152) < 1e-6);
+                assert.ok(daysUntilMilestone > 0);
+                assert.ok(daysUntilMilestone < Infinity);
             });
 
             await t.test("edge case - only fkdr improving (no deaths)", () => {
@@ -1328,11 +1357,28 @@ await test("computeStatProgression - index stat", async (t) => {
                     );
                 }
 
+                const {
+                    daysUntilMilestone,
+                    progressPerDay,
+                    ...resultWithoutTrickyFloats
+                } = result;
+
                 // fkdr growing quadratically (200^2 vs 100^2), stars constant
-                assert.strictEqual(result.stat, "index");
-                assert.ok(result.daysUntilMilestone > 0);
-                assert.ok(result.daysUntilMilestone < Infinity);
-                assert.strictEqual(result.trendingUpward, true);
+                assert.deepStrictEqual(resultWithoutTrickyFloats, {
+                    stat: "index",
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                    endValue: 504000,
+                    nextMilestoneValue: 600000,
+                    trendingUpward: true,
+                });
+
+                // progressPerDay is tricky because index grows quadratically
+                // Just verify the milestone is reachable
+                assert.ok(daysUntilMilestone > 0);
+                assert.ok(daysUntilMilestone < Infinity);
             });
 
             await t.test("edge case - declining index", () => {
@@ -1376,9 +1422,28 @@ await test("computeStatProgression - index stat", async (t) => {
                     );
                 }
 
+                const {
+                    daysUntilMilestone,
+                    progressPerDay,
+                    endValue,
+                    ...resultWithoutTrickyFloats
+                } = result;
+
                 // Index is declining due to poor fkdr
-                assert.strictEqual(result.stat, "index");
-                assert.strictEqual(result.trendingUpward, false);
+                assert.deepStrictEqual(resultWithoutTrickyFloats, {
+                    stat: "index",
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                    nextMilestoneValue: 50,
+                    trendingUpward: false,
+                });
+
+                // Check floating point values with tolerance
+                assert.ok(Math.abs(endValue - 61.468) < 1e-3);
+                assert.ok(daysUntilMilestone > 0);
+                assert.ok(daysUntilMilestone < Infinity);
             });
 
             await t.test(
@@ -1424,11 +1489,28 @@ await test("computeStatProgression - index stat", async (t) => {
                         );
                     }
 
+                    const {
+                        daysUntilMilestone,
+                        progressPerDay,
+                        endValue,
+                        ...resultWithoutTrickyFloats
+                    } = result;
+
                     // Index is declining, so milestone is downward and should be reachable
-                    assert.strictEqual(result.stat, "index");
-                    assert.strictEqual(result.trendingUpward, false);
-                    assert.ok(result.daysUntilMilestone > 0);
-                    assert.ok(result.daysUntilMilestone < Infinity);
+                    assert.deepStrictEqual(resultWithoutTrickyFloats, {
+                        stat: "index",
+                        trackingDataTimeInterval: {
+                            start: startDate,
+                            end: endDate,
+                        },
+                        nextMilestoneValue: 80,
+                        trendingUpward: false,
+                    });
+
+                    // Check floating point values with tolerance
+                    assert.ok(Math.abs(endValue - 90.4) < 1e-6);
+                    assert.ok(daysUntilMilestone > 0);
+                    assert.ok(daysUntilMilestone < Infinity);
                 },
             );
         });
