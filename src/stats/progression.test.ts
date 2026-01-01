@@ -1137,3 +1137,300 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
         });
     }
 });
+
+await test("computeStatProgression - index stat", async (t) => {
+    const gamemodes = ALL_GAMEMODE_KEYS;
+
+    for (const gamemode of gamemodes) {
+        await t.test(`gamemode: ${gamemode}`, async (t) => {
+            await t.test("basic - steady progress all stats", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
+
+                // Start: 100 finals, 50 deaths -> fkdr = 2.0
+                // End: 200 finals, 75 deaths -> fkdr = 2.666...
+                // Exp: 500 -> 50500 (50000 gain, ~10 stars)
+                const history: History = [
+                    new PlayerDataBuilder(TEST_UUID, startDate)
+                        .withExperience(500)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 100)
+                                .withStat("finalDeaths", 50)
+                                .build(),
+                        )
+                        .build(),
+                    new PlayerDataBuilder(TEST_UUID, endDate)
+                        .withExperience(50500)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 200)
+                                .withStat("finalDeaths", 75)
+                                .build(),
+                        )
+                        .build(),
+                ];
+
+                const result = computeStatProgression(
+                    history,
+                    endDate,
+                    "index",
+                    gamemode,
+                );
+
+                if (result.error) {
+                    assert.fail(
+                        `Expected success but got error: ${result.reason}`,
+                    );
+                }
+
+                // endFkdr = 200/75 = 2.666...
+                // endStars = bedwarsLevelFromExp(50500) = 12.7 (fractional stars include progress)
+                // endIndex = 2.666...^2 * 12.7 = ~90.31
+                // Next milestone should be 100
+                assert.strictEqual(result.stat, "index");
+                assert.ok(Math.abs(result.endValue - 90.31) < 0.01);
+                assert.strictEqual(result.nextMilestoneValue, 100);
+                assert.strictEqual(result.trendingUpward, true);
+                assert.ok(result.daysUntilMilestone > 0);
+                assert.ok(result.daysUntilMilestone < Infinity);
+            });
+
+            await t.test("edge case - no progress", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z");
+
+                const history: History = [
+                    new PlayerDataBuilder(TEST_UUID, startDate)
+                        .withExperience(500)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 100)
+                                .withStat("finalDeaths", 50)
+                                .build(),
+                        )
+                        .build(),
+                    new PlayerDataBuilder(TEST_UUID, endDate)
+                        .withExperience(500)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 100)
+                                .withStat("finalDeaths", 50)
+                                .build(),
+                        )
+                        .build(),
+                ];
+
+                const result = computeStatProgression(
+                    history,
+                    endDate,
+                    "index",
+                    gamemode,
+                );
+
+                assert.deepStrictEqual(result, {
+                    error: true,
+                    reason: "No progress",
+                });
+            });
+
+            await t.test("edge case - only exp progression", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z");
+
+                // Only experience changes, fkdr stays constant
+                const history: History = [
+                    new PlayerDataBuilder(TEST_UUID, startDate)
+                        .withExperience(500)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 100)
+                                .withStat("finalDeaths", 50)
+                                .build(),
+                        )
+                        .build(),
+                    new PlayerDataBuilder(TEST_UUID, endDate)
+                        .withExperience(50500)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 100)
+                                .withStat("finalDeaths", 50)
+                                .build(),
+                        )
+                        .build(),
+                ];
+
+                const result = computeStatProgression(
+                    history,
+                    endDate,
+                    "index",
+                    gamemode,
+                );
+
+                if (result.error) {
+                    assert.fail(
+                        `Expected success but got error: ${result.reason}`,
+                    );
+                }
+
+                // fkdr = 2.0 constant, stars growing
+                // index = 4 * stars, linear growth
+                assert.strictEqual(result.stat, "index");
+                assert.ok(result.daysUntilMilestone > 0);
+                assert.ok(result.daysUntilMilestone < Infinity);
+                assert.strictEqual(result.trendingUpward, true);
+            });
+
+            await t.test("edge case - only fkdr improving (no deaths)", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z");
+
+                // Finals increase, deaths stay zero, exp constant
+                const history: History = [
+                    new PlayerDataBuilder(TEST_UUID, startDate)
+                        .withExperience(50000)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 100)
+                                .withStat("finalDeaths", 0)
+                                .build(),
+                        )
+                        .build(),
+                    new PlayerDataBuilder(TEST_UUID, endDate)
+                        .withExperience(50000)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 200)
+                                .withStat("finalDeaths", 0)
+                                .build(),
+                        )
+                        .build(),
+                ];
+
+                const result = computeStatProgression(
+                    history,
+                    endDate,
+                    "index",
+                    gamemode,
+                );
+
+                if (result.error) {
+                    assert.fail(
+                        `Expected success but got error: ${result.reason}`,
+                    );
+                }
+
+                // fkdr growing quadratically (200^2 vs 100^2), stars constant
+                assert.strictEqual(result.stat, "index");
+                assert.ok(result.daysUntilMilestone > 0);
+                assert.ok(result.daysUntilMilestone < Infinity);
+                assert.strictEqual(result.trendingUpward, true);
+            });
+
+            await t.test("edge case - declining index", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z");
+
+                // fkdr declining, exp not growing much
+                const history: History = [
+                    new PlayerDataBuilder(TEST_UUID, startDate)
+                        .withExperience(50000)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 200)
+                                .withStat("finalDeaths", 50)
+                                .build(),
+                        )
+                        .build(),
+                    new PlayerDataBuilder(TEST_UUID, endDate)
+                        .withExperience(50500)
+                        .withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder()
+                                .withStat("finalKills", 220)
+                                .withStat("finalDeaths", 100)
+                                .build(),
+                        )
+                        .build(),
+                ];
+
+                const result = computeStatProgression(
+                    history,
+                    endDate,
+                    "index",
+                    gamemode,
+                );
+
+                if (result.error) {
+                    assert.fail(
+                        `Expected success but got error: ${result.reason}`,
+                    );
+                }
+
+                // Index is declining due to poor fkdr
+                assert.strictEqual(result.stat, "index");
+                assert.strictEqual(result.trendingUpward, false);
+            });
+
+            await t.test(
+                "edge case - unreachable milestone (declining too fast)",
+                () => {
+                    const startDate = new Date("2024-01-01T00:00:00Z");
+                    const endDate = new Date("2024-01-11T00:00:00Z");
+
+                    // Rapidly declining index
+                    const history: History = [
+                        new PlayerDataBuilder(TEST_UUID, startDate)
+                            .withExperience(100000)
+                            .withGamemodeStats(
+                                gamemode,
+                                new StatsBuilder()
+                                    .withStat("finalKills", 1000)
+                                    .withStat("finalDeaths", 100)
+                                    .build(),
+                            )
+                            .build(),
+                        new PlayerDataBuilder(TEST_UUID, endDate)
+                            .withExperience(100000)
+                            .withGamemodeStats(
+                                gamemode,
+                                new StatsBuilder()
+                                    .withStat("finalKills", 1000)
+                                    .withStat("finalDeaths", 500)
+                                    .build(),
+                            )
+                            .build(),
+                    ];
+
+                    const result = computeStatProgression(
+                        history,
+                        endDate,
+                        "index",
+                        gamemode,
+                    );
+
+                    if (result.error) {
+                        assert.fail(
+                            `Expected success but got error: ${result.reason}`,
+                        );
+                    }
+
+                    // Index is declining, so milestone is downward and should be reachable
+                    assert.strictEqual(result.stat, "index");
+                    assert.strictEqual(result.trendingUpward, false);
+                    assert.ok(result.daysUntilMilestone > 0);
+                    assert.ok(result.daysUntilMilestone < Infinity);
+                },
+            );
+        });
+    }
+});
