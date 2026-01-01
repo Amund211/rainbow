@@ -391,6 +391,11 @@ export const computeStatProgression = (
             const indexChange = endIndex - startIndex;
             const trendingUpward = indexChange >= 0;
 
+            // Validate that endIndex is positive for milestone calculation
+            if (endIndex <= 0) {
+                return { error: true, reason: "Invalid end index" };
+            }
+
             // Determine next milestone
             // TODO: More meaningful milestones
             const endMagnitude = Math.pow(10, Math.floor(Math.log10(endIndex)));
@@ -447,13 +452,17 @@ export const computeStatProgression = (
             // Filter for positive real roots and find the smallest
             // Also verify that the index is actually progressing toward the milestone
             const positiveRoots = roots.filter((root) => {
-                if (root.imag !== 0 || root.real <= 1e-10) {
+                if (root.imag !== 0 || root.real <= 1e-6) {
                     return false;
                 }
 
                 // Calculate index at this time to verify direction
                 const t = root.real;
-                const fkdrAtT = (k0 + k * t) / (d0 + d * t);
+                // Handle special case for zero deaths
+                const fkdrAtT =
+                    d0 === 0 && d === 0
+                        ? k0 + k * t
+                        : (k0 + k * t) / (d0 + d * t);
                 const starsAtT = s0 + s * t;
                 const indexAtT = fkdrAtT * fkdrAtT * starsAtT;
 
