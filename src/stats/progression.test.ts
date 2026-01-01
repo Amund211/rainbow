@@ -1188,7 +1188,6 @@ await test("computeStatProgression - index stat", async (t) => {
 
                 const {
                     daysUntilMilestone,
-                    progressPerDay,
                     endValue,
                     ...resultWithoutTrickyFloats
                 } = result;
@@ -1196,6 +1195,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 assert.deepStrictEqual(resultWithoutTrickyFloats, {
                     stat: "index",
                     nextMilestoneValue: 100,
+                    progressPerDay: result.progressPerDay,
                     trendingUpward: true,
                     trackingDataTimeInterval: {
                         start: startDate,
@@ -1357,11 +1357,8 @@ await test("computeStatProgression - index stat", async (t) => {
                     );
                 }
 
-                const {
-                    daysUntilMilestone,
-                    progressPerDay,
-                    ...resultWithoutTrickyFloats
-                } = result;
+                const { daysUntilMilestone, ...resultWithoutTrickyFloats } =
+                    result;
 
                 // fkdr growing quadratically (200^2 vs 100^2), stars constant
                 assert.deepStrictEqual(resultWithoutTrickyFloats, {
@@ -1372,6 +1369,7 @@ await test("computeStatProgression - index stat", async (t) => {
                     },
                     endValue: 504000,
                     nextMilestoneValue: 600000,
+                    progressPerDay: result.progressPerDay,
                     trendingUpward: true,
                 });
 
@@ -1424,7 +1422,6 @@ await test("computeStatProgression - index stat", async (t) => {
 
                 const {
                     daysUntilMilestone,
-                    progressPerDay,
                     endValue,
                     ...resultWithoutTrickyFloats
                 } = result;
@@ -1437,6 +1434,7 @@ await test("computeStatProgression - index stat", async (t) => {
                         end: endDate,
                     },
                     nextMilestoneValue: 50,
+                    progressPerDay: result.progressPerDay,
                     trendingUpward: false,
                 });
 
@@ -1491,7 +1489,6 @@ await test("computeStatProgression - index stat", async (t) => {
 
                     const {
                         daysUntilMilestone,
-                        progressPerDay,
                         endValue,
                         ...resultWithoutTrickyFloats
                     } = result;
@@ -1504,6 +1501,7 @@ await test("computeStatProgression - index stat", async (t) => {
                             end: endDate,
                         },
                         nextMilestoneValue: 80,
+                        progressPerDay: result.progressPerDay,
                         trendingUpward: false,
                     });
 
