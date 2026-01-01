@@ -390,7 +390,7 @@ export const computeStatProgression = (
             // Determine if index is trending upward based on actual progression
             const indexChange = endIndex - startIndex;
             const trendingUpward = indexChange >= 0;
-            
+
             // Determine next milestone
             // TODO: More meaningful milestones
             const endMagnitude = Math.pow(10, Math.floor(Math.log10(endIndex)));
@@ -400,7 +400,7 @@ export const computeStatProgression = (
                 endMagnitude;
 
             // Solve for t when index(t) = M
-            // 
+            //
             // When deaths are non-zero: fkdr = finalKills / finalDeaths
             //   index(t) = ((k0 + kt) / (d0 + dt))^2 * (s0 + st)
             //   Equation: (k0 + kt)^2 * (s0 + st) = M * (d0 + dt)^2
@@ -408,7 +408,7 @@ export const computeStatProgression = (
             // When deaths are zero: fkdr = finalKills
             //   index(t) = (k0 + kt)^2 * (s0 + st)
             //   Equation: (k0 + kt)^2 * (s0 + st) = M
-            
+
             const k0 = endFinalKills;
             const k = finalKillsPerDay;
             const d0 = endFinalDeaths;
@@ -418,7 +418,7 @@ export const computeStatProgression = (
             const M = nextMilestoneValue;
 
             let a, b, c, e;
-            
+
             if (d0 === 0 && d === 0) {
                 // Special case: no deaths, fkdr = finalKills
                 // Equation: (k0 + kt)^2 * (s0 + st) = M
@@ -450,13 +450,13 @@ export const computeStatProgression = (
                 if (root.imag !== 0 || root.real <= 1e-10) {
                     return false;
                 }
-                
+
                 // Calculate index at this time to verify direction
                 const t = root.real;
                 const fkdrAtT = (k0 + k * t) / (d0 + d * t);
                 const starsAtT = s0 + s * t;
                 const indexAtT = fkdrAtT * fkdrAtT * starsAtT;
-                
+
                 // Check if index is moving in the right direction
                 if (trendingUpward) {
                     // For upward trend, index at t should be >= milestone
@@ -472,7 +472,10 @@ export const computeStatProgression = (
                 // No positive roots - milestone is unreachable
                 return {
                     stat,
-                    trackingDataTimeInterval: { start: startDate, end: endDate },
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
                     endValue: endIndex,
                     nextMilestoneValue,
                     daysUntilMilestone: Infinity,
