@@ -3,11 +3,10 @@ import assert from "node:assert";
 import { ALL_GAMEMODE_KEYS, ALL_STAT_KEYS } from "#stats/keys.ts";
 import { sessionSearchSchema } from "./sessionSearch.ts";
 
-// Helper to get the expected default tracking start (start of day 365 days ago)
+// Helper to get the expected default tracking start (start of day 1 year ago)
 const getDefaultTrackingStart = () => {
-    const now = Date.now();
-    const millisecondsIn365Days = 365 * 24 * 60 * 60 * 1000;
-    const date = new Date(now - millisecondsIn365Days);
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 1);
     date.setHours(0, 0, 0, 0);
     return date;
 };
@@ -132,23 +131,28 @@ await test("sessionSearchSchema validation", async (t) => {
     });
 
     await t.test(
-        "default trackingStart is at least 365 days ago from now",
+        "default trackingStart is 1 year ago from now (same date)",
         () => {
             const result = sessionSearchSchema.parse({});
             const now = new Date();
-            const diffInSeconds =
-                (now.getTime() - result.trackingStart.getTime()) / 1000;
-            const expectedMinSeconds = 365 * 24 * 60 * 60;
-            const expectedMaxSeconds = 366 * 24 * 60 * 60;
+            const expectedDate = new Date();
+            expectedDate.setFullYear(expectedDate.getFullYear() - 1);
+            expectedDate.setHours(0, 0, 0, 0);
 
-            assert.ok(
-                diffInSeconds >= expectedMinSeconds,
-                `Expected tracking start to be at least ${expectedMinSeconds.toString()} seconds ago, but was ${diffInSeconds.toString()} seconds ago`,
+            // Verify the year is exactly 1 year less
+            assert.strictEqual(
+                result.trackingStart.getFullYear(),
+                now.getFullYear() - 1,
             );
 
-            assert.ok(
-                diffInSeconds < expectedMaxSeconds,
-                `Expected tracking start to be less than ${expectedMaxSeconds.toString()} seconds ago, but was ${diffInSeconds.toString()} seconds ago`,
+            // Verify the month and day are the same
+            assert.strictEqual(
+                result.trackingStart.getMonth(),
+                expectedDate.getMonth(),
+            );
+            assert.strictEqual(
+                result.trackingStart.getDate(),
+                expectedDate.getDate(),
             );
 
             // Also verify it's at the start of the day (midnight)
