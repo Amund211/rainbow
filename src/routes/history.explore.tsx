@@ -92,6 +92,73 @@ export const Route = createFileRoute("/history/explore")({
     },
     validateSearch: historyExploreSearchSchema,
     component: Index,
+    head: () => {
+        const title = `History Explorer - Prism Overlay`;
+        const description = `Explore and compare Hypixel Bed Wars stat history for multiple players. Track and visualize player stats over time.`;
+        const url = `https://prismoverlay.com/history/explore`;
+
+        return {
+            meta: [
+                {
+                    title,
+                },
+                {
+                    name: "description",
+                    content: description,
+                },
+                {
+                    property: "og:type",
+                    content: "website",
+                },
+                {
+                    property: "og:url",
+                    content: url,
+                },
+                {
+                    property: "og:title",
+                    content: title,
+                },
+                {
+                    property: "og:description",
+                    content: description,
+                },
+                {
+                    property: "og:image",
+                    content: "https://prismoverlay.com/who.png",
+                },
+                {
+                    property: "og:site_name",
+                    content: "Prism Overlay",
+                },
+                {
+                    property: "twitter:card",
+                    content: "summary",
+                },
+                {
+                    property: "twitter:url",
+                    content: url,
+                },
+                {
+                    property: "twitter:title",
+                    content: title,
+                },
+                {
+                    property: "twitter:description",
+                    content: description,
+                },
+                {
+                    property: "twitter:image",
+                    content: "https://prismoverlay.com/who.png",
+                },
+            ],
+            links: [
+                {
+                    rel: "canonical",
+                    href: url,
+                },
+            ],
+        };
+    },
 });
 
 const RouterLinkChip = createLink(Chip);
