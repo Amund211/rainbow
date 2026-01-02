@@ -60,14 +60,11 @@ function useShownPlayer(): string | null {
 
     switch (currentMatch.routeId) {
         case "/session/$uuid":
-        case "/wrapped/$uuid": {
-            const params = currentMatch.params as { uuid?: string };
-            return params.uuid ?? null;
-        }
+        case "/wrapped/$uuid":
+            return currentMatch.params.uuid;
         case "/history/explore": {
-            const search = currentMatch.search as { uuids?: readonly string[] };
-            const uuids = search.uuids;
-            return uuids && uuids.length > 0 ? uuids[0] : null;
+            const uuids = currentMatch.search.uuids;
+            return uuids.length > 0 ? uuids[0] : null;
         }
         case "__root__":
         case "/":
@@ -79,7 +76,7 @@ function useShownPlayer(): string | null {
             return null;
         default:
             currentMatch satisfies never;
-            return null;
+            return null; // Unreachable
     }
 }
 
