@@ -58,23 +58,29 @@ function useShownPlayer(): string | null {
 
     const currentMatch = routerState.matches[routerState.matches.length - 1];
 
-    // Check if we're on a session or wrapped page with a UUID param
-    if (
-        currentMatch.routeId === "/session/$uuid" ||
-        currentMatch.routeId === "/wrapped/$uuid"
-    ) {
-        const params = currentMatch.params as { uuid?: string };
-        return params.uuid ?? null;
+    switch (currentMatch.routeId) {
+        case "/session/$uuid":
+        case "/wrapped/$uuid": {
+            const params = currentMatch.params as { uuid?: string };
+            return params.uuid ?? null;
+        }
+        case "/history/explore": {
+            const search = currentMatch.search as { uuids?: readonly string[] };
+            const uuids = search.uuids;
+            return uuids && uuids.length > 0 ? uuids[0] : null;
+        }
+        case "__root__":
+        case "/":
+        case "/about":
+        case "/downloads":
+        case "/settings":
+        case "/session/":
+        case "/wrapped/":
+            return null;
+        default:
+            currentMatch satisfies never;
+            return null;
     }
-
-    // Check if we're on history explorer with uuids in search params
-    if (currentMatch.routeId === "/history/explore") {
-        const search = currentMatch.search as { uuids?: readonly string[] };
-        const uuids = search.uuids;
-        return uuids && uuids.length > 0 ? uuids[0] : null;
-    }
-
-    return null;
 }
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({
