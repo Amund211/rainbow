@@ -22,8 +22,9 @@ export const sessionSearchSchema = z.object({
         .transform((value) => {
             if (value === undefined) {
                 // Default to start of day 365 days ago from today
-                const date = new Date();
-                date.setDate(date.getDate() - 365);
+                const now = Date.now();
+                const millisecondsIn365Days = 365 * 24 * 60 * 60 * 1000;
+                const date = new Date(now - millisecondsIn365Days);
                 return startOfDay(date);
             }
             return value;

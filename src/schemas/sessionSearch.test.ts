@@ -5,8 +5,9 @@ import { sessionSearchSchema } from "./sessionSearch.ts";
 
 // Helper to get the expected default tracking start (start of day 365 days ago)
 const getDefaultTrackingStart = () => {
-    const date = new Date();
-    date.setDate(date.getDate() - 365);
+    const now = Date.now();
+    const millisecondsIn365Days = 365 * 24 * 60 * 60 * 1000;
+    const date = new Date(now - millisecondsIn365Days);
     date.setHours(0, 0, 0, 0);
     return date;
 };
