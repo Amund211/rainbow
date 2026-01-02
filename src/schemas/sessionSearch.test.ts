@@ -15,29 +15,17 @@ await test("sessionSearchSchema validation", async (t) => {
     await t.test("no params -> all defaults", () => {
         const result = sessionSearchSchema.parse({});
         const expectedDefault = getDefaultTrackingStart();
-        // Check that tracking start is approximately 365 days ago (within 1 second tolerance)
-        assert.ok(
-            Math.abs(
-                result.trackingStart.getTime() - expectedDefault.getTime(),
-            ) < 1000,
-        );
-        assert.deepStrictEqual(
-            {
-                ...result,
-                trackingStart: expectedDefault, // Use the expected value for comparison
+        assert.deepStrictEqual(result, {
+            gamemode: "overall",
+            stat: "fkdr",
+            variantSelection: "both",
+            sessionTableMode: "total",
+            showExtrapolatedSessions: false,
+            timeIntervalDefinition: {
+                type: "contained",
             },
-            {
-                gamemode: "overall",
-                stat: "fkdr",
-                variantSelection: "both",
-                sessionTableMode: "total",
-                showExtrapolatedSessions: false,
-                timeIntervalDefinition: {
-                    type: "contained",
-                },
-                trackingStart: expectedDefault,
-            },
-        );
+            trackingStart: expectedDefault,
+        });
     });
 
     await t.test("valid custom values", () => {
@@ -122,12 +110,7 @@ await test("sessionSearchSchema validation", async (t) => {
             trackingStart: "invalid",
         });
         const expectedDefault = getDefaultTrackingStart();
-        // Check that tracking start is approximately 365 days ago (within 1 second tolerance)
-        assert.ok(
-            Math.abs(
-                result.trackingStart.getTime() - expectedDefault.getTime(),
-            ) < 1000,
-        );
+        assert.deepStrictEqual(result.trackingStart, expectedDefault);
     });
 
     await t.test(
@@ -146,6 +129,9 @@ await test("sessionSearchSchema validation", async (t) => {
             );
 
             // Verify the month and day are the same
+            // NOTE: This test will fail on leap years when run on Feb 29
+            // because setFullYear on Feb 29 of a leap year going back to a non-leap year
+            // will result in March 1 instead of Feb 28
             assert.strictEqual(
                 result.trackingStart.getMonth(),
                 expectedDate.getMonth(),
@@ -274,29 +260,17 @@ await test("sessionSearchSchema validation", async (t) => {
         assert.strictEqual(result.variantSelection, "both"); // fallback
         assert.strictEqual(result.sessionTableMode, "rate"); // valid
         assert.strictEqual(result.showExtrapolatedSessions, false); // fallback
-        // Check that tracking start is approximately 365 days ago (within 1 second tolerance)
-        assert.ok(
-            Math.abs(
-                result.trackingStart.getTime() - expectedDefault.getTime(),
-            ) < 1000,
-        );
-        assert.deepStrictEqual(
-            {
-                ...result,
-                trackingStart: expectedDefault, // Use the expected value for comparison
+        assert.deepStrictEqual(result, {
+            gamemode: "overall", // fallback
+            stat: "wins", // valid
+            variantSelection: "both", // fallback
+            sessionTableMode: "rate", // valid
+            showExtrapolatedSessions: false, // fallback
+            timeIntervalDefinition: {
+                // fallback
+                type: "contained",
             },
-            {
-                gamemode: "overall", // fallback
-                stat: "wins", // valid
-                variantSelection: "both", // fallback
-                sessionTableMode: "rate", // valid
-                showExtrapolatedSessions: false, // fallback
-                timeIntervalDefinition: {
-                    // fallback
-                    type: "contained",
-                },
-                trackingStart: expectedDefault, // fallback
-            },
-        );
+            trackingStart: expectedDefault, // fallback
+        });
     });
 });
