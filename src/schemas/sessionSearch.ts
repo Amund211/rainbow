@@ -1,4 +1,5 @@
 import { ALL_GAMEMODE_KEYS, ALL_STAT_KEYS } from "#stats/keys.ts";
+import { startOfDay } from "#intervals.ts";
 import { z } from "zod";
 
 export const sessionSearchSchema = z.object({
@@ -20,7 +21,10 @@ export const sessionSearchSchema = z.object({
         .catch(undefined)
         .transform((value) => {
             if (value === undefined) {
-                return new Date(1970, 0, 1);
+                // Default to start of day 365 days ago from today
+                const date = new Date();
+                date.setDate(date.getDate() - 365);
+                return startOfDay(date);
             }
             return value;
         }),

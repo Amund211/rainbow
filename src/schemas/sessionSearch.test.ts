@@ -3,22 +3,41 @@ import assert from "node:assert";
 import { ALL_GAMEMODE_KEYS, ALL_STAT_KEYS } from "#stats/keys.ts";
 import { sessionSearchSchema } from "./sessionSearch.ts";
 
-const defaultTrackingStart = new Date(1970, 0, 1);
+// Helper to get the expected default tracking start (start of day 365 days ago)
+const getDefaultTrackingStart = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 365);
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
 
 await test("sessionSearchSchema validation", async (t) => {
     await t.test("no params -> all defaults", () => {
         const result = sessionSearchSchema.parse({});
-        assert.deepStrictEqual(result, {
-            gamemode: "overall",
-            stat: "fkdr",
-            variantSelection: "both",
-            sessionTableMode: "total",
-            showExtrapolatedSessions: false,
-            timeIntervalDefinition: {
-                type: "contained",
+        const expectedDefault = getDefaultTrackingStart();
+        // Check that tracking start is approximately 365 days ago (within 1 second tolerance)
+        assert.ok(
+            Math.abs(
+                result.trackingStart.getTime() - expectedDefault.getTime(),
+            ) < 1000,
+        );
+        assert.deepStrictEqual(
+            {
+                ...result,
+                trackingStart: expectedDefault, // Use the expected value for comparison
             },
-            trackingStart: defaultTrackingStart,
-        });
+            {
+                gamemode: "overall",
+                stat: "fkdr",
+                variantSelection: "both",
+                sessionTableMode: "total",
+                showExtrapolatedSessions: false,
+                timeIntervalDefinition: {
+                    type: "contained",
+                },
+                trackingStart: expectedDefault,
+            },
+        );
     });
 
     await t.test("valid custom values", () => {
@@ -102,8 +121,42 @@ await test("sessionSearchSchema validation", async (t) => {
         const result = sessionSearchSchema.parse({
             trackingStart: "invalid",
         });
-        assert.deepStrictEqual(result.trackingStart, defaultTrackingStart);
+        const expectedDefault = getDefaultTrackingStart();
+        // Check that tracking start is approximately 365 days ago (within 1 second tolerance)
+        assert.ok(
+            Math.abs(
+                result.trackingStart.getTime() - expectedDefault.getTime(),
+            ) < 1000,
+        );
     });
+
+    await t.test(
+        "default trackingStart is at least 365 days ago from now",
+        () => {
+            const result = sessionSearchSchema.parse({});
+            const now = new Date();
+            const diffInSeconds =
+                (now.getTime() - result.trackingStart.getTime()) / 1000;
+            const expectedMinSeconds = 365 * 24 * 60 * 60;
+            const expectedMaxSeconds = 366 * 24 * 60 * 60;
+
+            assert.ok(
+                diffInSeconds >= expectedMinSeconds,
+                `Expected tracking start to be at least ${expectedMinSeconds.toString()} seconds ago, but was ${diffInSeconds.toString()} seconds ago`,
+            );
+
+            assert.ok(
+                diffInSeconds < expectedMaxSeconds,
+                `Expected tracking start to be less than ${expectedMaxSeconds.toString()} seconds ago, but was ${diffInSeconds.toString()} seconds ago`,
+            );
+
+            // Also verify it's at the start of the day (midnight)
+            assert.strictEqual(result.trackingStart.getHours(), 0);
+            assert.strictEqual(result.trackingStart.getMinutes(), 0);
+            assert.strictEqual(result.trackingStart.getSeconds(), 0);
+            assert.strictEqual(result.trackingStart.getMilliseconds(), 0);
+        },
+    );
 
     await t.test("date coercion understands simple date strings", () => {
         // NOTE: These should be UTC dates with timezone in production
@@ -210,22 +263,35 @@ await test("sessionSearchSchema validation", async (t) => {
             sessionTableMode: "rate",
             showExtrapolatedSessions: "invalid",
         });
+        const expectedDefault = getDefaultTrackingStart();
         assert.strictEqual(result.gamemode, "overall"); // fallback
         assert.strictEqual(result.stat, "wins"); // valid
         assert.strictEqual(result.variantSelection, "both"); // fallback
         assert.strictEqual(result.sessionTableMode, "rate"); // valid
         assert.strictEqual(result.showExtrapolatedSessions, false); // fallback
-        assert.deepStrictEqual(result, {
-            gamemode: "overall", // fallback
-            stat: "wins", // valid
-            variantSelection: "both", // fallback
-            sessionTableMode: "rate", // valid
-            showExtrapolatedSessions: false, // fallback
-            timeIntervalDefinition: {
-                // fallback
-                type: "contained",
+        // Check that tracking start is approximately 365 days ago (within 1 second tolerance)
+        assert.ok(
+            Math.abs(
+                result.trackingStart.getTime() - expectedDefault.getTime(),
+            ) < 1000,
+        );
+        assert.deepStrictEqual(
+            {
+                ...result,
+                trackingStart: expectedDefault, // Use the expected value for comparison
             },
-            trackingStart: defaultTrackingStart, // fallback
-        });
+            {
+                gamemode: "overall", // fallback
+                stat: "wins", // valid
+                variantSelection: "both", // fallback
+                sessionTableMode: "rate", // valid
+                showExtrapolatedSessions: false, // fallback
+                timeIntervalDefinition: {
+                    // fallback
+                    type: "contained",
+                },
+                trackingStart: expectedDefault, // fallback
+            },
+        );
     });
 });
