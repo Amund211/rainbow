@@ -1137,3 +1137,344 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
         });
     }
 });
+
+await test("computeStatProgression - index stat", async (t) => {
+    await t.test("success cases", async (t) => {
+        // Note: Index = fkdr² * stars
+        // We use average exp per star for progression: PRESTIGE_EXP / 100 = 487000 / 100 = 4870
+
+        const cases: {
+            name: string;
+            explanation: string;
+            durationDays: number;
+            startStats: {
+                experience: number;
+                finalKills: number;
+                finalDeaths: number;
+            };
+            endStats: {
+                experience: number;
+                finalKills: number;
+                finalDeaths: number;
+            };
+            expected: {
+                index: number;
+                milestone: number;
+                daysUntilMilestone: number;
+                progressPerDay: number;
+            };
+        }[] = [
+            {
+                name: "basic - steady progress on all stats",
+                explanation: `
+Start: exp=4870 (1 star), fk=10, fd=5 -> fkdr=2, index=2²*1=4
+End: exp=9740 (2 stars), fk=20, fd=8 -> fkdr=2.5, index=2.5²*2=12.5
+Duration: 10 days
+
+Progress per day:
+- Experience: (9740-4870)/10 = 487 exp/day = 487/4870 = 0.1 stars/day
+- Final kills: (20-10)/10 = 1 fk/day
+- Final deaths: (8-5)/10 = 0.3 fd/day
+- FKDR: evolves from 2 to 2.5
+
+To reach milestone 20:
+We need to solve: fkdr²(t) * stars(t) = 20
+Where:
+- fk(t) = 20 + 1*t
+- fd(t) = 8 + 0.3*t
+- fkdr(t) = fk(t)/fd(t) = (20+t)/(8+0.3*t)
+- exp(t) = 9740 + 487*t
+- stars(t) = exp(t)/4870 = (9740+487*t)/4870 = 2 + 0.1*t
+- index(t) = [(20+t)/(8+0.3*t)]² * (2+0.1*t) = 20
+
+Solving numerically or by approximation:
+At t=20: fk=40, fd=14, fkdr≈2.857, stars=4, index≈2.857²*4≈32.65
+At t=10: fk=30, fd=11, fkdr≈2.727, stars=3, index≈2.727²*3≈22.31
+
+Linear approximation: t ≈ (20-12.5)/(22.31-12.5)*10 ≈ 7.6 days
+
+Progress per day: (20-12.5)/7.6 ≈ 0.987
+                `,
+                durationDays: 10,
+                startStats: {
+                    experience: 4870,
+                    finalKills: 10,
+                    finalDeaths: 5,
+                },
+                endStats: { experience: 9740, finalKills: 20, finalDeaths: 8 },
+                expected: {
+                    index: 12.5,
+                    milestone: 20,
+                    daysUntilMilestone: 7.641,
+                    progressPerDay: 0.981,
+                },
+            },
+            {
+                name: "zero final deaths at start",
+                explanation: `
+Start: exp=4870 (1 star), fk=10, fd=0 -> fkdr=10, index=10²*1=100
+End: exp=9740 (2 stars), fk=20, fd=5 -> fkdr=4, index=4²*2=32
+Duration: 10 days
+
+Progress per day:
+- Experience: 487 exp/day = 0.1 stars/day
+- Final kills: 1 fk/day
+- Final deaths: 0.5 fd/day
+- Index decreasing from 100 to 32
+
+Next milestone (going down): 50
+At t=0 (end): index=32
+Need to find when index(t) = 50
+- fk(t) = 20 + 1*t
+- fd(t) = 5 + 0.5*t
+- stars(t) = 2 + 0.1*t
+- index(t) = [(20+t)/(5+0.5*t)]² * (2+0.1*t) = 50
+
+Since we're trending downward (session quotient degrading), 
+we won't reach 50. Days until milestone = Infinity (can't reach it going down)
+Progress per day = 0
+                `,
+                durationDays: 10,
+                startStats: {
+                    experience: 4870,
+                    finalKills: 10,
+                    finalDeaths: 0,
+                },
+                endStats: { experience: 9740, finalKills: 20, finalDeaths: 5 },
+                expected: {
+                    index: 32,
+                    milestone: 50,
+                    daysUntilMilestone: Infinity,
+                    progressPerDay: 0,
+                },
+            },
+            {
+                name: "zero final deaths overall",
+                explanation: `
+Start: exp=4870 (1 star), fk=5, fd=0 -> fkdr=5, index=5²*1=25
+End: exp=9740 (2 stars), fk=10, fd=0 -> fkdr=10, index=10²*2=200
+Duration: 10 days
+
+Progress per day:
+- Experience: 487 exp/day = 0.1 stars/day
+- Final kills: 0.5 fk/day
+- Final deaths: 0 fd/day (no deaths!)
+- FKDR = fk (when fd=0)
+
+index(t) = fk(t)² * stars(t) = (10+0.5*t)² * (2+0.1*t)
+
+Next milestone: 300
+(10+0.5*t)² * (2+0.1*t) = 300
+
+At t=10: fk=15, stars=3, index=15²*3=675
+Solving: expanding and solving the cubic equation
+Approximate solution: t ≈ 7.5 days
+
+Progress per day: (300-200)/7.5 ≈ 13.33
+                `,
+                durationDays: 10,
+                startStats: { experience: 4870, finalKills: 5, finalDeaths: 0 },
+                endStats: { experience: 9740, finalKills: 10, finalDeaths: 0 },
+                expected: {
+                    index: 200,
+                    milestone: 300,
+                    daysUntilMilestone: 7.48,
+                    progressPerDay: 13.369,
+                },
+            },
+            {
+                name: "no experience progress",
+                explanation: `
+Start: exp=4870 (1 star), fk=10, fd=10 -> fkdr=1, index=1²*1=1
+End: exp=4870 (1 star), fk=20, fd=10 -> fkdr=2, index=2²*1=4
+Duration: 10 days
+
+Progress per day:
+- Experience: 0 exp/day = 0 stars/day (stars constant at 1)
+- Final kills: 1 fk/day
+- Final deaths: 0 fd/day
+- stars(t) = 1 (constant)
+
+index(t) = fkdr(t)² * 1 = [(20+t)/(10+0*t)]² = [(20+t)/10]²
+
+Next milestone: 5
+[(20+t)/10]² = 5
+(20+t)/10 = √5 ≈ 2.236
+20+t = 22.36
+t ≈ 2.36 days
+
+Progress per day: (5-4)/2.36 ≈ 0.424
+                `,
+                durationDays: 10,
+                startStats: {
+                    experience: 4870,
+                    finalKills: 10,
+                    finalDeaths: 10,
+                },
+                endStats: { experience: 4870, finalKills: 20, finalDeaths: 10 },
+                expected: {
+                    index: 4,
+                    milestone: 5,
+                    daysUntilMilestone: 2.361,
+                    progressPerDay: 0.424,
+                },
+            },
+            {
+                name: "improving from low index",
+                explanation: `
+Start: exp=500 (0.something stars), fk=2, fd=2 -> fkdr=1, index≈1²*0.1≈0.1
+End: exp=4870 (1 star), fk=12, fd=6 -> fkdr=2, index=2²*1=4
+Duration: 5 days
+
+Progress per day:
+- Experience: (4870-500)/5 = 874 exp/day = 0.179 stars/day
+- Final kills: 2 fk/day
+- Final deaths: 0.8 fd/day
+
+Next milestone: 5
+index(t) = [(12+2*t)/(6+0.8*t)]² * (1+0.179*t)
+
+At t=5: fk=22, fd=10, fkdr=2.2, stars≈1.9, index≈2.2²*1.9≈9.2
+Solving for index(t) = 5:
+t ≈ 1.8 days
+
+Progress per day: (5-4)/1.8 ≈ 0.556
+                `,
+                durationDays: 5,
+                startStats: { experience: 500, finalKills: 2, finalDeaths: 2 },
+                endStats: { experience: 4870, finalKills: 12, finalDeaths: 6 },
+                expected: {
+                    index: 4,
+                    milestone: 5,
+                    daysUntilMilestone: 1.799,
+                    progressPerDay: 0.556,
+                },
+            },
+            {
+                name: "large values with steady ratios",
+                explanation: `
+Start: exp=487000 (100 stars), fk=1000, fd=500 -> fkdr=2, index=2²*100=400
+End: exp=536700 (110 stars), fk=1100, fd=520 -> fkdr≈2.115, index≈2.115²*110≈492
+Duration: 20 days
+
+Progress per day:
+- Experience: (536700-487000)/20 = 2485 exp/day = 0.510 stars/day
+- Final kills: 5 fk/day
+- Final deaths: 1 fd/day
+
+Next milestone: 500
+index(t) = [(1100+5*t)/(520+t)]² * (110+0.51*t)
+
+At t=2: fk=1110, fd=522, fkdr≈2.126, stars≈111, index≈2.126²*111≈502
+Solving for t when index(t) = 500:
+t ≈ 1.74 days
+
+Progress per day: (500-492)/1.74 ≈ 4.6
+                `,
+                durationDays: 20,
+                startStats: {
+                    experience: 487000,
+                    finalKills: 1000,
+                    finalDeaths: 500,
+                },
+                endStats: {
+                    experience: 536700,
+                    finalKills: 1100,
+                    finalDeaths: 520,
+                },
+                expected: {
+                    index: 492,
+                    milestone: 500,
+                    daysUntilMilestone: 1.739,
+                    progressPerDay: 4.599,
+                },
+            },
+        ];
+
+        for (const c of cases) {
+            await t.test(c.name, () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date(
+                    startDate.getTime() + c.durationDays * 24 * 60 * 60 * 1000,
+                );
+
+                const history: History = [
+                    new PlayerDataBuilder(TEST_UUID, startDate)
+                        .withExperience(c.startStats.experience)
+                        .withGamemodeStats(
+                            "overall",
+                            new StatsBuilder()
+                                .withStat("finalKills", c.startStats.finalKills)
+                                .withStat(
+                                    "finalDeaths",
+                                    c.startStats.finalDeaths,
+                                )
+                                .build(),
+                        )
+                        .build(),
+                    new PlayerDataBuilder(TEST_UUID, endDate)
+                        .withExperience(c.endStats.experience)
+                        .withGamemodeStats(
+                            "overall",
+                            new StatsBuilder()
+                                .withStat("finalKills", c.endStats.finalKills)
+                                .withStat("finalDeaths", c.endStats.finalDeaths)
+                                .build(),
+                        )
+                        .build(),
+                ];
+
+                const result = computeStatProgression(
+                    history,
+                    endDate,
+                    "index",
+                    "overall",
+                );
+
+                if (result.error) {
+                    assert.fail(
+                        `Expected success but got error: ${result.reason}`,
+                    );
+                }
+
+                // Destructure result
+                const {
+                    endValue,
+                    nextMilestoneValue,
+                    daysUntilMilestone,
+                    progressPerDay,
+                    ...rest
+                } = result;
+
+                // Deep strict equal on the rest
+                assert.deepStrictEqual(rest, {
+                    stat: "index",
+                    trendingUpward: true,
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                });
+
+                // Exact checks for simple values
+                assert.strictEqual(nextMilestoneValue, c.expected.milestone);
+
+                // "Close enough" checks for floats (within 1e-6)
+                assert.ok(
+                    Math.abs(endValue - c.expected.index) < 1e-6,
+                    `endValue ${endValue.toString()} should be close to ${c.expected.index.toString()}`,
+                );
+                assert.ok(
+                    Math.abs(
+                        daysUntilMilestone - c.expected.daysUntilMilestone,
+                    ) < 1e-3,
+                    `daysUntilMilestone ${daysUntilMilestone.toString()} should be close to ${c.expected.daysUntilMilestone.toString()}`,
+                );
+                assert.ok(
+                    Math.abs(progressPerDay - c.expected.progressPerDay) < 1e-3,
+                    `progressPerDay ${progressPerDay.toString()} should be close to ${c.expected.progressPerDay.toString()}`,
+                );
+            });
+        }
+    });
+});
