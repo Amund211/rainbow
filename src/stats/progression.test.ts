@@ -1146,16 +1146,18 @@ await test("computeStatProgression - index stat", async (t) => {
         const cases: {
             name: string;
             explanation: string;
-            durationDays: number;
-            startStats: {
-                experience: number;
-                finalKills: number;
-                finalDeaths: number;
-            };
-            endStats: {
-                experience: number;
-                finalKills: number;
-                finalDeaths: number;
+            trackingStats: {
+                durationDays: number;
+                start: {
+                    experience: number;
+                    finalKills: number;
+                    finalDeaths: number;
+                };
+                end: {
+                    experience: number;
+                    finalKills: number;
+                    finalDeaths: number;
+                };
             };
             expected: {
                 index: number;
@@ -1195,13 +1197,15 @@ Linear approximation: t ≈ (20-12.5)/(22.31-12.5)*10 ≈ 7.6 days
 
 Progress per day: (20-12.5)/7.6 ≈ 0.987
                 `,
-                durationDays: 10,
-                startStats: {
-                    experience: 4870,
-                    finalKills: 10,
-                    finalDeaths: 5,
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 4870,
+                        finalKills: 10,
+                        finalDeaths: 5,
+                    },
+                    end: { experience: 9740, finalKills: 20, finalDeaths: 8 },
                 },
-                endStats: { experience: 9740, finalKills: 20, finalDeaths: 8 },
                 expected: {
                     index: 12.5,
                     milestone: 20,
@@ -1234,13 +1238,15 @@ Since we're trending downward (session quotient degrading),
 we won't reach 50. Days until milestone = Infinity (can't reach it going down)
 Progress per day = 0
                 `,
-                durationDays: 10,
-                startStats: {
-                    experience: 4870,
-                    finalKills: 10,
-                    finalDeaths: 0,
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 4870,
+                        finalKills: 10,
+                        finalDeaths: 0,
+                    },
+                    end: { experience: 9740, finalKills: 20, finalDeaths: 5 },
                 },
-                endStats: { experience: 9740, finalKills: 20, finalDeaths: 5 },
                 expected: {
                     index: 32,
                     milestone: 50,
@@ -1272,9 +1278,11 @@ Approximate solution: t ≈ 7.5 days
 
 Progress per day: (300-200)/7.5 ≈ 13.33
                 `,
-                durationDays: 10,
-                startStats: { experience: 4870, finalKills: 5, finalDeaths: 0 },
-                endStats: { experience: 9740, finalKills: 10, finalDeaths: 0 },
+                trackingStats: {
+                    durationDays: 10,
+                    start: { experience: 4870, finalKills: 5, finalDeaths: 0 },
+                    end: { experience: 9740, finalKills: 10, finalDeaths: 0 },
+                },
                 expected: {
                     index: 200,
                     milestone: 300,
@@ -1305,13 +1313,15 @@ t ≈ 2.36 days
 
 Progress per day: (5-4)/2.36 ≈ 0.424
                 `,
-                durationDays: 10,
-                startStats: {
-                    experience: 4870,
-                    finalKills: 10,
-                    finalDeaths: 10,
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 4870,
+                        finalKills: 10,
+                        finalDeaths: 10,
+                    },
+                    end: { experience: 4870, finalKills: 20, finalDeaths: 10 },
                 },
-                endStats: { experience: 4870, finalKills: 20, finalDeaths: 10 },
                 expected: {
                     index: 4,
                     milestone: 5,
@@ -1340,9 +1350,11 @@ t ≈ 1.8 days
 
 Progress per day: (5-4)/1.8 ≈ 0.556
                 `,
-                durationDays: 5,
-                startStats: { experience: 500, finalKills: 2, finalDeaths: 2 },
-                endStats: { experience: 4870, finalKills: 12, finalDeaths: 6 },
+                trackingStats: {
+                    durationDays: 5,
+                    start: { experience: 500, finalKills: 2, finalDeaths: 2 },
+                    end: { experience: 4870, finalKills: 12, finalDeaths: 6 },
+                },
                 expected: {
                     index: 4,
                     milestone: 5,
@@ -1371,16 +1383,18 @@ t ≈ 1.74 days
 
 Progress per day: (500-492)/1.74 ≈ 4.6
                 `,
-                durationDays: 20,
-                startStats: {
-                    experience: 487000,
-                    finalKills: 1000,
-                    finalDeaths: 500,
-                },
-                endStats: {
-                    experience: 536700,
-                    finalKills: 1100,
-                    finalDeaths: 520,
+                trackingStats: {
+                    durationDays: 20,
+                    start: {
+                        experience: 487000,
+                        finalKills: 1000,
+                        finalDeaths: 500,
+                    },
+                    end: {
+                        experience: 536700,
+                        finalKills: 1100,
+                        finalDeaths: 520,
+                    },
                 },
                 expected: {
                     index: 492,
@@ -1395,30 +1409,40 @@ Progress per day: (500-492)/1.74 ≈ 4.6
             await t.test(c.name, () => {
                 const startDate = new Date("2024-01-01T00:00:00Z");
                 const endDate = new Date(
-                    startDate.getTime() + c.durationDays * 24 * 60 * 60 * 1000,
+                    startDate.getTime() +
+                        c.trackingStats.durationDays * 24 * 60 * 60 * 1000,
                 );
 
                 const history: History = [
                     new PlayerDataBuilder(TEST_UUID, startDate)
-                        .withExperience(c.startStats.experience)
+                        .withExperience(c.trackingStats.start.experience)
                         .withGamemodeStats(
                             "overall",
                             new StatsBuilder()
-                                .withStat("finalKills", c.startStats.finalKills)
+                                .withStat(
+                                    "finalKills",
+                                    c.trackingStats.start.finalKills,
+                                )
                                 .withStat(
                                     "finalDeaths",
-                                    c.startStats.finalDeaths,
+                                    c.trackingStats.start.finalDeaths,
                                 )
                                 .build(),
                         )
                         .build(),
                     new PlayerDataBuilder(TEST_UUID, endDate)
-                        .withExperience(c.endStats.experience)
+                        .withExperience(c.trackingStats.end.experience)
                         .withGamemodeStats(
                             "overall",
                             new StatsBuilder()
-                                .withStat("finalKills", c.endStats.finalKills)
-                                .withStat("finalDeaths", c.endStats.finalDeaths)
+                                .withStat(
+                                    "finalKills",
+                                    c.trackingStats.end.finalKills,
+                                )
+                                .withStat(
+                                    "finalDeaths",
+                                    c.trackingStats.end.finalDeaths,
+                                )
                                 .build(),
                         )
                         .build(),
@@ -1437,33 +1461,22 @@ Progress per day: (500-492)/1.74 ≈ 4.6
                     );
                 }
 
-                // Destructure result
-                const {
-                    endValue,
-                    nextMilestoneValue,
-                    daysUntilMilestone,
-                    progressPerDay,
-                    ...rest
-                } = result;
+                // Destructure result for float comparisons
+                const { daysUntilMilestone, progressPerDay, ...rest } = result;
 
-                // Deep strict equal on the rest
+                // Deep strict equal on exact values
                 assert.deepStrictEqual(rest, {
                     stat: "index",
-                    trendingUpward: true,
+                    endValue: c.expected.index,
+                    nextMilestoneValue: c.expected.milestone,
+                    trendingUpward: c.expected.milestone >= c.expected.index,
                     trackingDataTimeInterval: {
                         start: startDate,
                         end: endDate,
                     },
                 });
 
-                // Exact checks for simple values
-                assert.strictEqual(nextMilestoneValue, c.expected.milestone);
-
-                // "Close enough" checks for floats (within 1e-6)
-                assert.ok(
-                    Math.abs(endValue - c.expected.index) < 1e-6,
-                    `endValue ${endValue.toString()} should be close to ${c.expected.index.toString()}`,
-                );
+                // "Close enough" checks for floats
                 assert.ok(
                     Math.abs(
                         daysUntilMilestone - c.expected.daysUntilMilestone,
