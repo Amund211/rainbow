@@ -1170,83 +1170,83 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "basic - steady progress on all stats",
                 explanation: `
 Start: exp=500 (1 star), fk=10, fd=5 -> fkdr=2, index=2²*1=4
-End: exp=7000 (4 stars), fk=23, fd=9 -> fkdr≈2.556, index≈2.556²*4≈26.12
-Duration: 13 days
+End: exp=7000 (4 stars), fk=20, fd=10 -> fkdr=2, index=2²*4=16
+Duration: 10 days
 
 Progress per day (for milestone calculation):
-- Experience: (7000-500)/13 = 500 exp/day
-- Using average 4870 exp/star for progression: 500/4870 ≈ 0.103 stars/day
-- Final kills: (23-10)/13 = 1 fk/day
-- Final deaths: (9-5)/13 ≈ 0.308 fd/day
-- FKDR: evolves from 2 to 2.556
+- Experience: (7000-500)/10 = 650 exp/day
+- Using average 4870 exp/star for progression: 650/4870 ≈ 0.1335 stars/day
+- Final kills: (20-10)/10 = 1 fk/day
+- Final deaths: (10-5)/10 = 0.5 fd/day
+- FKDR: constant at 2
 
-To reach milestone 30:
-We need to solve: fkdr²(t) * stars(t) = 30
+To reach milestone 20:
+We need to solve: fkdr²(t) * stars(t) = 20
 Where (using average exp/star for progression):
-- fk(t) = 23 + 1*t
-- fd(t) = 9 + 0.308*t
-- fkdr(t) = (23+t)/(9+0.308*t)
-- exp(t) = 7000 + 500*t
-- stars(t) = 4 + 500*t/4870 ≈ 4 + 0.103*t
-- index(t) = [(23+t)/(9+0.308*t)]² * (4+0.103*t) = 30
+- fk(t) = 20 + 1*t
+- fd(t) = 10 + 0.5*t
+- fkdr(t) = (20+t)/(10+0.5*t)
+- exp(t) = 7000 + 650*t
+- stars(t) = 4 + 650*t/4870 ≈ 4 + 0.1335*t
+- index(t) = [(20+t)/(10+0.5*t)]² * (4+0.1335*t) = 20
 
-At t=7: fk=30, fd≈11.2, fkdr≈2.68, stars≈4.72, index≈2.68²*4.72≈33.9
-Solving numerically: t ≈ 6.5 days
+At t=10: fk=30, fd=15, fkdr=2, stars≈5.34, index≈2²*5.34≈21.36
+Solving numerically: t ≈ 8.8 days
 
-Progress per day: (30-26.12)/6.5 ≈ 0.597
+Progress per day: (20-16)/8.8 ≈ 0.455
                 `,
                 trackingStats: {
-                    durationDays: 13,
+                    durationDays: 10,
                     start: {
                         experience: 500,
                         finalKills: 10,
                         finalDeaths: 5,
                     },
-                    end: { experience: 7000, finalKills: 23, finalDeaths: 9 },
+                    end: { experience: 7000, finalKills: 20, finalDeaths: 10 },
                 },
                 expected: {
-                    index: 26.12,
-                    milestone: 30,
-                    daysUntilMilestone: 6.5,
-                    progressPerDay: 0.597,
+                    index: 16,
+                    milestone: 20,
+                    daysUntilMilestone: 8.8,
+                    progressPerDay: 0.455,
                 },
             },
             {
                 name: "zero final deaths at start",
                 explanation: `
 Start: exp=500 (1 star), fk=10, fd=0 -> fkdr=10, index=10²*1=100
-End: exp=7000 (4 stars), fk=23, fd=6 -> fkdr≈3.833, index≈3.833²*4≈58.78
-Duration: 13 days
+End: exp=7000 (4 stars), fk=20, fd=5 -> fkdr=4, index=4²*4=64
+Duration: 10 days
 
 Progress per day (for milestone calculation):
-- Experience: 500 exp/day = 500/4870 ≈ 0.103 stars/day (average)
+- Experience: 650 exp/day = 650/4870 ≈ 0.1335 stars/day (average)
 - Final kills: 1 fk/day
-- Final deaths: ≈0.462 fd/day
-- Index decreasing from 100 to 58.78
+- Final deaths: 0.5 fd/day
+- Index decreasing from 100 to 64
 
 Next milestone (going down): 50
-At t=0 (end): index=58.78
+At t=0 (end): index=64
 Need to find when index(t) = 50
-- fk(t) = 23 + 1*t
-- fd(t) = 6 + 0.462*t
-- stars(t) = 4 + 0.103*t (using average exp/star)
-- index(t) = [(23+t)/(6+0.462*t)]² * (4+0.103*t) = 50
+- fk(t) = 20 + 1*t
+- fd(t) = 5 + 0.5*t
+- stars(t) = 4 + 0.1335*t (using average exp/star)
+- index(t) = [(20+t)/(5+0.5*t)]² * (4+0.1335*t) = 50
 
 Since we're trending downward (fkdr declining), 
 we won't reach 50. Days until milestone = Infinity (can't reach it going down)
 Progress per day = 0
                 `,
                 trackingStats: {
-                    durationDays: 13,
+                    durationDays: 10,
                     start: {
                         experience: 500,
                         finalKills: 10,
                         finalDeaths: 0,
                     },
-                    end: { experience: 7000, finalKills: 23, finalDeaths: 6 },
+                    end: { experience: 7000, finalKills: 20, finalDeaths: 5 },
                 },
                 expected: {
-                    index: 58.78,
+                    index: 64,
                     milestone: 50,
                     daysUntilMilestone: Infinity,
                     progressPerDay: 0,
@@ -1256,35 +1256,35 @@ Progress per day = 0
                 name: "zero final deaths overall",
                 explanation: `
 Start: exp=500 (1 star), fk=5, fd=0 -> fkdr=5, index=5²*1=25
-End: exp=7000 (4 stars), fk=11, fd=0 -> fkdr=11, index=11²*4=484
-Duration: 13 days
+End: exp=7000 (4 stars), fk=10, fd=0 -> fkdr=10, index=10²*4=400
+Duration: 10 days
 
 Progress per day (for milestone calculation):
-- Experience: 500 exp/day = 500/4870 ≈ 0.103 stars/day (average)
-- Final kills: ≈0.462 fk/day
+- Experience: 650 exp/day = 650/4870 ≈ 0.1335 stars/day (average)
+- Final kills: 0.5 fk/day
 - Final deaths: 0 fd/day (no deaths!)
 - FKDR = fk (when fd=0)
 
-index(t) = fk(t)² * stars(t) = (11+0.462*t)² * (4+0.103*t)
+index(t) = fk(t)² * stars(t) = (10+0.5*t)² * (4+0.1335*t)
 
 Next milestone: 500
-(11+0.462*t)² * (4+0.103*t) = 500
+(10+0.5*t)² * (4+0.1335*t) = 500
 
-At t=2: fk≈11.9, stars≈4.2, index≈11.9²*4.2≈594
-Solving the cubic equation numerically: t ≈ 1.5 days
+At t=10: fk=15, stars≈5.34, index≈15²*5.34≈1201
+Solving the cubic equation numerically: t ≈ 6.1 days
 
-Progress per day: (500-484)/1.5 ≈ 10.67
+Progress per day: (500-400)/6.1 ≈ 16.39
                 `,
                 trackingStats: {
-                    durationDays: 13,
+                    durationDays: 10,
                     start: { experience: 500, finalKills: 5, finalDeaths: 0 },
-                    end: { experience: 7000, finalKills: 11, finalDeaths: 0 },
+                    end: { experience: 7000, finalKills: 10, finalDeaths: 0 },
                 },
                 expected: {
-                    index: 484,
+                    index: 400,
                     milestone: 500,
-                    daysUntilMilestone: 1.5,
-                    progressPerDay: 10.67,
+                    daysUntilMilestone: 6.1,
+                    progressPerDay: 16.39,
                 },
             },
             {
@@ -1330,58 +1330,58 @@ Progress per day: (5-4)/2.36 ≈ 0.424
                 name: "improving from low index",
                 explanation: `
 Start: exp=500 (1 star), fk=2, fd=2 -> fkdr=1, index=1²*1=1
-End: exp=7000 (4 stars), fk=16, fd=8 -> fkdr=2, index=2²*4=16
-Duration: 7 days
+End: exp=7000 (4 stars), fk=12, fd=6 -> fkdr=2, index=2²*4=16
+Duration: 10 days
 
 Progress per day (for milestone calculation):
-- Experience: (7000-500)/7 ≈ 929 exp/day = 929/4870 ≈ 0.191 stars/day (average)
-- Final kills: 2 fk/day
-- Final deaths: ≈0.857 fd/day
+- Experience: (7000-500)/10 = 650 exp/day = 650/4870 ≈ 0.1335 stars/day (average)
+- Final kills: 1 fk/day
+- Final deaths: 0.4 fd/day
 
 Next milestone: 20
-index(t) = [(16+2*t)/(8+0.857*t)]² * (4+0.191*t)
+index(t) = [(12+1*t)/(6+0.4*t)]² * (4+0.1335*t)
 
-At t=3: fk=22, fd≈10.6, fkdr≈2.08, stars≈4.57, index≈2.08²*4.57≈19.8
+At t=10: fk=22, fd=10, fkdr=2.2, stars≈5.34, index≈2.2²*5.34≈25.8
 Solving for index(t) = 20:
-t ≈ 3.1 days
+t ≈ 7.5 days
 
-Progress per day: (20-16)/3.1 ≈ 1.29
+Progress per day: (20-16)/7.5 ≈ 0.533
                 `,
                 trackingStats: {
-                    durationDays: 7,
+                    durationDays: 10,
                     start: { experience: 500, finalKills: 2, finalDeaths: 2 },
-                    end: { experience: 7000, finalKills: 16, finalDeaths: 8 },
+                    end: { experience: 7000, finalKills: 12, finalDeaths: 6 },
                 },
                 expected: {
                     index: 16,
                     milestone: 20,
-                    daysUntilMilestone: 3.1,
-                    progressPerDay: 1.29,
+                    daysUntilMilestone: 7.5,
+                    progressPerDay: 0.533,
                 },
             },
             {
                 name: "large values with steady ratios",
                 explanation: `
 Start: exp=487000 (100 stars), fk=1000, fd=500 -> fkdr=2, index=2²*100=400
-End: exp=524000 (110 stars), fk=1075, fd=515 -> fkdr≈2.087, index≈2.087²*110≈479.29
-Duration: 15 days
+End: exp=524000 (110 stars), fk=1100, fd=520 -> fkdr≈2.115, index≈2.115²*110≈492.23
+Duration: 20 days
 
 Progress per day (for milestone calculation):
-- Experience: (524000-487000)/15 ≈ 2467 exp/day = 2467/4870 ≈ 0.506 stars/day (average)
+- Experience: (524000-487000)/20 = 1850 exp/day = 1850/4870 ≈ 0.380 stars/day (average)
 - Final kills: 5 fk/day
 - Final deaths: 1 fd/day
 
 Next milestone: 500
-index(t) = [(1075+5*t)/(515+t)]² * (110+0.506*t)
+index(t) = [(1100+5*t)/(520+t)]² * (110+0.380*t)
 
-At t=3: fk=1090, fd=518, fkdr≈2.104, stars≈111.5, index≈2.104²*111.5≈493.5
+At t=5: fk=1125, fd=525, fkdr≈2.143, stars≈111.9, index≈2.143²*111.9≈514
 Solving for t when index(t) = 500:
-t ≈ 4.2 days
+t ≈ 3.7 days
 
-Progress per day: (500-479.29)/4.2 ≈ 4.93
+Progress per day: (500-492.23)/3.7 ≈ 2.1
                 `,
                 trackingStats: {
-                    durationDays: 15,
+                    durationDays: 20,
                     start: {
                         experience: 487000,
                         finalKills: 1000,
@@ -1389,15 +1389,15 @@ Progress per day: (500-479.29)/4.2 ≈ 4.93
                     },
                     end: {
                         experience: 524000,
-                        finalKills: 1075,
-                        finalDeaths: 515,
+                        finalKills: 1100,
+                        finalDeaths: 520,
                     },
                 },
                 expected: {
-                    index: 479.29,
+                    index: 492.23,
                     milestone: 500,
-                    daysUntilMilestone: 4.2,
-                    progressPerDay: 4.93,
+                    daysUntilMilestone: 3.7,
+                    progressPerDay: 2.1,
                 },
             },
         ];
