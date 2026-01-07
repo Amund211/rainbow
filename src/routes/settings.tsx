@@ -6,17 +6,76 @@ import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/settings")({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: "Settings - Prism Overlay",
+            },
+            {
+                name: "description",
+                content:
+                    "Change your settings for the Prism Overlay stats website. Set a default player to view your stats.",
+            },
+            {
+                property: "og:type",
+                content: "website",
+            },
+            {
+                property: "og:url",
+                content: "https://prismoverlay.com/settings",
+            },
+            {
+                property: "og:title",
+                content: "Settings - Prism Overlay",
+            },
+            {
+                property: "og:description",
+                content:
+                    "Change your settings for the Prism Overlay stats website. Set a default player to view your stats.",
+            },
+            {
+                property: "og:image",
+                content: "https://prismoverlay.com/who.png",
+            },
+            {
+                property: "og:site_name",
+                content: "Prism Overlay",
+            },
+            {
+                property: "twitter:card",
+                content: "summary",
+            },
+            {
+                property: "twitter:url",
+                content: "https://prismoverlay.com/settings",
+            },
+            {
+                property: "twitter:title",
+                content: "Settings - Prism Overlay",
+            },
+            {
+                property: "twitter:description",
+                content:
+                    "Change your settings for the Prism Overlay stats website. Set a default player to view your stats.",
+            },
+            {
+                property: "twitter:image",
+                content: "https://prismoverlay.com/who.png",
+            },
+        ],
+        links: [
+            {
+                rel: "canonical",
+                href: "https://prismoverlay.com/settings",
+            },
+        ],
+    }),
 });
 
 function RouteComponent() {
     const { currentUser, setCurrentUser } = useCurrentUser();
     return (
         <Stack gap={1}>
-            <meta
-                name="description"
-                content="Change your settings for the Prism Overlay stats website. Set a default player to view your stats."
-            />
-            <link rel="canonical" href="https://prismoverlay.com/settings" />
             <Stack
                 component="label"
                 direction="row"
