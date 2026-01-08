@@ -1140,12 +1140,13 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
 
 await test("computeStatProgression - index stat", async (t) => {
     await t.test("success cases", async (t) => {
-        // Note: Index = fkdr² * stars
-        // We use average exp per star for progression: PRESTIGE_EXP / 100 = 487000 / 100 = 4870
+        // Note: Index = fkdr^2 * stars
+        //       We use average exp per star for progression: PRESTIGE_EXP / 100 = 487000 / 100 = 4870
+        //       We use actual star calculation for index calculation
+        //       const EASY_LEVEL_COSTS = { 1: 500, 2: 1000, 3: 2000, 4: 3500 }; Rest: 5000
 
         const cases: {
             name: string;
-            explanation: string;
             trackingStats: {
                 durationDays: number;
                 start: {
@@ -1167,50 +1168,119 @@ await test("computeStatProgression - index stat", async (t) => {
             };
         }[] = [
             {
-                name: "basic - steady progress on all stats",
-                explanation: `
-Start: exp=500 (1 star), fk=10, fd=5 -> fkdr=2, index=2²*1=4
-End: exp=7000 (4 stars), fk=20, fd=10 -> fkdr=2, index=2²*4=16
-Duration: 10 days
-
-Progress per day (for milestone calculation):
-- Experience: (7000-500)/10 = 650 exp/day
-- Using average 4870 exp/star for progression: 650/4870 ≈ 0.1335 stars/day
-- Final kills: (20-10)/10 = 1 fk/day
-- Final deaths: (10-5)/10 = 0.5 fd/day
-- FKDR: constant at 2
-
-To reach milestone 20:
-We need to solve: fkdr²(t) * stars(t) = 20
-Where (using average exp/star for progression):
-- fk(t) = 20 + 1*t
-- fd(t) = 10 + 0.5*t
-- fkdr(t) = (20+t)/(10+0.5*t)
-- exp(t) = 7000 + 650*t
-- stars(t) = 4 + 650*t/4870 ≈ 4 + 0.1335*t
-- index(t) = [(20+t)/(10+0.5*t)]² * (4+0.1335*t) = 20
-
-At t=10: fk=30, fd=15, fkdr=2, stars≈5.34, index≈2²*5.34≈21.36
-Solving numerically: t ≈ 8.8 days
-
-Progress per day: (20-16)/8.8 ≈ 0.455
-                `,
+                name: "increasing star, stable fkdr",
                 trackingStats: {
                     durationDays: 10,
                     start: {
-                        experience: 500,
-                        finalKills: 10,
+                        experience: 2130, // 4870 (1 avg star) difference
+                        finalKills: 10, // 2 fkdr -> 2 session fkdr
                         finalDeaths: 5,
                     },
-                    end: { experience: 7000, finalKills: 20, finalDeaths: 10 },
+                    end: {
+                        experience: 7000, // 4 stars
+                        finalKills: 20, // 2 fkdr
+                        finalDeaths: 10,
+                    },
                 },
                 expected: {
-                    index: 16,
+                    index: 16, // 4 stars * (2 fkdr)^2
                     milestone: 20,
-                    daysUntilMilestone: 8.8,
-                    progressPerDay: 0.455,
+                    daysUntilMilestone: 10, // stable fkdr -> need 5 stars -> 10 days (same as tracking interval)
+                    progressPerDay: 0.4,
                 },
             },
+            {
+                name: "increasing fkdr, zero final deaths, stable stars",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 500, // 0 star progress - not really possible, but interesting to test
+                        finalKills: 10, // 1 final per day
+                        finalDeaths: 0,
+                    },
+                    end: {
+                        experience: 500,
+                        finalKills: 20, // 20 fkdr, trending up by 1 fkdr/day
+                        finalDeaths: 0,
+                    },
+                },
+                expected: {
+                    index: 400, // 1 star * (20 fkdr)^2
+                    milestone: 500,
+                    daysUntilMilestone: Math.sqrt(500) - 20, // 500 index -> sqrt(500) fkdr -> need (sqrt(500)-20) days at 1 fkdr/day
+                    progressPerDay: 100 / (Math.sqrt(500) - 20), // (500-400) / daysUntilMilestone
+                },
+            },
+            {
+                name: "increasing fkdr, stable final deaths, stable stars",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 500, // 0 star progress - not really possible, but interesting to test
+                        finalKills: 10, // 1 final per day
+                        finalDeaths: 2, // Non-zero stable final deaths
+                    },
+                    end: {
+                        experience: 500,
+                        finalKills: 20, // 10 fkdr, trending up by 0.5 fkdr/day
+                        finalDeaths: 2,
+                    },
+                },
+                expected: {
+                    index: 100, // 1 star * (10 fkdr)^2
+                    milestone: 200,
+                    daysUntilMilestone: (Math.sqrt(200) - 10) / 0.5, // 200 index -> sqrt(200) fkdr -> need (sqrt(200)-10) days at 0.5 fkdr/day -> *2
+                    progressPerDay: 100 / ((Math.sqrt(200) - 10) / 0.5), // (200-100) / daysUntilMilestone
+                },
+            },
+            {
+                name: "increasing fkdr, stable stars",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 500, // 0 star progress - not really possible, but interesting to test
+                        finalKills: 0, // 2 finals per day (20 session fkdr)
+                        finalDeaths: 1, // 0.1 final death per
+                    },
+                    end: {
+                        experience: 500,
+                        finalKills: 20, // 10 fkdr
+                        finalDeaths: 2,
+                    },
+                },
+                expected: {
+                    index: 100, // 1 star * (10 fkdr)^2
+                    milestone: 200,
+                    daysUntilMilestone: 10 / (Math.sqrt(2) - 1), // 200 index -> sqrt(200) fkdr -> (20* (t/10)) / (1+(t/10)) = sqrt(200) -> 2t = sqrt(200)+sqrt(2)*t -> t = sqrt(200) / (2 - sqrt(2)) = 10 / (sqrt(2) - 1))
+                    progressPerDay: 100 / (10 / (Math.sqrt(2) - 1)), // (200-100) / daysUntilMilestone
+                },
+            },
+            {
+                // TODO
+                name: "decreasing fkdr, stable stars",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 500, // 0 star progress - not really possible, but interesting to test
+                        finalKills: 15, // 1 final per day
+                        finalDeaths: 1, // Non-zero stable final deaths
+                    },
+                    end: {
+                        experience: 500,
+                        finalKills: 20, // 10 fkdr, trending up by 0.5 fkdr/day
+                        finalDeaths: 2,
+                    },
+                },
+                expected: {
+                    index: 100, // 1 star * (10 fkdr)^2
+                    milestone: 200,
+                    daysUntilMilestone: (Math.sqrt(200) - 10) / 0.5, // 200 index -> sqrt(200) fkdr -> need (sqrt(200)-10) days at 0.5 fkdr/day -> *2
+                    progressPerDay: 100 / ((Math.sqrt(200) - 10) / 0.5), // (200-100) / daysUntilMilestone
+                },
+            },
+            // TODO: Stars + fkdr moving
+            // trending down, trending up, etc
+            // If trending down far enough then trend down? else trend up? Otherwise just trend in gradient direction?
             {
                 name: "zero final deaths at start",
                 explanation: `
