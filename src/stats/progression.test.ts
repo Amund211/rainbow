@@ -1185,7 +1185,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 expected: {
                     index: 16, // 4 stars * (2 fkdr)^2
                     milestone: 20,
-                    daysUntilMilestone: 10, // stable fkdr -> need 5 stars -> 10 days (same as tracking interval)
+                    daysUntilMilestone: 10, // stable fkdr -> need to get to 5 stars (gain 1 star) -> 10 days (same as tracking interval)
                     progressPerDay: 0.4,
                 },
             },
@@ -1207,7 +1207,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 expected: {
                     index: 400, // 1 star * (20 fkdr)^2
                     milestone: 500,
-                    daysUntilMilestone: Math.sqrt(500) - 20, // 500 index -> sqrt(500) fkdr -> need (sqrt(500)-20) days at 1 fkdr/day
+                    daysUntilMilestone: Math.sqrt(500) - 20, // 500 index -> sqrt(500) fkdr -> 20 + t = sqrt(500) -> t = sqrt(500) - 20
                     progressPerDay: 100 / (Math.sqrt(500) - 20), // (500-400) / daysUntilMilestone
                 },
             },
@@ -1229,8 +1229,8 @@ await test("computeStatProgression - index stat", async (t) => {
                 expected: {
                     index: 100, // 1 star * (10 fkdr)^2
                     milestone: 200,
-                    daysUntilMilestone: (Math.sqrt(200) - 10) / 0.5, // 200 index -> sqrt(200) fkdr -> need (sqrt(200)-10) days at 0.5 fkdr/day -> *2
-                    progressPerDay: 100 / ((Math.sqrt(200) - 10) / 0.5), // (200-100) / daysUntilMilestone
+                    daysUntilMilestone: 20 * (Math.sqrt(2) - 1), // 200 index -> sqrt(200) fkdr -> (20 + t)/2 = sqrt(200) -> t = 2 * sqrt(200) - 20 = 20 * (sqrt(2) - 1)
+                    progressPerDay: 100 / (20 * (Math.sqrt(2) - 1)), // (200-100) / daysUntilMilestone
                 },
             },
             {
@@ -1240,7 +1240,7 @@ await test("computeStatProgression - index stat", async (t) => {
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 0, // 2 finals per day (20 session fkdr)
-                        finalDeaths: 1, // 0.1 final death per
+                        finalDeaths: 1, // 0.1 final death per day
                     },
                     end: {
                         experience: 500,
@@ -1251,31 +1251,37 @@ await test("computeStatProgression - index stat", async (t) => {
                 expected: {
                     index: 100, // 1 star * (10 fkdr)^2
                     milestone: 200,
-                    daysUntilMilestone: 10 / (Math.sqrt(2) - 1), // 200 index -> sqrt(200) fkdr -> (20* (t/10)) / (1+(t/10)) = sqrt(200) -> 2t = sqrt(200)+sqrt(2)*t -> t = sqrt(200) / (2 - sqrt(2)) = 10 / (sqrt(2) - 1))
-                    progressPerDay: 100 / (10 / (Math.sqrt(2) - 1)), // (200-100) / daysUntilMilestone
+                    daysUntilMilestone:
+                        (20 * (Math.sqrt(2) - 1)) / (2 - Math.sqrt(2)), // 200 index -> sqrt(200) fkdr -> (20 + 2t) / (2+0.1t) = sqrt(200) -> 20 + 2t = 2*sqrt(200)+0.1*sqrt(200)*t -> t = (2 * sqrt(200) - 20) / (2 - 0.1*sqrt(200)) = 20*(sqrt(2) - 1) / (2 - sqrt(2))
+                    progressPerDay:
+                        100 / ((20 * (Math.sqrt(2) - 1)) / (2 - Math.sqrt(2))), // (200-100) / daysUntilMilestone
                 },
             },
             {
-                // TODO
+                // TODO: Recompute with proper formula and initial values as above
+                // wolframalpha template: ((20 + 0.5t)/(2+0.1t))^2 = 90
                 name: "decreasing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
-                        finalKills: 15, // 1 final per day
-                        finalDeaths: 1, // Non-zero stable final deaths
+                        finalKills: 15, // 0.5 final per day (5 session fkdr)
+                        finalDeaths: 1, // 0.1 final death per day
                     },
                     end: {
                         experience: 500,
-                        finalKills: 20, // 10 fkdr, trending up by 0.5 fkdr/day
+                        finalKills: 20, // 10 fkdr
                         finalDeaths: 2,
                     },
                 },
                 expected: {
                     index: 100, // 1 star * (10 fkdr)^2
-                    milestone: 200,
-                    daysUntilMilestone: (Math.sqrt(200) - 10) / 0.5, // 200 index -> sqrt(200) fkdr -> need (sqrt(200)-10) days at 0.5 fkdr/day -> *2
-                    progressPerDay: 100 / ((Math.sqrt(200) - 10) / 0.5), // (200-100) / daysUntilMilestone
+                    milestone: 90,
+                    daysUntilMilestone:
+                        (30 * Math.sqrt(10) - 150) / (5 - 3 * Math.sqrt(10)), // 90 index -> sqrt(90) fkdr -> (15+0.5*t)/(1+0.1*t) = sqrt(90) -> (15+0.5*t) = sqrt(90) + sqrt(90)*0.1*t -> t*(0.5 - 0.1*sqrt(90)) = sqrt(90) - 15 -> t = (sqrt(90)-15) / (0.5 - 0.1*sqrt(90)) = (30*sqrt(10)-150) / (5 - 3*sqrt(10))
+                    progressPerDay:
+                        -10 /
+                        ((30 * Math.sqrt(10) - 150) / (5 - 3 * Math.sqrt(10))), // (90-100) / daysUntilMilestone
                 },
             },
             // TODO: Stars + fkdr moving
