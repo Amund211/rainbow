@@ -1291,6 +1291,34 @@ await test("computeStatProgression - index stat", async (t) => {
                 },
             },
             {
+                name: "increasing plateauing fkdr, stable stars",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 500, // 0 star progress - not really possible, but interesting to test
+                        finalKills: 16, // 2 finals per day (20 session fkdr)
+                        finalDeaths: 1, // 0.1 final death per day
+                    },
+                    end: {
+                        experience: 500,
+                        finalKills: 36, // 18 fkdr
+                        finalDeaths: 2,
+                    },
+                },
+                expected: {
+                    index: 324, // 1 star * (18 fkdr)^2
+                    milestone: 400,
+                    /* 400 index
+                     * -> sqrt(400) = 20 fkdr
+                     * This is our session fkdr, so we will asymptotically approach it but never reach it
+                     * -> Milestone is unreachable
+                     */
+                    daysUntilMilestone: Infinity,
+                    // (400-324) / Infinity = 0
+                    progressPerDay: 0,
+                },
+            },
+            {
                 name: "decreasing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
@@ -1328,6 +1356,34 @@ await test("computeStatProgression - index stat", async (t) => {
                      *      = -(8 + 3*sqrt(10)) / 4
                      */
                     progressPerDay: -(8 + 3 * Math.sqrt(10)) / 4,
+                },
+            },
+            {
+                name: "decreasing plateauing fkdr, stable stars",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 500, // 0 star progress - not really possible, but interesting to test
+                        finalKills: 16, // 0.5 final per day (5 session fkdr)
+                        finalDeaths: 3, // 0.1 final death per day
+                    },
+                    end: {
+                        experience: 500,
+                        finalKills: 21, // 5.25 fkdr
+                        finalDeaths: 4,
+                    },
+                },
+                expected: {
+                    index: 27.5625, // 1 star * (5.25 fkdr)^2
+                    milestone: 20,
+                    /* 20 index
+                     * -> sqrt(20) fkdr
+                     * This is below our session fkdr. We will asymptotically 25, but never reach it or anything below.
+                     * -> Milestone is unreachable
+                     */
+                    daysUntilMilestone: Infinity,
+                    // (20-27.5625) / Infinity = 0
+                    progressPerDay: 0,
                 },
             },
             // TODO: Stars + fkdr moving
