@@ -1168,6 +1168,73 @@ await test("computeStatProgression - index stat", async (t) => {
             };
         }[] = [
             {
+                name: "no progress",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        // No progress
+                        experience: 500,
+                        finalKills: 10,
+                        finalDeaths: 5,
+                    },
+                    end: {
+                        experience: 500,
+                        finalKills: 10, // 2 fkdr
+                        finalDeaths: 5,
+                    },
+                },
+                expected: {
+                    index: 16, // 4 stars * (2 fkdr)^2
+                    milestone: 20,
+                    daysUntilMilestone: Infinity,
+                    progressPerDay: 0,
+                },
+            },
+            {
+                name: "no finals",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 500,
+                        finalKills: 0,
+                        finalDeaths: 5,
+                    },
+                    end: {
+                        experience: 7000, // 4 stars
+                        finalKills: 0, // 0 fkdr
+                        finalDeaths: 10,
+                    },
+                },
+                expected: {
+                    index: 0, // 4 stars * (0 fkdr)^2
+                    milestone: 1,
+                    daysUntilMilestone: Infinity, // constant fkdr at 0
+                    progressPerDay: 0,
+                },
+            },
+            {
+                name: "no stars",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 0, // NOTE: 0 stars is not possible to attain, as all players start with 500 exp
+                        finalKills: 0,
+                        finalDeaths: 1,
+                    },
+                    end: {
+                        experience: 0, // 0 stars
+                        finalKills: 100,
+                        finalDeaths: 1,
+                    },
+                },
+                expected: {
+                    index: 0, // 4 stars * (0 fkdr)^2
+                    milestone: 1,
+                    daysUntilMilestone: Infinity, // constant fkdr at 0
+                    progressPerDay: 0,
+                },
+            },
+            {
                 name: "increasing star, stable fkdr",
                 trackingStats: {
                     durationDays: 10,
