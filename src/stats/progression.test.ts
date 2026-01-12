@@ -1258,8 +1258,6 @@ await test("computeStatProgression - index stat", async (t) => {
                 },
             },
             {
-                // TODO: Recompute with proper formula and initial values as above
-                // wolframalpha template: ((20 + 0.5t)/(2+0.1t))^2 = 90
                 name: "decreasing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
@@ -1278,10 +1276,10 @@ await test("computeStatProgression - index stat", async (t) => {
                     index: 100, // 1 star * (10 fkdr)^2
                     milestone: 90,
                     daysUntilMilestone:
-                        (30 * Math.sqrt(10) - 150) / (5 - 3 * Math.sqrt(10)), // 90 index -> sqrt(90) fkdr -> (15+0.5*t)/(1+0.1*t) = sqrt(90) -> (15+0.5*t) = sqrt(90) + sqrt(90)*0.1*t -> t*(0.5 - 0.1*sqrt(90)) = sqrt(90) - 15 -> t = (sqrt(90)-15) / (0.5 - 0.1*sqrt(90)) = (30*sqrt(10)-150) / (5 - 3*sqrt(10))
+                        (60 * Math.sqrt(10) - 200) / (5 - 3 * Math.sqrt(10)), // 90 index -> sqrt(90) fkdr -> (20+0.5*t)/(2+0.1*t) = sqrt(90) -> (20+0.5*t) = 2*sqrt(90) + sqrt(90)*0.1*t -> t*(0.5 - 0.1*sqrt(90)) = 2*sqrt(90) - 20 -> t = (2*sqrt(90)-20) / (0.5 - 0.1*sqrt(90)) = (60*sqrt(10)-200) / (5 - 3*sqrt(10))
                     progressPerDay:
                         -10 /
-                        ((30 * Math.sqrt(10) - 150) / (5 - 3 * Math.sqrt(10))), // (90-100) / daysUntilMilestone
+                        ((60 * Math.sqrt(10) - 200) / (5 - 3 * Math.sqrt(10))), // (90-100) / daysUntilMilestone
                 },
             },
             // TODO: Stars + fkdr moving
@@ -1308,7 +1306,7 @@ Need to find when index(t) = 50
 - stars(t) = 4 + 0.1335*t (using average exp/star)
 - index(t) = [(20+t)/(5+0.5*t)]² * (4+0.1335*t) = 50
 
-Since we're trending downward (fkdr declining), 
+Since we're trending downward (fkdr declining),
 we won't reach 50. Days until milestone = Infinity (can't reach it going down)
 Progress per day = 0
                 `,
