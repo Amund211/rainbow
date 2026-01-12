@@ -1208,7 +1208,7 @@ await test("computeStatProgression - index stat", async (t) => {
                     index: 400, // 1 star * (20 fkdr)^2
                     milestone: 500,
                     daysUntilMilestone: Math.sqrt(500) - 20, // 500 index -> sqrt(500) fkdr -> 20 + t = sqrt(500) -> t = sqrt(500) - 20
-                    progressPerDay: 100 / (Math.sqrt(500) - 20), // (500-400) / daysUntilMilestone
+                    progressPerDay: Math.sqrt(500) + 20, // (500-400) / daysUntilMilestone = (100 * (sqrt(500) + 20)) / (500 - 400) = sqrt(500) - 20
                 },
             },
             {
@@ -1229,8 +1229,8 @@ await test("computeStatProgression - index stat", async (t) => {
                 expected: {
                     index: 100, // 1 star * (10 fkdr)^2
                     milestone: 200,
-                    daysUntilMilestone: 20 * (Math.sqrt(2) - 1), // 200 index -> sqrt(200) fkdr -> (20 + t)/2 = sqrt(200) -> t = 2 * sqrt(200) - 20 = 20 * (sqrt(2) - 1)
-                    progressPerDay: 100 / (20 * (Math.sqrt(2) - 1)), // (200-100) / daysUntilMilestone
+                    daysUntilMilestone: 20 * Math.SQRT2 - 20, // 200 index -> sqrt(200) fkdr -> (20 + t)/2 = sqrt(200) -> t = 2 * sqrt(200) - 20 = 20*sqrt(2) - 20
+                    progressPerDay: 5 * Math.SQRT2 + 5, // (200-100) / daysUntilMilestone = 100 * (20*sqrt(2) + 20) / (800 - 400) = 5*sqrt(2)+5
                 },
             },
             {
@@ -1251,10 +1251,8 @@ await test("computeStatProgression - index stat", async (t) => {
                 expected: {
                     index: 100, // 1 star * (10 fkdr)^2
                     milestone: 200,
-                    daysUntilMilestone:
-                        (20 * (Math.sqrt(2) - 1)) / (2 - Math.sqrt(2)), // 200 index -> sqrt(200) fkdr -> (20 + 2t) / (2+0.1t) = sqrt(200) -> 20 + 2t = 2*sqrt(200)+0.1*sqrt(200)*t -> t = (2 * sqrt(200) - 20) / (2 - 0.1*sqrt(200)) = 20*(sqrt(2) - 1) / (2 - sqrt(2))
-                    progressPerDay:
-                        100 / ((20 * (Math.sqrt(2) - 1)) / (2 - Math.sqrt(2))), // (200-100) / daysUntilMilestone
+                    daysUntilMilestone: 10 * Math.SQRT2, // 200 index -> sqrt(200) fkdr -> (20 + 2t) / (2+0.1t) = sqrt(200) -> 20 + 2t = 2*sqrt(200)+0.1*sqrt(200)*t -> t = (2 * sqrt(200) - 20) / (2 - 0.1*sqrt(200)) = (20*sqrt(2) - 20) / (2 - sqrt(2)) = (20*sqrt(2)-20)*(2 + sqrt(2)) / (4 - 2) = (40*sqrt(2) + 40 - 40 - 20*sqrt(2)) / 2 = 10*sqrt(2)
+                    progressPerDay: 5 * Math.SQRT2, // (200-100) / daysUntilMilestone = 100 / 10*sqrt(2) = 5*sqrt(2)
                 },
             },
             {
@@ -1275,11 +1273,8 @@ await test("computeStatProgression - index stat", async (t) => {
                 expected: {
                     index: 100, // 1 star * (10 fkdr)^2
                     milestone: 90,
-                    daysUntilMilestone:
-                        (60 * Math.sqrt(10) - 200) / (5 - 3 * Math.sqrt(10)), // 90 index -> sqrt(90) fkdr -> (20+0.5*t)/(2+0.1*t) = sqrt(90) -> (20+0.5*t) = 2*sqrt(90) + sqrt(90)*0.1*t -> t*(0.5 - 0.1*sqrt(90)) = 2*sqrt(90) - 20 -> t = (2*sqrt(90)-20) / (0.5 - 0.1*sqrt(90)) = (60*sqrt(10)-200) / (5 - 3*sqrt(10))
-                    progressPerDay:
-                        -10 /
-                        ((60 * Math.sqrt(10) - 200) / (5 - 3 * Math.sqrt(10))), // (90-100) / daysUntilMilestone
+                    daysUntilMilestone: (60 * Math.sqrt(10) - 160) / 13, // 90 index -> sqrt(90) fkdr -> (20+0.5*t)/(2+0.1*t) = sqrt(90) -> (20+0.5*t) = 2*sqrt(90) + sqrt(90)*0.1*t -> t*(0.5 - 0.1*sqrt(90)) = 2*sqrt(90) - 20 -> t = (2*sqrt(90)-20) / (0.5 - 0.1*sqrt(90)) = (60*sqrt(10)-200) / (5 - 3*sqrt(10)) = (60*sqrt(10)-200) * (5 + 3*sqrt(10)) / (25 - 90) = 300*sqrt(10) + 1800 - 1000 - 600*sqrt(10)) / -65 = (300*sqrt(10) - 800) / 65 = (60*sqrt(10) - 160) / 13
+                    progressPerDay: -(8 + 3 * Math.sqrt(10)) / 4, // (90-100) / daysUntilMilestone = -130 / (60*sqrt(10) - 160) = -130 * (60*sqrt(10) + 160) / (36000 - 25600) = -(20800 + 7800*sqrt(10)) / 10400 = -(8 + 3*sqrt(10)) / 4
                 },
             },
             // TODO: Stars + fkdr moving
