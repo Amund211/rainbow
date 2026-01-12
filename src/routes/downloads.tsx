@@ -143,6 +143,70 @@ const DOWNLOADS: Download[] = [
 
 export const Route = createFileRoute("/downloads")({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: "Download - Prism Overlay",
+            },
+            {
+                name: "description",
+                content:
+                    "Download Prism Overlay - a statistics overlay for Hypixel BedWars. Prism Overlay is a free and open-source overlay that provides real-time statistics when playing bedwars, and automatically tracks your stats.",
+            },
+            {
+                property: "og:type",
+                content: "website",
+            },
+            {
+                property: "og:url",
+                content: "https://prismoverlay.com/downloads",
+            },
+            {
+                property: "og:title",
+                content: "Download - Prism Overlay",
+            },
+            {
+                property: "og:description",
+                content:
+                    "Download Prism Overlay - a statistics overlay for Hypixel BedWars. Prism Overlay is a free and open-source overlay that provides real-time statistics when playing bedwars, and automatically tracks your stats.",
+            },
+            {
+                property: "og:image",
+                content: "https://prismoverlay.com/who.png",
+            },
+            {
+                property: "og:site_name",
+                content: "Prism Overlay",
+            },
+            {
+                property: "twitter:card",
+                content: "summary",
+            },
+            {
+                property: "twitter:url",
+                content: "https://prismoverlay.com/downloads",
+            },
+            {
+                property: "twitter:title",
+                content: "Download - Prism Overlay",
+            },
+            {
+                property: "twitter:description",
+                content:
+                    "Download Prism Overlay - a statistics overlay for Hypixel BedWars. Prism Overlay is a free and open-source overlay that provides real-time statistics when playing bedwars, and automatically tracks your stats.",
+            },
+            {
+                property: "twitter:image",
+                content: "https://prismoverlay.com/who.png",
+            },
+        ],
+        links: [
+            {
+                rel: "canonical",
+                href: "https://prismoverlay.com/downloads",
+            },
+        ],
+    }),
 });
 
 const getOS = (): OS | "Unknown" => {
@@ -254,11 +318,6 @@ const osLabel = (os: OS) => {
 function RouteComponent() {
     return (
         <Stack gap={5}>
-            <meta
-                name="description"
-                content="Download Prism Overlay - a statistics overlay for Hypixel BedWars. Prism Overlay is a free and open-source overlay that provides real-time statistics when playing bedwars, and automatically tracks your stats."
-            />
-            <link rel="canonical" href="https://prismoverlay.com/downloads" />
             <Stack gap={1} alignItems="center">
                 <Typography variant="body1">
                     Get started with real-time statistics and automated stat
