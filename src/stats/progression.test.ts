@@ -1192,7 +1192,10 @@ await test("edge case: stat wipe", async (t) => {
                     );
 
                     // End with all stats at 0
-                    const endBuilder = new PlayerDataBuilder(TEST_UUID, endDate);
+                    const endBuilder = new PlayerDataBuilder(
+                        TEST_UUID,
+                        endDate,
+                    );
                     const zeroStatsBuilder = new StatsBuilder()
                         .withStat("gamesPlayed", 0)
                         .withStat("wins", 0)
