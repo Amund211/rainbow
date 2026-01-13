@@ -1453,6 +1453,56 @@ await test("computeStatProgression - index stat", async (t) => {
                     progressPerDay: 0,
                 },
             },
+            {
+                name: "index decreasing past next milestone before increasing",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 4565, // 0.5 stars per day
+                        finalKills: 60, // 2 finals per day
+                        finalDeaths: 3, // 0.5 final death per day
+                    },
+                    end: {
+                        experience: 7000, // 4 stars
+                        finalKills: 80, // 10 fkdr
+                        finalDeaths: 8,
+                    },
+                },
+                expected: {
+                    // index(t) = (4 + 0.1*t) * (80+2*t)^2/(8+0.5*t)^2
+                    index: 400, // 4 star * (10 fkdr)^2
+                    milestone: 300,
+                    // Shamelessly solved by WolframAlpha
+                    daysUntilMilestone: 9.21165,
+                    // (300 - 400) / daysUntilMilestone
+                    progressPerDay: -100 / 9.21165,
+                },
+            },
+            {
+                name: "index decreasing not reaching next milestone before increasing",
+                trackingStats: {
+                    durationDays: 10,
+                    start: {
+                        experience: 1065, // 0.5 stars per day
+                        finalKills: 60, // 2 finals per day
+                        finalDeaths: 3, // 0.5 final death per day
+                    },
+                    end: {
+                        experience: 3500, // 3 stars
+                        finalKills: 80, // 10 fkdr
+                        finalDeaths: 8,
+                    },
+                },
+                expected: {
+                    // index(t) = (3 + 0.1*t) * (80+2*t)^2/(8+0.5*t)^2
+                    index: 300, // 3 star * (10 fkdr)^2
+                    milestone: 200,
+                    // Reaches minimum just above 200 at around t=24 days
+                    daysUntilMilestone: Infinity,
+                    // (200 - 300) / daysUntilMilestone
+                    progressPerDay: 0,
+                },
+            },
             // TODO: Stars + fkdr moving
             // trending down, trending up, etc
             // If trending down far enough then trend down? else trend up? Otherwise just trend in gradient direction?
