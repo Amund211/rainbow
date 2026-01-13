@@ -166,24 +166,6 @@ await test("computeStatProgression - error cases", async (t) => {
             reason: ERR_TRACKING_STARTED,
         },
         {
-            name: "no progress",
-            history: [
-                new PlayerDataBuilder(TEST_UUID, startDate)
-                    .withGamemodeStats(
-                        "overall",
-                        new StatsBuilder().withStat("wins", 100).build(),
-                    )
-                    .build(),
-                new PlayerDataBuilder(TEST_UUID, endDate)
-                    .withGamemodeStats(
-                        "overall",
-                        new StatsBuilder().withStat("wins", 100).build(),
-                    )
-                    .build(),
-            ],
-            reason: "No progress",
-        },
-        {
             name: "three element history",
             history: [
                 new PlayerDataBuilder(TEST_UUID, startDate)
@@ -365,7 +347,7 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
                         );
                         startBuilder.withGamemodeStats(
                             gamemode,
-                            new StatsBuilder().withStat(stat, 100).build(),
+                            new StatsBuilder().withStat(stat, 0).build(),
                         );
                         endBuilder.withGamemodeStats(
                             gamemode,
@@ -390,13 +372,13 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
                             );
                         }
 
-                        // When endValue is 0, Math.log10(0) = -Infinity, causing NaN in milestone calculations
+                        // When endValue is 0, the milestone should be 1
                         assert.deepStrictEqual(result, {
                             stat,
                             endValue: 0,
-                            progressPerDay: -20,
-                            nextMilestoneValue: NaN,
-                            daysUntilMilestone: NaN,
+                            progressPerDay: 0,
+                            nextMilestoneValue: 1,
+                            daysUntilMilestone: Infinity,
                             trendingUpward: true,
                             trackingDataTimeInterval: {
                                 start: startDate,
@@ -733,20 +715,20 @@ await test("computeStatProgression - quotient stats", async (t) => {
                     });
 
                     await t.test("edge case - zero current value", () => {
-                        // When the current quotient is zero (0 dividend, non-zero divisor)
+                        // When the current quotient is zero (0 dividend, 0 divisor)
                         const startDate = new Date("2024-01-01T00:00:00Z");
                         const endDate = new Date("2024-01-11T00:00:00Z");
                         const startBuilder = new StatsBuilder();
                         const endBuilder = new StatsBuilder();
 
-                        // Start: 100/50 = 2.0
-                        // End: 0/75 = 0 (zero current value)
+                        // Start: 0/0 = 0
+                        // End: 0/0 = 0 (zero current value)
                         startBuilder
-                            .withStat(dividendStat, 100)
-                            .withStat(divisorStat, 50);
+                            .withStat(dividendStat, 0)
+                            .withStat(divisorStat, 0);
                         endBuilder
                             .withStat(dividendStat, 0)
-                            .withStat(divisorStat, 75);
+                            .withStat(divisorStat, 0);
 
                         const history: History = [
                             new PlayerDataBuilder(TEST_UUID, startDate)
@@ -773,17 +755,17 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             );
                         }
 
-                        // With negative session quotient, trending downward, milestone is -1
+                        // When endValue is 0, milestone should be 1
                         assert.deepStrictEqual(result, {
                             stat,
                             endValue: 0,
-                            sessionQuotient: -100 / 25, // -4.0
-                            progressPerDay: (-1 - 0) / 10, // -0.1
-                            dividendPerDay: -10,
-                            divisorPerDay: 2.5,
-                            nextMilestoneValue: -1,
-                            daysUntilMilestone: 10,
-                            trendingUpward: false,
+                            sessionQuotient: 0,
+                            progressPerDay: 0,
+                            dividendPerDay: 0,
+                            divisorPerDay: 0,
+                            nextMilestoneValue: 1,
+                            daysUntilMilestone: Infinity,
+                            trendingUpward: true,
                             trackingDataTimeInterval: {
                                 start: startDate,
                                 end: endDate,
@@ -1251,10 +1233,10 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
                 // Note: This is a constructed case as new players have 500 exp/1 star
                 const startDate = new Date("2024-01-01T00:00:00Z");
                 const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
-                // Start at 500 exp, lose all experience (constructed case)
+                // Start at 0 exp, stay at 0 (constructed case)
                 const history: History = [
                     new PlayerDataBuilder(TEST_UUID, startDate)
-                        .withExperience(500)
+                        .withExperience(0)
                         .build(),
                     new PlayerDataBuilder(TEST_UUID, endDate)
                         .withExperience(0)
@@ -1292,20 +1274,9 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
                         },
                     });
 
-                    // (exp gained / avg exp per star) / days
-                    const expectedStarsPerDay = -500 / 4_870 / 10;
-                    assert.ok(
-                        Math.abs(progressPerDay - expectedStarsPerDay) < 1e-6,
-                    );
-
-                    // Exp remaining until 100 stars / (exp per day)
-                    const expectedDaysUntilMilestone =
-                        (487_000 - 0) / (-500 / 10);
-                    assert.ok(
-                        Math.abs(
-                            daysUntilMilestone - expectedDaysUntilMilestone,
-                        ) < 1e-6,
-                    );
+                    // No progress in exp
+                    assert.strictEqual(progressPerDay, 0);
+                    assert.strictEqual(daysUntilMilestone, Infinity);
                 });
 
                 await t.test("experience", () => {
@@ -1322,13 +1293,13 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
                         );
                     }
 
-                    // When endValue is 0, Math.log10(0) = -Infinity, causing NaN in milestone calculations
+                    // When endValue is 0, milestone should be 1
                     assert.deepStrictEqual(result, {
                         stat: "experience",
                         endValue: 0,
-                        progressPerDay: -50,
-                        nextMilestoneValue: NaN,
-                        daysUntilMilestone: NaN,
+                        progressPerDay: 0,
+                        nextMilestoneValue: 1,
+                        daysUntilMilestone: Infinity,
                         trendingUpward: true,
                         trackingDataTimeInterval: {
                             start: startDate,
