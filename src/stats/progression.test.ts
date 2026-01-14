@@ -1240,12 +1240,12 @@ await test("computeStatProgression - index stat", async (t) => {
             };
         }
 
-        // TODO: Add discriminant expectations to cases + ensure discriminant sign coverage
         const cases: Case[] = [
             {
                 name: "no progress",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "zero",
                     start: {
                         // No progress
                         experience: 500,
@@ -1269,6 +1269,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "no finals",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "zero",
                     start: {
                         experience: 500,
                         finalKills: 0,
@@ -1291,6 +1292,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "no stars",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "zero",
                     start: {
                         experience: 0, // NOTE: 0 stars is not possible to attain, as all players start with 500 exp
                         finalKills: 0,
@@ -1313,6 +1315,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "increasing star, stable fkdr",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "zero",
                     start: {
                         experience: 2130, // 4870 (1 avg star) difference
                         finalKills: 10, // 2 fkdr -> 2 session fkdr
@@ -1335,6 +1338,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "increasing fkdr, zero final deaths, stable stars",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "zero",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 10, // 1 final per day
@@ -1367,6 +1371,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "increasing fkdr, stable final deaths, stable stars",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "positive",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 10, // 1 final per day
@@ -1399,6 +1404,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "increasing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "positive",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 0, // 2 finals per day (20 session fkdr)
@@ -1436,6 +1442,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "increasing plateauing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "zero",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 16, // 2 finals per day (20 session fkdr)
@@ -1464,6 +1471,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "decreasing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "positive",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 15, // 0.5 final per day (5 session fkdr)
@@ -1504,6 +1512,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "decreasing plateauing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "positive",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 16, // 0.5 final per day (5 session fkdr)
@@ -1532,6 +1541,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "index decreasing past next milestone before increasing",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "positive",
                     start: {
                         experience: 4565, // 0.5 stars per day
                         finalKills: 60, // 2 finals per day
@@ -1557,6 +1567,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "index decreasing not reaching next milestone before increasing",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "positive",
                     start: {
                         experience: 1065, // 0.5 stars per day
                         finalKills: 60, // 2 finals per day
@@ -1582,6 +1593,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "index increasing past next milestone",
                 trackingStats: {
                     durationDays: 10,
+                    discriminant: "negative",
                     start: {
                         experience: 690 * 4870, // 1 stars per day
                         finalKills: 17_800, // 20 finals per day
