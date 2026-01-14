@@ -8,6 +8,7 @@ import {
 import { type PlayerDataPIT, type StatsPIT } from "#queries/playerdata.ts";
 import { type History } from "#queries/history.ts";
 import { ALL_GAMEMODE_KEYS, type GamemodeKey, type StatKey } from "./keys.ts";
+import { bedwarsLevelFromExp } from "./stars.ts";
 
 const TEST_UUID = "0123e456-7890-1234-5678-90abcdef1234";
 
@@ -1145,7 +1146,77 @@ await test("computeStatProgression - index stat", async (t) => {
         //       We use actual star calculation for index calculation
         //       const EASY_LEVEL_COSTS = { 1: 500, 2: 1000, 3: 2000, 4: 3500 }; Rest: 5000
 
-        const cases: {
+        // Given:
+        //  s_0 = initial stars
+        //  s   = stars gained per day
+        //  k_0 = initial final kills
+        //  k   = final kills gained per day
+        //  d_0 = initial final deaths
+        //  d   = final deaths gained per day
+        //  M   = target index milestone
+        //  t   = days until milestone
+        //
+        // We have:
+        // index(t) = (s_0 + s*t) * (k_0+k*t)^2/(d_0+d*t)^2 = M
+        // -> (s_0 + s*t) * (k_0^2 + 2k_0*k*t + k^2*t^2) / (d_0^2 + 2d_0*d*t + d^2*t^2) = M
+        // -> (s_0 + s*t) * (k_0^2 + 2k_0*k*t + k^2*t^2) = M * (d_0^2 + 2d_0*d*t + d^2*t^2)
+        // -> s_0*k_0^2 + 2s_0*k_0*k*t + s_0*k^2*t^2 + s*k_0^2*t + 2s*k_0*k*t^2 + s*k^2*t^3 = M*d_0^2 + 2M*d_0*d*t + M*d^2*t^2
+        // -> s*k^2*t^3 + s_0*k^2*t^2 + 2s*k_0*k*t^2 - M*d^2*t^2 + 2s_0*k_0*k*t + s*k_0^2*t - 2M*d_0*d*t - M*d_0^2 + s_0*k_0^2 = 0
+        // -> (s*k^2)*t^3 + (s_0*k^2 + 2s*k_0*k - M*d^2)*t^2 + (2s_0*k_0*k + s*k_0^2 - 2M*d_0*d)*t + (s_0*k_0^2 - M*d_0^2) = 0
+        // -> a = s*k^2
+        //    b = s_0*k^2 + 2s*k_0*k - M*d^2
+        //    c = 2s_0*k_0*k + s*k_0^2 - 2M*d_0*d
+        //    d = s_0*k_0^2 - M*d_0^2
+        // Interesting edge cases:
+        //  a = 0
+        //  a = 0 ^ b = 0
+        //  a = 0 ^ b = 0 ^ c = 0
+        //  a = 0 ^ b = 0 ^ c = 0 ^ d = 0
+        //  Discriminant: 18abcd - 4b^3d + b^2c^2 - 4ac^3 -27a^2d^2
+        //    = 18
+
+        const coefficients = (c: Case) => {
+            const s0 = bedwarsLevelFromExp(c.trackingStats.end.experience);
+            const s =
+                (c.trackingStats.end.experience -
+                    c.trackingStats.start.experience) /
+                4870 /
+                c.trackingStats.durationDays;
+            const k0 = c.trackingStats.end.finalKills;
+            const k =
+                (c.trackingStats.end.finalKills -
+                    c.trackingStats.start.finalKills) /
+                c.trackingStats.durationDays;
+            const d0 = c.trackingStats.end.finalDeaths;
+            const d =
+                (c.trackingStats.end.finalDeaths -
+                    c.trackingStats.start.finalDeaths) /
+                c.trackingStats.durationDays;
+            const M = c.expected.milestone;
+            return {
+                a: s * k * k,
+                b: s0 * k * k + 2 * s * k0 * k - M * d * d,
+                c: 2 * s0 * k0 * k + s * k0 * k0 - 2 * M * d0 * d,
+                d: s0 * k0 * k0 - M * d0 * d0,
+            } as const;
+        };
+
+        const discriminant = ({
+            a,
+            b,
+            c,
+            d,
+        }: ReturnType<typeof coefficients>) => {
+            return (
+                18 * a * b * c * d -
+                4 * b * b * b * d +
+                b * b * c * c -
+                4 * a * c * c * c -
+                27 * a * a * d * d
+            );
+        };
+
+        interface Case {
             name: string;
             trackingStats: {
                 durationDays: number;
@@ -1159,6 +1230,7 @@ await test("computeStatProgression - index stat", async (t) => {
                     finalKills: number;
                     finalDeaths: number;
                 };
+                discriminant?: "positive" | "zero" | "negative";
             };
             expected: {
                 index: number;
@@ -1166,7 +1238,10 @@ await test("computeStatProgression - index stat", async (t) => {
                 daysUntilMilestone: number;
                 progressPerDay: number;
             };
-        }[] = [
+        }
+
+        // TODO: Add discriminant expectations to cases + ensure discriminant sign coverage
+        const cases: Case[] = [
             {
                 name: "no progress",
                 trackingStats: {
@@ -1503,202 +1578,63 @@ await test("computeStatProgression - index stat", async (t) => {
                     progressPerDay: 0,
                 },
             },
-            // TODO: Stars + fkdr moving
-            // trending down, trending up, etc
-            // If trending down far enough then trend down? else trend up? Otherwise just trend in gradient direction?
             {
-                name: "zero final deaths at start",
-                explanation: `
-Start: exp=500 (1 star), fk=10, fd=0 -> fkdr=10, index=10²*1=100
-End: exp=7000 (4 stars), fk=20, fd=5 -> fkdr=4, index=4²*4=64
-Duration: 10 days
-
-Progress per day (for milestone calculation):
-- Experience: 650 exp/day = 650/4870 ≈ 0.1335 stars/day (average)
-- Final kills: 1 fk/day
-- Final deaths: 0.5 fd/day
-- Index decreasing from 100 to 64
-
-Next milestone (going down): 50
-At t=0 (end): index=64
-Need to find when index(t) = 50
-- fk(t) = 20 + 1*t
-- fd(t) = 5 + 0.5*t
-- stars(t) = 4 + 0.1335*t (using average exp/star)
-- index(t) = [(20+t)/(5+0.5*t)]² * (4+0.1335*t) = 50
-
-Since we're trending downward (fkdr declining),
-we won't reach 50. Days until milestone = Infinity (can't reach it going down)
-Progress per day = 0
-                `,
+                name: "index increasing past next milestone",
                 trackingStats: {
                     durationDays: 10,
                     start: {
-                        experience: 500,
-                        finalKills: 10,
-                        finalDeaths: 0,
-                    },
-                    end: { experience: 7000, finalKills: 20, finalDeaths: 5 },
-                },
-                expected: {
-                    index: 64,
-                    milestone: 50,
-                    daysUntilMilestone: Infinity,
-                    progressPerDay: 0,
-                },
-            },
-            {
-                name: "zero final deaths overall",
-                explanation: `
-Start: exp=500 (1 star), fk=5, fd=0 -> fkdr=5, index=5²*1=25
-End: exp=7000 (4 stars), fk=10, fd=0 -> fkdr=10, index=10²*4=400
-Duration: 10 days
-
-Progress per day (for milestone calculation):
-- Experience: 650 exp/day = 650/4870 ≈ 0.1335 stars/day (average)
-- Final kills: 0.5 fk/day
-- Final deaths: 0 fd/day (no deaths!)
-- FKDR = fk (when fd=0)
-
-index(t) = fk(t)² * stars(t) = (10+0.5*t)² * (4+0.1335*t)
-
-Next milestone: 500
-(10+0.5*t)² * (4+0.1335*t) = 500
-
-At t=10: fk=15, stars≈5.34, index≈15²*5.34≈1201
-Solving the cubic equation numerically: t ≈ 6.1 days
-
-Progress per day: (500-400)/6.1 ≈ 16.39
-                `,
-                trackingStats: {
-                    durationDays: 10,
-                    start: { experience: 500, finalKills: 5, finalDeaths: 0 },
-                    end: { experience: 7000, finalKills: 10, finalDeaths: 0 },
-                },
-                expected: {
-                    index: 400,
-                    milestone: 500,
-                    daysUntilMilestone: 6.1,
-                    progressPerDay: 16.39,
-                },
-            },
-            {
-                name: "no experience progress",
-                explanation: `
-Start: exp=500 (1 star), fk=10, fd=10 -> fkdr=1, index=1²*1=1
-End: exp=500 (1 star), fk=20, fd=10 -> fkdr=2, index=2²*1=4
-Duration: 10 days
-
-Progress per day (for milestone calculation):
-- Experience: 0 exp/day = 0 stars/day (stars constant at 1)
-- Final kills: 1 fk/day
-- Final deaths: 0 fd/day
-- stars(t) = 1 (constant)
-
-index(t) = fkdr(t)² * 1 = [(20+t)/(10+0*t)]² = [(20+t)/10]²
-
-Next milestone: 5
-[(20+t)/10]² = 5
-(20+t)/10 = √5 ≈ 2.236
-20+t = 22.36
-t ≈ 2.36 days
-
-Progress per day: (5-4)/2.36 ≈ 0.424
-                `,
-                trackingStats: {
-                    durationDays: 10,
-                    start: {
-                        experience: 500,
-                        finalKills: 10,
-                        finalDeaths: 10,
-                    },
-                    end: { experience: 500, finalKills: 20, finalDeaths: 10 },
-                },
-                expected: {
-                    index: 4,
-                    milestone: 5,
-                    daysUntilMilestone: 2.361,
-                    progressPerDay: 0.424,
-                },
-            },
-            {
-                name: "improving from low index",
-                explanation: `
-Start: exp=500 (1 star), fk=2, fd=2 -> fkdr=1, index=1²*1=1
-End: exp=7000 (4 stars), fk=12, fd=6 -> fkdr=2, index=2²*4=16
-Duration: 10 days
-
-Progress per day (for milestone calculation):
-- Experience: (7000-500)/10 = 650 exp/day = 650/4870 ≈ 0.1335 stars/day (average)
-- Final kills: 1 fk/day
-- Final deaths: 0.4 fd/day
-
-Next milestone: 20
-index(t) = [(12+1*t)/(6+0.4*t)]² * (4+0.1335*t)
-
-At t=10: fk=22, fd=10, fkdr=2.2, stars≈5.34, index≈2.2²*5.34≈25.8
-Solving for index(t) = 20:
-t ≈ 7.5 days
-
-Progress per day: (20-16)/7.5 ≈ 0.533
-                `,
-                trackingStats: {
-                    durationDays: 10,
-                    start: { experience: 500, finalKills: 2, finalDeaths: 2 },
-                    end: { experience: 7000, finalKills: 12, finalDeaths: 6 },
-                },
-                expected: {
-                    index: 16,
-                    milestone: 20,
-                    daysUntilMilestone: 7.5,
-                    progressPerDay: 0.533,
-                },
-            },
-            {
-                name: "large values with steady ratios",
-                explanation: `
-Start: exp=487000 (100 stars), fk=1000, fd=500 -> fkdr=2, index=2²*100=400
-End: exp=524000 (110 stars), fk=1100, fd=520 -> fkdr≈2.115, index≈2.115²*110≈492.23
-Duration: 20 days
-
-Progress per day (for milestone calculation):
-- Experience: (524000-487000)/20 = 1850 exp/day = 1850/4870 ≈ 0.380 stars/day (average)
-- Final kills: 5 fk/day
-- Final deaths: 1 fd/day
-
-Next milestone: 500
-index(t) = [(1100+5*t)/(520+t)]² * (110+0.380*t)
-
-At t=5: fk=1125, fd=525, fkdr≈2.143, stars≈111.9, index≈2.143²*111.9≈514
-Solving for t when index(t) = 500:
-t ≈ 3.7 days
-
-Progress per day: (500-492.23)/3.7 ≈ 2.1
-                `,
-                trackingStats: {
-                    durationDays: 20,
-                    start: {
-                        experience: 487000,
-                        finalKills: 1000,
-                        finalDeaths: 500,
+                        experience: 690 * 4870, // 1 stars per day
+                        finalKills: 17_800, // 20 finals per day
+                        finalDeaths: 1_790, // 1 final death per day
                     },
                     end: {
-                        experience: 524000,
-                        finalKills: 1100,
-                        finalDeaths: 520,
+                        experience: 700 * 4870, // 700 stars
+                        finalKills: 18_000, // 10 fkdr
+                        finalDeaths: 1_800,
                     },
                 },
                 expected: {
-                    index: 492.23,
-                    milestone: 500,
-                    daysUntilMilestone: 3.7,
-                    progressPerDay: 2.1,
+                    // index(t) = (700 + 1*t) * (18000+20*t)^2/(1800+1*t)^2
+                    index: 70_000, // 700 star * (10 fkdr)^2
+                    milestone: 80_000,
+                    // Shamelessly solved by WolframAlpha
+                    daysUntilMilestone: 54.768,
+                    // (80_000 - 70_000) / daysUntilMilestone
+                    progressPerDay: 10_000 / 54.768,
                 },
             },
         ];
 
         for (const c of cases) {
             await t.test(c.name, () => {
+                const coeffs = coefficients(c);
+                const disc = discriminant(coeffs);
+                switch (c.trackingStats.discriminant) {
+                    case "positive":
+                        assert.ok(
+                            disc > 0,
+                            `Discriminant should be positive, got ${disc.toString()}`,
+                        );
+                        break;
+                    case "zero":
+                        assert.ok(
+                            Math.abs(disc) < 1e-6,
+                            `Discriminant should be zero, got ${disc.toString()}`,
+                        );
+                        break;
+                    case "negative":
+                        assert.ok(
+                            disc < 0,
+                            `Discriminant should be negative, got ${disc.toString()}`,
+                        );
+                        break;
+                    case undefined:
+                        // Do nothing
+                        break;
+                    default:
+                        c.trackingStats.discriminant satisfies never;
+                }
+
                 const startDate = new Date("2024-01-01T00:00:00Z");
                 const endDate = new Date(
                     startDate.getTime() +
