@@ -187,14 +187,14 @@ export const ERR_TRACKING_STARTED = "Tracking started!";
 
 /**
  * Solve cubic equation at^3 + bt^2 + ct + d = 0 for t
- * Returns the smallest non-negative real root, or null if none exists
+ * Returns all non-negative real roots, sorted in ascending order
  */
-const solveCubic = (
+const solveCubicAllRoots = (
     a: number,
     b: number,
     c: number,
     d: number,
-): number | null => {
+): number[] => {
     const epsilon = 1e-10;
 
     // Handle degenerate cases
@@ -204,22 +204,26 @@ const solveCubic = (
             // Not a quadratic, reduce to linear: ct + d = 0
             if (Math.abs(c) < epsilon) {
                 // No solution (or all t are solutions if d = 0)
-                return null;
+                return [];
             }
             // Linear solution: t = -d/c
             const t = -d / c;
-            return t >= 0 ? t : null;
+            return t >= -epsilon ? [Math.max(0, t)] : [];
         }
         // Quadratic solution: t = (-c ± sqrt(c^2 - 4bd)) / (2b)
         const discriminant = c * c - 4 * b * d;
-        if (discriminant < 0) {
-            return null;
+        if (discriminant < -epsilon) {
+            return [];
         }
-        const sqrtDisc = Math.sqrt(discriminant);
+        const sqrtDisc = Math.sqrt(Math.max(0, discriminant));
         const t1 = (-c + sqrtDisc) / (2 * b);
         const t2 = (-c - sqrtDisc) / (2 * b);
-        const candidates = [t1, t2].filter((t) => t >= 0);
-        return candidates.length > 0 ? Math.min(...candidates) : null;
+        const roots = [t1, t2]
+            .filter((t) => t >= -epsilon)
+            .map((t) => Math.max(0, t))
+            .sort((a, b) => a - b);
+        // Remove duplicates
+        return roots.filter((t, i, arr) => i === 0 || Math.abs(t - arr[i - 1]) > epsilon);
     }
 
     // Normalize to t^3 + pt^2 + qt + r = 0
@@ -236,32 +240,39 @@ const solveCubic = (
     // Discriminant for the depressed cubic
     const discriminant = -(4 * A * A * A + 27 * B * B);
 
+    const roots: number[] = [];
+
     if (discriminant > epsilon) {
         // Three distinct real roots
         // Use trigonometric solution
         const m = 2 * Math.sqrt(-A / 3);
         const theta = Math.acos((3 * B) / (A * m)) / 3;
-        const roots = [
-            m * Math.cos(theta) - p / 3,
-            m * Math.cos(theta - (2 * Math.PI) / 3) - p / 3,
-            m * Math.cos(theta - (4 * Math.PI) / 3) - p / 3,
-        ];
-        const candidates = roots.filter((t) => t >= -epsilon);
-        return candidates.length > 0 ? Math.max(0, Math.min(...candidates)) : null;
+        for (let k = 0; k < 3; k++) {
+            const u = m * Math.cos(theta - (2 * Math.PI * k) / 3);
+            const t = u - p / 3;
+            if (t >= -epsilon) {
+                roots.push(Math.max(0, t));
+            }
+        }
     } else if (Math.abs(discriminant) <= epsilon) {
         // One or two real roots (with multiplicity)
         if (Math.abs(A) < epsilon && Math.abs(B) < epsilon) {
             // Triple root at t = -p/3
             const t = -p / 3;
-            return t >= 0 ? t : null;
+            if (t >= -epsilon) {
+                roots.push(Math.max(0, t));
+            }
+        } else {
+            // Double root
+            const u1 = (3 * B) / A;
+            const u2 = (-3 * B) / (2 * A);
+            for (const u of [u1, u2]) {
+                const t = u - p / 3;
+                if (t >= -epsilon) {
+                    roots.push(Math.max(0, t));
+                }
+            }
         }
-        // Double root
-        const u1 = (3 * B) / A;
-        const u2 = (-3 * B) / (2 * A);
-        const t1 = u1 - p / 3;
-        const t2 = u2 - p / 3;
-        const candidates = [t1, t2].filter((t) => t >= -epsilon);
-        return candidates.length > 0 ? Math.max(0, Math.min(...candidates)) : null;
     } else {
         // One real root
         const sqrtTerm = Math.sqrt(-discriminant / 27);
@@ -269,8 +280,28 @@ const solveCubic = (
         const u =
             Math.cbrt(cbrtArg + sqrtTerm) + Math.cbrt(cbrtArg - sqrtTerm);
         const t = u - p / 3;
-        return t >= -epsilon ? Math.max(0, t) : null;
+        if (t >= -epsilon) {
+            roots.push(Math.max(0, t));
+        }
     }
+
+    // Sort and remove duplicates
+    const sorted = roots.sort((a, b) => a - b);
+    return sorted.filter((t, i, arr) => i === 0 || Math.abs(t - arr[i - 1]) > epsilon);
+};
+
+/**
+ * Solve cubic equation at^3 + bt^2 + ct + d = 0 for t
+ * Returns the smallest non-negative real root, or null if none exists
+ */
+const solveCubic = (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+): number | null => {
+    const roots = solveCubicAllRoots(a, b, c, d);
+    return roots.length > 0 ? roots[0] : null;
 };
 
 export const computeStatProgression = (
@@ -409,10 +440,26 @@ export const computeStatProgression = (
             const trendingUpward = indexRatePerDay >= 0;
 
             // Determine next milestone
-            const endIndexMagnitude = Math.pow(10, Math.floor(Math.log10(Math.max(1, endIndex))));
-            const nextMilestoneValue = trendingUpward
-                ? (Math.floor(endIndex / endIndexMagnitude) + 1) * endIndexMagnitude
-                : (Math.ceil(endIndex / endIndexMagnitude) - 1) * endIndexMagnitude;
+            // Calculate magnitude based on the current index value
+            let endIndexMagnitude = Math.pow(10, Math.floor(Math.log10(Math.max(1, endIndex))));
+            
+            let nextMilestoneValue: number;
+            if (trendingUpward) {
+                // Round down to nearest magnitude and add one magnitude
+                nextMilestoneValue = (Math.floor(endIndex / endIndexMagnitude) + 1) * endIndexMagnitude;
+            } else {
+                // For downward trends: if we're exactly at a magnitude boundary, use a smaller step
+                // E.g., for index=100 going down, we want milestone 90 (step=10), not 0 (step=100)
+                if (endIndex === endIndexMagnitude) {
+                    endIndexMagnitude = endIndexMagnitude / 10;
+                }
+                // Round up to nearest magnitude and subtract one magnitude
+                nextMilestoneValue = (Math.ceil(endIndex / endIndexMagnitude) - 1) * endIndexMagnitude;
+                // Handle case where we'd go negative
+                if (nextMilestoneValue < 0) {
+                    nextMilestoneValue = 0;
+                }
+            }
 
             // Special case: zero final deaths throughout (compute fkdr as just final kills)
             if (endFinalDeaths === 0 && sessionFinalDeaths === 0) {
@@ -476,7 +523,35 @@ export const computeStatProgression = (
             const c = 2 * s0 * k0 * k + s * k0 * k0 - 2 * M * d0 * d;
             const d_coef = s0 * k0 * k0 - M * d0 * d0;
 
-            const daysUntilMilestone = solveCubic(a, b, c, d_coef);
+            // Find all roots
+            const allRoots = solveCubicAllRoots(a, b, c, d_coef);
+            
+            // Filter roots based on trend direction
+            // Calculate d(index)/dt at each root to check if we're crossing in the right direction
+            const validRoots = allRoots.filter((t) => {
+                // Calculate index derivative at time t
+                // index(t) = (s_0 + s*t) * (k_0+k*t)^2/(d_0+d*t)^2
+                // Using the derivative we calculated earlier but at time t
+                const stars_t = s0 + s * t;
+                const fk_t = k0 + k * t;
+                const fd_t = d0 + d * t;
+                const fkdr_t = fk_t / fd_t;
+                const fkdrRate_t = (k * fd_t - fk_t * d) / (fd_t * fd_t);
+                const indexRate_t = s * fkdr_t * fkdr_t + 2 * stars_t * fkdr_t * fkdrRate_t;
+                
+                // For upward trend (indexRatePerDay >= 0), we want crossings where d(index)/dt >= 0
+                // For downward trend (indexRatePerDay < 0), we want crossings where d(index)/dt < 0
+                // Use the same sign as the overall trend direction
+                const epsilon = 1e-6;
+                if (trendingUpward) {
+                    return indexRate_t > -epsilon;
+                } else {
+                    return indexRate_t < epsilon;
+                }
+            });
+            
+            const daysUntilMilestone = validRoots.length > 0 ? validRoots[validRoots.length - 1] : null;
+            
             if (daysUntilMilestone === null) {
                 return {
                     stat,
