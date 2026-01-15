@@ -1172,14 +1172,13 @@ await test("computeStatProgression - index stat", async (t) => {
         //  a = 0
         //  a = 0 ^ b = 0
         //  a = 0 ^ b = 0 ^ c = 0
-        //  a = 0 ^ b = 0 ^ c = 0 ^ d = 0
         //
         // Discriminant: 18abcd - 4b^3d + b^2c^2 - 4ac^3 -27a^2d^2
         //  Positive
         //  Zero
         //  Negative
 
-        const coefficients = (c: Case) => {
+        const computeCoefficients = (c: Case) => {
             const s0 = bedwarsLevelFromExp(c.trackingStats.end.experience);
             const s =
                 (c.trackingStats.end.experience -
@@ -1205,12 +1204,12 @@ await test("computeStatProgression - index stat", async (t) => {
             } as const;
         };
 
-        const discriminant = ({
+        const computeDiscriminant = ({
             a,
             b,
             c,
             d,
-        }: ReturnType<typeof coefficients>) => {
+        }: ReturnType<typeof computeCoefficients>) => {
             return (
                 18 * a * b * c * d -
                 4 * b * b * b * d +
@@ -1219,6 +1218,8 @@ await test("computeStatProgression - index stat", async (t) => {
                 27 * a * a * d * d
             );
         };
+
+        type Sign = "positive" | "zero" | "negative";
 
         interface Case {
             name: string;
@@ -1241,11 +1242,11 @@ await test("computeStatProgression - index stat", async (t) => {
                 daysUntilMilestone: number;
                 progressPerDay: number;
                 cubic?: {
-                    discriminant: "positive" | "zero" | "negative";
-                    a: "positive" | "zero" | "negative";
-                    b: "positive" | "zero" | "negative";
-                    c: "positive" | "zero" | "negative";
-                    d: "positive" | "zero" | "negative";
+                    discriminant: Sign;
+                    a: Sign;
+                    b: Sign;
+                    c: Sign;
+                    d: Sign;
                 };
             };
         }
@@ -1702,15 +1703,10 @@ await test("computeStatProgression - index stat", async (t) => {
 
         for (const c of cases) {
             await t.test(c.name, () => {
-                const coeffs = coefficients(c);
-                const disc = discriminant(coeffs);
-
-                // Check cubic properties if expected
                 if (c.expected.cubic) {
-                    // Helper function to check coefficient sign
-                    const checkCoeff = (
+                    const checkCoefficientSign = (
                         value: number,
-                        expected: "positive" | "zero" | "negative",
+                        expected: Sign,
                         name: string,
                     ) => {
                         switch (expected) {
@@ -1737,12 +1733,31 @@ await test("computeStatProgression - index stat", async (t) => {
                         }
                     };
 
-                    checkCoeff(coeffs.a, c.expected.cubic.a, "Coefficient a");
-                    checkCoeff(coeffs.b, c.expected.cubic.b, "Coefficient b");
-                    checkCoeff(coeffs.c, c.expected.cubic.c, "Coefficient c");
-                    checkCoeff(coeffs.d, c.expected.cubic.d, "Coefficient d");
-                    checkCoeff(
-                        disc,
+                    const coefficients = computeCoefficients(c);
+                    const discriminants = computeDiscriminant(coefficients);
+
+                    checkCoefficientSign(
+                        coefficients.a,
+                        c.expected.cubic.a,
+                        "Coefficient a",
+                    );
+                    checkCoefficientSign(
+                        coefficients.b,
+                        c.expected.cubic.b,
+                        "Coefficient b",
+                    );
+                    checkCoefficientSign(
+                        coefficients.c,
+                        c.expected.cubic.c,
+                        "Coefficient c",
+                    );
+                    checkCoefficientSign(
+                        coefficients.d,
+                        c.expected.cubic.d,
+                        "Coefficient d",
+                    );
+                    checkCoefficientSign(
+                        discriminants,
                         c.expected.cubic.discriminant,
                         "Discriminant",
                     );
