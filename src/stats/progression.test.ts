@@ -1234,13 +1234,19 @@ await test("computeStatProgression - index stat", async (t) => {
                     finalKills: number;
                     finalDeaths: number;
                 };
-                discriminant?: "positive" | "zero" | "negative";
             };
             expected: {
                 index: number;
                 milestone: number;
                 daysUntilMilestone: number;
                 progressPerDay: number;
+                cubic?: {
+                    discriminant: "positive" | "zero" | "negative";
+                    a: "positive" | "zero" | "negative";
+                    b: "positive" | "zero" | "negative";
+                    c: "positive" | "zero" | "negative";
+                    d: "positive" | "zero" | "negative";
+                };
             };
         }
 
@@ -1249,7 +1255,6 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "no progress",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "zero",
                     start: {
                         // No progress
                         experience: 500,
@@ -1267,13 +1272,19 @@ await test("computeStatProgression - index stat", async (t) => {
                     milestone: 20,
                     daysUntilMilestone: Infinity,
                     progressPerDay: 0,
+                    cubic: {
+                        discriminant: "zero",
+                        a: "zero",
+                        b: "zero",
+                        c: "zero",
+                        d: "negative",
+                    },
                 },
             },
             {
                 name: "no finals",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "zero",
                     start: {
                         experience: 500,
                         finalKills: 0,
@@ -1290,13 +1301,19 @@ await test("computeStatProgression - index stat", async (t) => {
                     milestone: 1,
                     daysUntilMilestone: Infinity, // constant fkdr at 0
                     progressPerDay: 0,
+                    cubic: {
+                        discriminant: "zero",
+                        a: "zero",
+                        b: "negative",
+                        c: "negative",
+                        d: "negative",
+                    },
                 },
             },
             {
                 name: "no stars",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "zero",
                     start: {
                         experience: 0, // NOTE: 0 stars is not possible to attain, as all players start with 500 exp
                         finalKills: 0,
@@ -1313,13 +1330,19 @@ await test("computeStatProgression - index stat", async (t) => {
                     milestone: 1,
                     daysUntilMilestone: Infinity, // constant fkdr at 0
                     progressPerDay: 0,
+                    cubic: {
+                        discriminant: "zero",
+                        a: "zero",
+                        b: "zero",
+                        c: "zero",
+                        d: "negative",
+                    },
                 },
             },
             {
                 name: "increasing star, stable fkdr",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "zero",
                     start: {
                         experience: 2130, // 4870 (1 avg star) difference
                         finalKills: 10, // 2 fkdr -> 2 session fkdr
@@ -1336,6 +1359,13 @@ await test("computeStatProgression - index stat", async (t) => {
                     milestone: 20,
                     daysUntilMilestone: 10, // stable fkdr -> need to get to 5 stars (gain 1 star) -> 10 days (same as tracking interval)
                     progressPerDay: 0.4,
+                    cubic: {
+                        discriminant: "zero",
+                        a: "positive",
+                        b: "positive",
+                        c: "zero",
+                        d: "negative",
+                    },
                 },
             },
             {
@@ -1376,7 +1406,6 @@ await test("computeStatProgression - index stat", async (t) => {
                 name: "increasing fkdr, stable final deaths, stable stars",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "positive",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 10, // 1 final per day
@@ -1403,13 +1432,19 @@ await test("computeStatProgression - index stat", async (t) => {
                      *      = 5*sqrt(2)+5
                      */
                     progressPerDay: 5 * Math.SQRT2 + 5,
+                    cubic: {
+                        discriminant: "positive",
+                        a: "zero",
+                        b: "positive",
+                        c: "positive",
+                        d: "negative",
+                    },
                 },
             },
             {
                 name: "increasing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "positive",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 0, // 2 finals per day (20 session fkdr)
@@ -1441,13 +1476,19 @@ await test("computeStatProgression - index stat", async (t) => {
                      *      = 5*sqrt(2)
                      */
                     progressPerDay: 5 * Math.SQRT2,
+                    cubic: {
+                        discriminant: "positive",
+                        a: "zero",
+                        b: "positive",
+                        c: "zero",
+                        d: "negative",
+                    },
                 },
             },
             {
                 name: "increasing plateauing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "zero",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 16, // 2 finals per day (20 session fkdr)
@@ -1470,13 +1511,19 @@ await test("computeStatProgression - index stat", async (t) => {
                     daysUntilMilestone: Infinity,
                     // (400-324) / Infinity = 0
                     progressPerDay: 0,
+                    cubic: {
+                        discriminant: "zero",
+                        a: "zero",
+                        b: "zero",
+                        c: "negative",
+                        d: "negative",
+                    },
                 },
             },
             {
                 name: "decreasing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "positive",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 15, // 0.5 final per day (5 session fkdr)
@@ -1511,13 +1558,19 @@ await test("computeStatProgression - index stat", async (t) => {
                      *      = -(8 + 3*sqrt(10)) / 4
                      */
                     progressPerDay: -(8 + 3 * Math.sqrt(10)) / 4,
+                    cubic: {
+                        discriminant: "positive",
+                        a: "zero",
+                        b: "negative",
+                        c: "negative",
+                        d: "positive",
+                    },
                 },
             },
             {
                 name: "decreasing plateauing fkdr, stable stars",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "positive",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 16, // 0.5 final per day (5 session fkdr)
@@ -1540,13 +1593,19 @@ await test("computeStatProgression - index stat", async (t) => {
                     daysUntilMilestone: Infinity,
                     // (20-27.5625) / Infinity = 0
                     progressPerDay: 0,
+                    cubic: {
+                        discriminant: "positive",
+                        a: "zero",
+                        b: "positive",
+                        c: "positive",
+                        d: "positive",
+                    },
                 },
             },
             {
                 name: "index decreasing past next milestone before increasing",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "positive",
                     start: {
                         experience: 4565, // 0.5 stars per day
                         finalKills: 60, // 2 finals per day
@@ -1566,13 +1625,19 @@ await test("computeStatProgression - index stat", async (t) => {
                     daysUntilMilestone: 9.21165,
                     // (300 - 400) / daysUntilMilestone
                     progressPerDay: -100 / 9.21165,
+                    cubic: {
+                        discriminant: "positive",
+                        a: "positive",
+                        b: "negative",
+                        c: "negative",
+                        d: "positive",
+                    },
                 },
             },
             {
                 name: "index decreasing not reaching next milestone before increasing",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "positive",
                     start: {
                         experience: 1065, // 0.5 stars per day
                         finalKills: 60, // 2 finals per day
@@ -1592,13 +1657,19 @@ await test("computeStatProgression - index stat", async (t) => {
                     daysUntilMilestone: Infinity,
                     // (200 - 300) / daysUntilMilestone
                     progressPerDay: 0,
+                    cubic: {
+                        discriminant: "positive",
+                        a: "positive",
+                        b: "negative",
+                        c: "negative",
+                        d: "positive",
+                    },
                 },
             },
             {
                 name: "index increasing past next milestone",
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "negative",
                     start: {
                         experience: 690 * 4870, // 1 stars per day
                         finalKills: 17_800, // 20 finals per day
@@ -1618,6 +1689,13 @@ await test("computeStatProgression - index stat", async (t) => {
                     daysUntilMilestone: 54.768,
                     // (80_000 - 70_000) / daysUntilMilestone
                     progressPerDay: 10_000 / 54.768,
+                    cubic: {
+                        discriminant: "negative",
+                        a: "positive",
+                        b: "positive",
+                        c: "positive",
+                        d: "negative",
+                    },
                 },
             },
         ];
@@ -1626,30 +1704,48 @@ await test("computeStatProgression - index stat", async (t) => {
             await t.test(c.name, () => {
                 const coeffs = coefficients(c);
                 const disc = discriminant(coeffs);
-                switch (c.trackingStats.discriminant) {
-                    case "positive":
-                        assert.ok(
-                            disc > 0,
-                            `Discriminant should be positive, got ${disc.toString()}`,
-                        );
-                        break;
-                    case "zero":
-                        assert.ok(
-                            Math.abs(disc) < 1e-6,
-                            `Discriminant should be zero, got ${disc.toString()}`,
-                        );
-                        break;
-                    case "negative":
-                        assert.ok(
-                            disc < 0,
-                            `Discriminant should be negative, got ${disc.toString()}`,
-                        );
-                        break;
-                    case undefined:
-                        // Do nothing
-                        break;
-                    default:
-                        c.trackingStats.discriminant satisfies never;
+
+                // Check cubic properties if expected
+                if (c.expected.cubic) {
+                    // Helper function to check coefficient sign
+                    const checkCoeff = (
+                        value: number,
+                        expected: "positive" | "zero" | "negative",
+                        name: string,
+                    ) => {
+                        switch (expected) {
+                            case "positive":
+                                assert.ok(
+                                    value > 0,
+                                    `${name} should be positive, got ${value.toString()}`,
+                                );
+                                break;
+                            case "zero":
+                                assert.ok(
+                                    Math.abs(value) < 1e-6,
+                                    `${name} should be zero, got ${value.toString()}`,
+                                );
+                                break;
+                            case "negative":
+                                assert.ok(
+                                    value < 0,
+                                    `${name} should be negative, got ${value.toString()}`,
+                                );
+                                break;
+                            default:
+                                expected satisfies never;
+                        }
+                    };
+
+                    checkCoeff(coeffs.a, c.expected.cubic.a, "Coefficient a");
+                    checkCoeff(coeffs.b, c.expected.cubic.b, "Coefficient b");
+                    checkCoeff(coeffs.c, c.expected.cubic.c, "Coefficient c");
+                    checkCoeff(coeffs.d, c.expected.cubic.d, "Coefficient d");
+                    checkCoeff(
+                        disc,
+                        c.expected.cubic.discriminant,
+                        "Discriminant",
+                    );
                 }
 
                 const startDate = new Date("2024-01-01T00:00:00Z");
