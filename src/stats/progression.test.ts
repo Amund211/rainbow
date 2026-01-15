@@ -1167,13 +1167,17 @@ await test("computeStatProgression - index stat", async (t) => {
         //    b = s_0*k^2 + 2s*k_0*k - M*d^2
         //    c = 2s_0*k_0*k + s*k_0^2 - 2M*d_0*d
         //    d = s_0*k_0^2 - M*d_0^2
+        //
         // Interesting edge cases:
         //  a = 0
         //  a = 0 ^ b = 0
         //  a = 0 ^ b = 0 ^ c = 0
         //  a = 0 ^ b = 0 ^ c = 0 ^ d = 0
-        //  Discriminant: 18abcd - 4b^3d + b^2c^2 - 4ac^3 -27a^2d^2
-        //    = 18
+        //
+        // Discriminant: 18abcd - 4b^3d + b^2c^2 - 4ac^3 -27a^2d^2
+        //  Positive
+        //  Zero
+        //  Negative
 
         const coefficients = (c: Case) => {
             const s0 = bedwarsLevelFromExp(c.trackingStats.end.experience);
@@ -1336,9 +1340,10 @@ await test("computeStatProgression - index stat", async (t) => {
             },
             {
                 name: "increasing fkdr, zero final deaths, stable stars",
+                // NOTE: In this case the equation changes as we calculate fkdr as just final kills
+                //       -> We skip the assertions about the shape of the cubic equation
                 trackingStats: {
                     durationDays: 10,
-                    discriminant: "zero",
                     start: {
                         experience: 500, // 0 star progress - not really possible, but interesting to test
                         finalKills: 10, // 1 final per day
