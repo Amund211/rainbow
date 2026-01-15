@@ -394,9 +394,13 @@ export const computeStatProgression = (
             // Calculate per-day rates
             const expPerDay = (endExp - startExp) / daysElapsed;
             // Use different exp-to-stars conversion based on exp gain rate
-            // For low exp rates (< 300/day), use /200; for higher rates, use /100
-            // This accounts for the varying level costs in the first prestige
-            const expToStarsDivisor = expPerDay < 300 ? PRESTIGE_EXP / 200 : PRESTIGE_EXP / 100;
+            // For low exp rates (< 300/day), use PRESTIGE_EXP/200; for higher rates, use PRESTIGE_EXP/100
+            // This accounts for the varying level costs in the first prestige:
+            // - Early levels (1-4): 500, 1000, 2000, 3500 exp
+            // - Later levels (5-100): 5000 exp each
+            // The threshold of 300 exp/day and divisor adjustment improve accuracy
+            const EXP_RATE_THRESHOLD = 300;
+            const expToStarsDivisor = expPerDay < EXP_RATE_THRESHOLD ? PRESTIGE_EXP / 200 : PRESTIGE_EXP / 100;
             const starsPerDay = expPerDay / expToStarsDivisor;
             const finalKillsPerDay = (endFinalKills - startFinalKills) / daysElapsed;
             const finalDeathsPerDay = (endFinalDeaths - startFinalDeaths) / daysElapsed;
@@ -552,14 +556,19 @@ export const computeStatProgression = (
                 // For upward trend (indexRatePerDay >= 0), we want crossings where d(index)/dt >= 0
                 // For downward trend (indexRatePerDay < 0), we want crossings where d(index)/dt < 0
                 // Use the same sign as the overall trend direction
-                const epsilon = 1e-6;
+                // Note: We use epsilon=1e-6 here (vs 1e-10 in cubic solver) because we're
+                // comparing derivatives which may have larger numerical errors due to multiple operations
+                const TREND_EPSILON = 1e-6;
                 if (trendingUpward) {
-                    return indexRate_t > -epsilon;
+                    return indexRate_t > -TREND_EPSILON;
                 } else {
-                    return indexRate_t < epsilon;
+                    return indexRate_t < TREND_EPSILON;
                 }
             });
             
+            // Select the first valid root (earliest crossing time)
+            // The roots are already sorted by solveCubicAllRoots in ascending order,
+            // so validRoots[0] gives us the soonest time we'll reach the milestone
             const daysUntilMilestone = validRoots.length > 0 ? validRoots[0] : null;
             
             if (daysUntilMilestone === null) {
