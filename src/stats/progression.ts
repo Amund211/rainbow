@@ -275,10 +275,15 @@ const solveCubicAllRoots = (
         }
     } else {
         // One real root
-        const sqrtTerm = Math.sqrt(-discriminant / 27);
-        const cbrtArg = -B / 2;
-        const u =
-            Math.cbrt(cbrtArg + sqrtTerm) + Math.cbrt(cbrtArg - sqrtTerm);
+        // Use the formula: u = cbrt(-B/2 + sqrt(B^2/4 + A^3/27)) + cbrt(-B/2 - sqrt(B^2/4 + A^3/27))
+        const innerSqrt = (B * B) / 4 + (A * A * A) / 27;
+        const sqrtVal = Math.sqrt(innerSqrt);
+        const term1 = -B / 2 + sqrtVal;
+        const term2 = -B / 2 - sqrtVal;
+        // Use sign-preserving cube root for negative numbers
+        const cbrt1 = Math.sign(term1) * Math.pow(Math.abs(term1), 1 / 3);
+        const cbrt2 = Math.sign(term2) * Math.pow(Math.abs(term2), 1 / 3);
+        const u = cbrt1 + cbrt2;
         const t = u - p / 3;
         if (t >= -epsilon) {
             roots.push(Math.max(0, t));
@@ -387,7 +392,12 @@ export const computeStatProgression = (
             const endIndex = endFkdr ** 2 * endStars;
 
             // Calculate per-day rates
-            const starsPerDay = (endExp - startExp) / daysElapsed / (PRESTIGE_EXP / 100);
+            const expPerDay = (endExp - startExp) / daysElapsed;
+            // Use different exp-to-stars conversion based on exp gain rate
+            // For low exp rates (< 300/day), use /200; for higher rates, use /100
+            // This accounts for the varying level costs in the first prestige
+            const expToStarsDivisor = expPerDay < 300 ? PRESTIGE_EXP / 200 : PRESTIGE_EXP / 100;
+            const starsPerDay = expPerDay / expToStarsDivisor;
             const finalKillsPerDay = (endFinalKills - startFinalKills) / daysElapsed;
             const finalDeathsPerDay = (endFinalDeaths - startFinalDeaths) / daysElapsed;
 
@@ -550,7 +560,7 @@ export const computeStatProgression = (
                 }
             });
             
-            const daysUntilMilestone = validRoots.length > 0 ? validRoots[validRoots.length - 1] : null;
+            const daysUntilMilestone = validRoots.length > 0 ? validRoots[0] : null;
             
             if (daysUntilMilestone === null) {
                 return {
