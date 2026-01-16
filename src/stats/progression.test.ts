@@ -1269,8 +1269,8 @@ await test("computeStatProgression - index stat", async (t) => {
                     },
                 },
                 expected: {
-                    index: 16, // 4 stars * (2 fkdr)^2
-                    milestone: 20,
+                    index: 4, // 1 star * (2 fkdr)^2
+                    milestone: 10,
                     daysUntilMilestone: Infinity,
                     progressPerDay: 0,
                     cubic: {
@@ -1327,7 +1327,7 @@ await test("computeStatProgression - index stat", async (t) => {
                     },
                 },
                 expected: {
-                    index: 0, // 4 stars * (0 fkdr)^2
+                    index: 0, // 0 stars * (100 fkdr)^2
                     milestone: 1,
                     daysUntilMilestone: Infinity, // constant fkdr at 0
                     progressPerDay: 0,
