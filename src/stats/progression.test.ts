@@ -1734,7 +1734,7 @@ await test("computeStatProgression - index stat", async (t) => {
                     };
 
                     const coefficients = computeCoefficients(c);
-                    const discriminants = computeDiscriminant(coefficients);
+                    const discriminant = computeDiscriminant(coefficients);
 
                     checkCoefficientSign(
                         coefficients.a,
@@ -1757,7 +1757,7 @@ await test("computeStatProgression - index stat", async (t) => {
                         "Coefficient d",
                     );
                     checkCoefficientSign(
-                        discriminants,
+                        discriminant,
                         c.expected.cubic.discriminant,
                         "Discriminant",
                     );
