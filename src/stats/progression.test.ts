@@ -1608,7 +1608,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 trackingStats: {
                     durationDays: 10,
                     start: {
-                        experience: 4565, // 0.5 stars per day
+                        experience: 4565, // 0.5 avg stars gained (0.05 stars/day)
                         finalKills: 60, // 2 finals per day
                         finalDeaths: 3, // 0.5 final death per day
                     },
@@ -1619,7 +1619,7 @@ await test("computeStatProgression - index stat", async (t) => {
                     },
                 },
                 expected: {
-                    // index(t) = (4 + 0.1*t) * (80+2*t)^2/(8+0.5*t)^2
+                    // index(t) = (4 + 0.05*t) * (80+2*t)^2/(8+0.5*t)^2
                     index: 400, // 4 star * (10 fkdr)^2
                     milestone: 300,
                     // Shamelessly solved by WolframAlpha
@@ -1640,7 +1640,7 @@ await test("computeStatProgression - index stat", async (t) => {
                 trackingStats: {
                     durationDays: 10,
                     start: {
-                        experience: 1065, // 0.5 stars per day
+                        experience: 1065, // 0.5 avg stars gained (0.05 stars/day)
                         finalKills: 60, // 2 finals per day
                         finalDeaths: 3, // 0.5 final death per day
                     },
@@ -1651,7 +1651,7 @@ await test("computeStatProgression - index stat", async (t) => {
                     },
                 },
                 expected: {
-                    // index(t) = (3 + 0.1*t) * (80+2*t)^2/(8+0.5*t)^2
+                    // index(t) = (3 + 0.05*t) * (80+2*t)^2/(8+0.5*t)^2
                     index: 300, // 3 star * (10 fkdr)^2
                     milestone: 200,
                     // Reaches minimum just above 200 at around t=24 days
