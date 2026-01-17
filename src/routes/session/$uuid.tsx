@@ -9,7 +9,7 @@ import { type TimeInterval } from "#intervals.ts";
 import { getHistoryQueryOptions } from "#queries/history.ts";
 import { getSessionsQueryOptions, type Sessions } from "#queries/sessions.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
-import { computeStat } from "#stats/index.ts";
+import { computeStat, getStat } from "#stats/index.ts";
 import {
     ALL_GAMEMODE_KEYS,
     ALL_STAT_KEYS,
@@ -28,6 +28,7 @@ import {
     ERR_TRACKING_STARTED,
     type StatProgression,
 } from "#stats/progression.ts";
+import { bedwarsLevelFromExp } from "#stats/stars.ts";
 import {
     Info,
     TrendingDown,
@@ -802,7 +803,6 @@ const SessionStatCard: React.FC<SessionStatCardProps> = ({
     const trendDirection = diff == 0 ? "flat" : diff > 0 ? "up" : "down";
 
     const badStats: StatKey[] = ["deaths", "finalDeaths", "bedsLost", "losses"];
-    // Intentionally not including "index" as the number is usually so large that we don't want decmials. TODO: Could be fixed by better conditional decimal rendering for large numbers.
     const floatStats: StatKey[] = ["fkdr", "kdr", "stars"];
 
     const shortPrecision = floatStats.includes(stat) ? 2 : 0;
@@ -982,7 +982,9 @@ const ProgressionValueAndMilestone: React.FC<
                 progression.nextMilestoneValue,
                 (value) => (
                     <Typography variant="body1">
-                        {value.toLocaleString()}
+                        {value.toLocaleString(undefined, {
+                            maximumFractionDigits: value < 1 ? 1 : 0,
+                        })}
                     </Typography>
                 ),
                 false,
@@ -1008,10 +1010,76 @@ const ProgressionValueAndMilestone: React.FC<
 
 interface ProgressionCaptionProps {
     progression: StatProgression;
+    uuid: string;
+    gamemode: GamemodeKey;
 }
+
+interface IndexProgressionCaptionProps {
+    progression: StatProgression & { stat: "index" };
+    uuid: string;
+    gamemode: GamemodeKey;
+}
+
+const IndexProgressionCaption: React.FC<IndexProgressionCaptionProps> = ({
+    progression,
+    uuid,
+    gamemode,
+}) => {
+    const { data: trackingHistory } = useQuery(
+        getHistoryQueryOptions({
+            uuid,
+            start: progression.trackingDataTimeInterval.start,
+            end: progression.trackingDataTimeInterval.end,
+            limit: 2,
+        }),
+    );
+
+    if (!trackingHistory || trackingHistory.length < 2) {
+        return (
+            <Typography variant="caption">
+                {`${progression.progressPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/day`}
+            </Typography>
+        );
+    }
+
+    const [start, end] = trackingHistory;
+
+    const startExp = getStat(start, gamemode, "experience");
+    const endExp = getStat(end, gamemode, "experience");
+    const startFinalKills = getStat(start, gamemode, "finalKills");
+    const endFinalKills = getStat(end, gamemode, "finalKills");
+    const startFinalDeaths = getStat(start, gamemode, "finalDeaths");
+    const endFinalDeaths = getStat(end, gamemode, "finalDeaths");
+
+    const daysElapsed =
+        (progression.trackingDataTimeInterval.end.getTime() -
+            progression.trackingDataTimeInterval.start.getTime()) /
+        (24 * 60 * 60 * 1000);
+
+    const starsPerDay =
+        (bedwarsLevelFromExp(endExp) - bedwarsLevelFromExp(startExp)) /
+        daysElapsed;
+    const finalKillsPerDay = (endFinalKills - startFinalKills) / daysElapsed;
+    const finalDeathsPerDay = (endFinalDeaths - startFinalDeaths) / daysElapsed;
+
+    const sessionFinalKills = endFinalKills - startFinalKills;
+    const sessionFinalDeaths = endFinalDeaths - startFinalDeaths;
+    const sessionFkdr =
+        sessionFinalDeaths === 0
+            ? sessionFinalKills
+            : sessionFinalKills / sessionFinalDeaths;
+
+    return (
+        <Typography variant="caption">
+            {`${progression.progressPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/day (${starsPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getShortStatLabel("stars")}/day, ${sessionFkdr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} long-time ${getShortStatLabel("fkdr")}, ${finalKillsPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getShortStatLabel("finalKills")}/day, ${finalDeathsPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getShortStatLabel("finalDeaths")}/day)`}
+        </Typography>
+    );
+};
 
 const ProgressionCaption: React.FC<ProgressionCaptionProps> = ({
     progression,
+    uuid,
+    gamemode,
 }) => {
     switch (progression.stat) {
         case "stars":
@@ -1034,8 +1102,15 @@ const ProgressionCaption: React.FC<ProgressionCaptionProps> = ({
                 </Typography>
             );
         case "index":
-            // TODO
-            return <Typography variant="caption">TODO</Typography>;
+            return (
+                <IndexProgressionCaption
+                    progression={
+                        progression as StatProgression & { stat: "index" }
+                    }
+                    uuid={uuid}
+                    gamemode={gamemode}
+                />
+            );
         case "experience":
         case "winstreak":
         case "gamesPlayed":
@@ -1242,7 +1317,11 @@ const StatProgressionCard: React.FC<StatProgressionCardProps> = ({
                         alignItems="center"
                         justifyContent="space-between"
                     >
-                        <ProgressionCaption progression={progression} />
+                        <ProgressionCaption
+                            progression={progression}
+                            uuid={uuid}
+                            gamemode={gamemode}
+                        />
                         <Tooltip
                             title={`Based on stats from ${progression.trackingDataTimeInterval.start.toLocaleString(undefined, { dateStyle: "medium" })} to ${progression.trackingDataTimeInterval.end.toLocaleString(undefined, { dateStyle: "medium" })}`}
                         >
