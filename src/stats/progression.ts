@@ -223,7 +223,9 @@ const solveCubicAllRoots = (
             .map((t) => Math.max(0, t))
             .sort((a, b) => a - b);
         // Remove duplicates
-        return roots.filter((t, i, arr) => i === 0 || Math.abs(t - arr[i - 1]) > epsilon);
+        return roots.filter(
+            (t, i, arr) => i === 0 || Math.abs(t - arr[i - 1]) > epsilon,
+        );
     }
 
     // Normalize to t^3 + pt^2 + qt + r = 0
@@ -292,7 +294,9 @@ const solveCubicAllRoots = (
 
     // Sort and remove duplicates
     const sorted = roots.sort((a, b) => a - b);
-    return sorted.filter((t, i, arr) => i === 0 || Math.abs(t - arr[i - 1]) > epsilon);
+    return sorted.filter(
+        (t, i, arr) => i === 0 || Math.abs(t - arr[i - 1]) > epsilon,
+    );
 };
 
 /**
@@ -400,18 +404,19 @@ export const computeStatProgression = (
             // - Later levels (5-100): 5000 exp each
             // The threshold of 300 exp/day and divisor adjustment improve accuracy
             const EXP_RATE_THRESHOLD = 300;
-            const expToStarsDivisor = expPerDay < EXP_RATE_THRESHOLD ? PRESTIGE_EXP / 200 : PRESTIGE_EXP / 100;
+            const expToStarsDivisor =
+                expPerDay < EXP_RATE_THRESHOLD
+                    ? PRESTIGE_EXP / 200
+                    : PRESTIGE_EXP / 100;
             const starsPerDay = expPerDay / expToStarsDivisor;
-            const finalKillsPerDay = (endFinalKills - startFinalKills) / daysElapsed;
-            const finalDeathsPerDay = (endFinalDeaths - startFinalDeaths) / daysElapsed;
+            const finalKillsPerDay =
+                (endFinalKills - startFinalKills) / daysElapsed;
+            const finalDeathsPerDay =
+                (endFinalDeaths - startFinalDeaths) / daysElapsed;
 
             // Calculate session fkdr
             const sessionFinalKills = endFinalKills - startFinalKills;
             const sessionFinalDeaths = endFinalDeaths - startFinalDeaths;
-            const sessionFkdr =
-                sessionFinalDeaths === 0
-                    ? sessionFinalKills
-                    : sessionFinalKills / sessionFinalDeaths;
 
             // Check for no progress case
             const noSessionProgress =
@@ -421,12 +426,20 @@ export const computeStatProgression = (
 
             if (noSessionProgress) {
                 // Determine next milestone
-                const endIndexMagnitude = Math.pow(10, Math.floor(Math.log10(Math.max(1, endIndex))));
-                const nextMilestoneValue = (Math.floor(endIndex / endIndexMagnitude) + 1) * endIndexMagnitude;
-                
+                const endIndexMagnitude = Math.pow(
+                    10,
+                    Math.floor(Math.log10(Math.max(1, endIndex))),
+                );
+                const nextMilestoneValue =
+                    (Math.floor(endIndex / endIndexMagnitude) + 1) *
+                    endIndexMagnitude;
+
                 return {
                     stat,
-                    trackingDataTimeInterval: { start: startDate, end: endDate },
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
                     endValue: endIndex,
                     nextMilestoneValue,
                     daysUntilMilestone: Infinity,
@@ -440,27 +453,36 @@ export const computeStatProgression = (
             // d(fkdr)/dt = (k * (d0 + d*t) - (k0 + k*t) * d) / (d0 + d*t)^2
             //            = (k * d0 - k0 * d) / (d0 + d*t)^2
             // At t=0 (now): d(fkdr)/dt = (k * d0 - k0 * d) / d0^2
-            const fkdrRatePerDay = 
-                endFinalDeaths === 0 
-                    ? finalKillsPerDay 
-                    : (finalKillsPerDay * endFinalDeaths - endFinalKills * finalDeathsPerDay) / (endFinalDeaths * endFinalDeaths);
+            const fkdrRatePerDay =
+                endFinalDeaths === 0
+                    ? finalKillsPerDay
+                    : (finalKillsPerDay * endFinalDeaths -
+                          endFinalKills * finalDeathsPerDay) /
+                      (endFinalDeaths * endFinalDeaths);
 
             // Calculate rate of change of index
             // index(t) = stars(t) * fkdr(t)^2
             // d(index)/dt = starsPerDay * fkdr^2 + 2 * stars * fkdr * d(fkdr)/dt
-            const indexRatePerDay = starsPerDay * endFkdr * endFkdr + 2 * endStars * endFkdr * fkdrRatePerDay;
+            const indexRatePerDay =
+                starsPerDay * endFkdr * endFkdr +
+                2 * endStars * endFkdr * fkdrRatePerDay;
 
             // Determine if trending upward
             const trendingUpward = indexRatePerDay >= 0;
 
             // Determine next milestone
             // Calculate magnitude based on the current index value
-            let endIndexMagnitude = Math.pow(10, Math.floor(Math.log10(Math.max(1, endIndex))));
-            
+            let endIndexMagnitude = Math.pow(
+                10,
+                Math.floor(Math.log10(Math.max(1, endIndex))),
+            );
+
             let nextMilestoneValue: number;
             if (trendingUpward) {
                 // Round down to nearest magnitude and add one magnitude
-                nextMilestoneValue = (Math.floor(endIndex / endIndexMagnitude) + 1) * endIndexMagnitude;
+                nextMilestoneValue =
+                    (Math.floor(endIndex / endIndexMagnitude) + 1) *
+                    endIndexMagnitude;
             } else {
                 // For downward trends: if we're exactly at a magnitude boundary, use a smaller step
                 // E.g., for index=100 going down, we want milestone 90 (step=10), not 0 (step=100)
@@ -468,7 +490,9 @@ export const computeStatProgression = (
                     endIndexMagnitude = endIndexMagnitude / 10;
                 }
                 // Round up to nearest magnitude and subtract one magnitude
-                nextMilestoneValue = (Math.ceil(endIndex / endIndexMagnitude) - 1) * endIndexMagnitude;
+                nextMilestoneValue =
+                    (Math.ceil(endIndex / endIndexMagnitude) - 1) *
+                    endIndexMagnitude;
                 // Handle case where we'd go negative
                 if (nextMilestoneValue < 0) {
                     nextMilestoneValue = 0;
@@ -499,7 +523,10 @@ export const computeStatProgression = (
                 if (daysUntilMilestone === null) {
                     return {
                         stat,
-                        trackingDataTimeInterval: { start: startDate, end: endDate },
+                        trackingDataTimeInterval: {
+                            start: startDate,
+                            end: endDate,
+                        },
                         endValue: endIndex,
                         nextMilestoneValue,
                         daysUntilMilestone: Infinity,
@@ -510,11 +537,15 @@ export const computeStatProgression = (
 
                 return {
                     stat,
-                    trackingDataTimeInterval: { start: startDate, end: endDate },
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
                     endValue: endIndex,
                     nextMilestoneValue,
                     daysUntilMilestone,
-                    progressPerDay: (nextMilestoneValue - endIndex) / daysUntilMilestone,
+                    progressPerDay:
+                        (nextMilestoneValue - endIndex) / daysUntilMilestone,
                     trendingUpward,
                 };
             }
@@ -539,7 +570,7 @@ export const computeStatProgression = (
 
             // Find all roots
             const allRoots = solveCubicAllRoots(a, b, c, d_coef);
-            
+
             // Filter roots based on trend direction
             // Calculate d(index)/dt at each root to check if we're crossing in the right direction
             const validRoots = allRoots.filter((t) => {
@@ -551,8 +582,9 @@ export const computeStatProgression = (
                 const fd_t = d0 + d * t;
                 const fkdr_t = fk_t / fd_t;
                 const fkdrRate_t = (k * fd_t - fk_t * d) / (fd_t * fd_t);
-                const indexRate_t = s * fkdr_t * fkdr_t + 2 * stars_t * fkdr_t * fkdrRate_t;
-                
+                const indexRate_t =
+                    s * fkdr_t * fkdr_t + 2 * stars_t * fkdr_t * fkdrRate_t;
+
                 // For upward trend (indexRatePerDay >= 0), we want crossings where d(index)/dt >= 0
                 // For downward trend (indexRatePerDay < 0), we want crossings where d(index)/dt < 0
                 // Use the same sign as the overall trend direction
@@ -565,16 +597,20 @@ export const computeStatProgression = (
                     return indexRate_t < TREND_EPSILON;
                 }
             });
-            
+
             // Select the first valid root (earliest crossing time)
             // The roots are already sorted by solveCubicAllRoots in ascending order,
             // so validRoots[0] gives us the soonest time we'll reach the milestone
-            const daysUntilMilestone = validRoots.length > 0 ? validRoots[0] : null;
-            
+            const daysUntilMilestone =
+                validRoots.length > 0 ? validRoots[0] : null;
+
             if (daysUntilMilestone === null) {
                 return {
                     stat,
-                    trackingDataTimeInterval: { start: startDate, end: endDate },
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
                     endValue: endIndex,
                     nextMilestoneValue,
                     daysUntilMilestone: Infinity,
@@ -589,7 +625,8 @@ export const computeStatProgression = (
                 endValue: endIndex,
                 nextMilestoneValue,
                 daysUntilMilestone,
-                progressPerDay: (nextMilestoneValue - endIndex) / daysUntilMilestone,
+                progressPerDay:
+                    (nextMilestoneValue - endIndex) / daysUntilMilestone,
                 trendingUpward,
             };
         }
