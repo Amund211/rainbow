@@ -166,24 +166,6 @@ await test("computeStatProgression - error cases", async (t) => {
             reason: ERR_TRACKING_STARTED,
         },
         {
-            name: "no progress",
-            history: [
-                new PlayerDataBuilder(TEST_UUID, startDate)
-                    .withGamemodeStats(
-                        "overall",
-                        new StatsBuilder().withStat("wins", 100).build(),
-                    )
-                    .build(),
-                new PlayerDataBuilder(TEST_UUID, endDate)
-                    .withGamemodeStats(
-                        "overall",
-                        new StatsBuilder().withStat("wins", 100).build(),
-                    )
-                    .build(),
-            ],
-            reason: "No progress",
-        },
-        {
             name: "three element history",
             history: [
                 new PlayerDataBuilder(TEST_UUID, startDate)
@@ -344,6 +326,59 @@ await test("computeStatProgression - linear gamemode stats", async (t) => {
                             progressPerDay: 20,
                             nextMilestoneValue: 200,
                             daysUntilMilestone: 5,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
+                    });
+
+                    await t.test("edge case - zero current value", () => {
+                        const startDate = new Date("2024-01-01T00:00:00Z");
+                        const endDate = new Date("2024-01-06T00:00:00Z");
+                        const startBuilder = new PlayerDataBuilder(
+                            TEST_UUID,
+                            startDate,
+                        );
+                        const endBuilder = new PlayerDataBuilder(
+                            TEST_UUID,
+                            endDate,
+                        );
+                        startBuilder.withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder().withStat(stat, 0).build(),
+                        );
+                        endBuilder.withGamemodeStats(
+                            gamemode,
+                            new StatsBuilder().withStat(stat, 0).build(),
+                        );
+
+                        const history: History = [
+                            startBuilder.build(),
+                            endBuilder.build(),
+                        ];
+
+                        const result = computeStatProgression(
+                            history,
+                            endDate,
+                            stat,
+                            gamemode,
+                        );
+
+                        if (result.error) {
+                            assert.fail(
+                                `Expected success but got error: ${result.reason}`,
+                            );
+                        }
+
+                        // When endValue is 0, the milestone should be 1
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 0,
+                            progressPerDay: 0,
+                            nextMilestoneValue: 1,
+                            daysUntilMilestone: Infinity,
                             trendingUpward: true,
                             trackingDataTimeInterval: {
                                 start: startDate,
@@ -671,6 +706,65 @@ await test("computeStatProgression - quotient stats", async (t) => {
                             divisorPerDay: 0,
                             nextMilestoneValue: 300,
                             daysUntilMilestone: 10,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
+                    });
+
+                    await t.test("edge case - zero current value", () => {
+                        // When the current quotient is zero (0 dividend, 0 divisor)
+                        const startDate = new Date("2024-01-01T00:00:00Z");
+                        const endDate = new Date("2024-01-11T00:00:00Z");
+                        const startBuilder = new StatsBuilder();
+                        const endBuilder = new StatsBuilder();
+
+                        // Start: 0/0 = 0
+                        // End: 0/0 = 0 (zero current value)
+                        startBuilder
+                            .withStat(dividendStat, 0)
+                            .withStat(divisorStat, 0);
+                        endBuilder
+                            .withStat(dividendStat, 0)
+                            .withStat(divisorStat, 0);
+
+                        const history: History = [
+                            new PlayerDataBuilder(TEST_UUID, startDate)
+                                .withGamemodeStats(
+                                    gamemode,
+                                    startBuilder.build(),
+                                )
+                                .build(),
+                            new PlayerDataBuilder(TEST_UUID, endDate)
+                                .withGamemodeStats(gamemode, endBuilder.build())
+                                .build(),
+                        ];
+
+                        const result = computeStatProgression(
+                            history,
+                            endDate,
+                            stat,
+                            gamemode,
+                        );
+
+                        if (result.error) {
+                            assert.fail(
+                                `Expected success but got error: ${result.reason}`,
+                            );
+                        }
+
+                        // When endValue is 0, milestone should be 1
+                        assert.deepStrictEqual(result, {
+                            stat,
+                            endValue: 0,
+                            sessionQuotient: 0,
+                            progressPerDay: 0,
+                            dividendPerDay: 0,
+                            divisorPerDay: 0,
+                            nextMilestoneValue: 1,
+                            daysUntilMilestone: Infinity,
                             trendingUpward: true,
                             trackingDataTimeInterval: {
                                 start: startDate,
@@ -1126,6 +1220,86 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
                         progressPerDay: 650,
                         nextMilestoneValue: 8_000,
                         daysUntilMilestone: 1000 / 650,
+                        trendingUpward: true,
+                        trackingDataTimeInterval: {
+                            start: startDate,
+                            end: endDate,
+                        },
+                    });
+                });
+            });
+
+            await t.test("edge case - zero current value", async (t) => {
+                // Note: This is a constructed case as new players have 500 exp/1 star
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
+                // Start at 0 exp, stay at 0 (constructed case)
+                const history: History = [
+                    new PlayerDataBuilder(TEST_UUID, startDate)
+                        .withExperience(0)
+                        .build(),
+                    new PlayerDataBuilder(TEST_UUID, endDate)
+                        .withExperience(0)
+                        .build(),
+                ];
+
+                await t.test("stars", () => {
+                    const result = computeStatProgression(
+                        history,
+                        endDate,
+                        "stars",
+                        gamemode,
+                    );
+
+                    if (result.error) {
+                        assert.fail(
+                            `Expected success but got error: ${result.reason}`,
+                        );
+                    }
+
+                    const {
+                        daysUntilMilestone,
+                        progressPerDay,
+                        ...resultWithoutTrickyFloats
+                    } = result;
+
+                    assert.deepStrictEqual(resultWithoutTrickyFloats, {
+                        stat: "stars",
+                        endValue: 0,
+                        nextMilestoneValue: 100,
+                        trendingUpward: true,
+                        trackingDataTimeInterval: {
+                            start: startDate,
+                            end: endDate,
+                        },
+                    });
+
+                    // No progress in exp
+                    assert.strictEqual(progressPerDay, 0);
+                    assert.strictEqual(daysUntilMilestone, Infinity);
+                });
+
+                await t.test("experience", () => {
+                    const result = computeStatProgression(
+                        history,
+                        endDate,
+                        "experience",
+                        gamemode,
+                    );
+
+                    if (result.error) {
+                        assert.fail(
+                            `Expected success but got error: ${result.reason}`,
+                        );
+                    }
+
+                    // When endValue is 0, milestone should be 1
+                    assert.deepStrictEqual(result, {
+                        stat: "experience",
+                        endValue: 0,
+                        progressPerDay: 0,
+                        nextMilestoneValue: 1,
+                        daysUntilMilestone: Infinity,
                         trendingUpward: true,
                         trackingDataTimeInterval: {
                             start: startDate,
