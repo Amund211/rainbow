@@ -5,6 +5,17 @@ import { useKnownAliases } from "#contexts/KnownAliases/hooks.ts";
 import { isNormalizedUUID } from "#helpers/uuid.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
+import {
+    createRateLimiter,
+    retryOnRateLimit,
+} from "#helpers/rateLimiter.ts";
+
+// Rate limiter for username queries - 10 requests per second
+const usernameRateLimiter = createRateLimiter({
+    concurrency: 1,
+    interval: 1000,
+    intervalCap: 10,
+});
 
 export const getUsernameQueryOptions = (
     uuid: string,
@@ -29,22 +40,24 @@ export const getUsernameQueryOptions = (
                 throw new Error(`UUID not normalized: ${uuid}`);
             }
 
-            const response = await fetch(
-                `${env.VITE_FLASHLIGHT_URL}/v1/account/uuid/${uuid}`,
-                {
-                    headers: {
-                        "X-User-Id": getOrSetUserId(),
-                    },
-                },
-            ).catch((error: unknown) => {
-                captureException(error, {
-                    extra: {
-                        uuid,
-                        message: "Failed to get username: failed to fetch",
-                    },
-                });
-                throw error;
-            });
+            return retryOnRateLimit(
+                async () => {
+                    const response = await fetch(
+                        `${env.VITE_FLASHLIGHT_URL}/v1/account/uuid/${uuid}`,
+                        {
+                            headers: {
+                                "X-User-Id": getOrSetUserId(),
+                            },
+                        },
+                    ).catch((error: unknown) => {
+                        captureException(error, {
+                            extra: {
+                                uuid,
+                                message: "Failed to get username: failed to fetch",
+                            },
+                        });
+                        throw error;
+                    });
             if (!response.ok) {
                 const text = await response.text().catch((error: unknown) => {
                     captureException(error, {
@@ -150,6 +163,9 @@ export const getUsernameQueryOptions = (
             }
 
             return { uuid, username: data.username };
+                },
+                usernameRateLimiter,
+            );
         },
     });
 

@@ -8,6 +8,17 @@ import {
 import { isNormalizedUUID } from "#helpers/uuid.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
+import {
+    createRateLimiter,
+    retryOnRateLimit,
+} from "#helpers/rateLimiter.ts";
+
+// Rate limiter for sessions queries - 10 requests per second
+const sessionsRateLimiter = createRateLimiter({
+    concurrency: 1,
+    interval: 1000,
+    intervalCap: 10,
+});
 
 export interface APISession {
     start: APIPlayerDataPIT;
@@ -74,31 +85,34 @@ export const getSessionsQueryOptions = ({
             if (start.getTime() > end.getTime()) {
                 return [];
             }
-            const response = await fetch(
-                `${env.VITE_FLASHLIGHT_URL}/v1/sessions`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-User-Id": getOrSetUserId(),
-                    },
-                    method: "POST",
-                    body: JSON.stringify({
-                        uuid,
-                        start: startISOString,
-                        end: endISOString,
-                    }),
-                },
-            ).catch((error: unknown) => {
-                captureException(error, {
-                    extra: {
-                        uuid,
-                        start: startISOString,
-                        end: endISOString,
-                        message: "Failed to get sessions: failed to fetch",
-                    },
-                });
-                throw error;
-            });
+
+            return retryOnRateLimit(
+                async () => {
+                    const response = await fetch(
+                        `${env.VITE_FLASHLIGHT_URL}/v1/sessions`,
+                        {
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-User-Id": getOrSetUserId(),
+                            },
+                            method: "POST",
+                            body: JSON.stringify({
+                                uuid,
+                                start: startISOString,
+                                end: endISOString,
+                            }),
+                        },
+                    ).catch((error: unknown) => {
+                        captureException(error, {
+                            extra: {
+                                uuid,
+                                start: startISOString,
+                                end: endISOString,
+                                message: "Failed to get sessions: failed to fetch",
+                            },
+                        });
+                        throw error;
+                    });
 
             if (!response.ok) {
                 const text = await response.text().catch((error: unknown) => {
@@ -169,6 +183,9 @@ export const getSessionsQueryOptions = ({
 
             return apiSessions.map((apiSession) =>
                 apiToSession(apiSession, false),
+            );
+                },
+                sessionsRateLimiter,
             );
         },
     });

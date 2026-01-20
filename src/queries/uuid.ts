@@ -4,6 +4,17 @@ import { normalizeUUID } from "#helpers/uuid.ts";
 import { addKnownAliasWithoutRerendering } from "#contexts/KnownAliases/helpers.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
+import {
+    createRateLimiter,
+    retryOnRateLimit,
+} from "#helpers/rateLimiter.ts";
+
+// Rate limiter for UUID queries - 10 requests per second
+const uuidRateLimiter = createRateLimiter({
+    concurrency: 1,
+    interval: 1000,
+    intervalCap: 10,
+});
 
 export const getUUIDQueryOptions = (
     username: string,
@@ -15,22 +26,24 @@ export const getUUIDQueryOptions = (
         // eslint-disable-next-line @tanstack/query/exhaustive-deps
         queryKey: ["uuid", username],
         queryFn: async (): Promise<{ uuid: string; username: string }> => {
-            const response = await fetch(
-                `${env.VITE_FLASHLIGHT_URL}/v1/account/username/${username}`,
-                {
-                    headers: {
-                        "X-User-Id": getOrSetUserId(),
-                    },
-                },
-            ).catch((error: unknown) => {
-                captureException(error, {
-                    extra: {
-                        username,
-                        message: "Failed to get uuid: failed to fetch",
-                    },
-                });
-                throw error;
-            });
+            return retryOnRateLimit(
+                async () => {
+                    const response = await fetch(
+                        `${env.VITE_FLASHLIGHT_URL}/v1/account/username/${username}`,
+                        {
+                            headers: {
+                                "X-User-Id": getOrSetUserId(),
+                            },
+                        },
+                    ).catch((error: unknown) => {
+                        captureException(error, {
+                            extra: {
+                                username,
+                                message: "Failed to get uuid: failed to fetch",
+                            },
+                        });
+                        throw error;
+                    });
 
             if (!response.ok) {
                 const text = await response.text().catch((error: unknown) => {
@@ -154,5 +167,8 @@ export const getUUIDQueryOptions = (
             }
 
             return { username, uuid };
+                },
+                uuidRateLimiter,
+            );
         },
     });

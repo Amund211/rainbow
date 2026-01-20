@@ -8,6 +8,17 @@ import {
 import { isNormalizedUUID } from "#helpers/uuid.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
+import {
+    createRateLimiter,
+    retryOnRateLimit,
+} from "#helpers/rateLimiter.ts";
+
+// Rate limiter for history queries - 10 requests per second
+const historyRateLimiter = createRateLimiter({
+    concurrency: 1,
+    interval: 1000,
+    intervalCap: 10,
+});
 
 type APIHistory = readonly APIPlayerDataPIT[];
 
@@ -55,33 +66,36 @@ export const getHistoryQueryOptions = ({
             if (start.getTime() > end.getTime()) {
                 return [];
             }
-            const response = await fetch(
-                `${env.VITE_FLASHLIGHT_URL}/v1/history`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-User-Id": getOrSetUserId(),
-                    },
-                    method: "POST",
-                    body: JSON.stringify({
-                        uuid,
-                        start: startISOString,
-                        end: endISOString,
-                        limit,
-                    }),
-                },
-            ).catch((error: unknown) => {
-                captureException(error, {
-                    extra: {
-                        uuid,
-                        start: startISOString,
-                        end: endISOString,
-                        limit,
-                        message: "Failed to get history: failed to fetch",
-                    },
-                });
-                throw error;
-            });
+
+            return retryOnRateLimit(
+                async () => {
+                    const response = await fetch(
+                        `${env.VITE_FLASHLIGHT_URL}/v1/history`,
+                        {
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-User-Id": getOrSetUserId(),
+                            },
+                            method: "POST",
+                            body: JSON.stringify({
+                                uuid,
+                                start: startISOString,
+                                end: endISOString,
+                                limit,
+                            }),
+                        },
+                    ).catch((error: unknown) => {
+                        captureException(error, {
+                            extra: {
+                                uuid,
+                                start: startISOString,
+                                end: endISOString,
+                                limit,
+                                message: "Failed to get history: failed to fetch",
+                            },
+                        });
+                        throw error;
+                    });
 
             if (!response.ok) {
                 const text = await response.text().catch((error: unknown) => {
@@ -150,6 +164,9 @@ export const getHistoryQueryOptions = ({
                 })) as APIHistory;
 
             return apiHistory.map(apiToPlayerDataPIT);
+                },
+                historyRateLimiter,
+            );
         },
     });
 };

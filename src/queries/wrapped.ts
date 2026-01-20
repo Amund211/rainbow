@@ -9,6 +9,17 @@ import {
     type PlayerDataPIT,
 } from "./playerdata.ts";
 import { apiToSession, type APISession, type Session } from "./sessions.ts";
+import {
+    createRateLimiter,
+    retryOnRateLimit,
+} from "#helpers/rateLimiter.ts";
+
+// Rate limiter for wrapped queries - 10 requests per second
+const wrappedRateLimiter = createRateLimiter({
+    concurrency: 1,
+    interval: 1000,
+    intervalCap: 10,
+});
 
 interface StreakInfo {
     highest: number;
@@ -181,28 +192,30 @@ export const getWrappedQueryOptions = ({
                 throw new Error(`UUID not normalized: ${uuid}`);
             }
 
-            const url = new URL(
-                `${env.VITE_FLASHLIGHT_URL}/v1/wrapped/${uuid}/${year.toString()}`,
-            );
-            url.searchParams.set("timezone", timezone);
+            return retryOnRateLimit(
+                async () => {
+                    const url = new URL(
+                        `${env.VITE_FLASHLIGHT_URL}/v1/wrapped/${uuid}/${year.toString()}`,
+                    );
+                    url.searchParams.set("timezone", timezone);
 
-            const response = await fetch(url, {
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-User-Id": getOrSetUserId(),
-                },
-                method: "GET",
-            }).catch((error: unknown) => {
-                captureException(error, {
-                    extra: {
-                        uuid,
-                        year,
-                        timezone,
-                        message: "Failed to get wrapped: failed to fetch",
-                    },
-                });
-                throw error;
-            });
+                    const response = await fetch(url, {
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-User-Id": getOrSetUserId(),
+                        },
+                        method: "GET",
+                    }).catch((error: unknown) => {
+                        captureException(error, {
+                            extra: {
+                                uuid,
+                                year,
+                                timezone,
+                                message: "Failed to get wrapped: failed to fetch",
+                            },
+                        });
+                        throw error;
+                    });
 
             if (!response.ok) {
                 const text = await response.text().catch((error: unknown) => {
@@ -323,6 +336,9 @@ export const getWrappedQueryOptions = ({
             };
 
             return convertedData;
+                },
+                wrappedRateLimiter,
+            );
         },
     });
 };
