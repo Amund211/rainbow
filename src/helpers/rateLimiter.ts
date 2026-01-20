@@ -8,7 +8,7 @@ export class RateLimitError extends Error {
 }
 
 /**
- * Creates a rate limiter using p-queue with throwOnTimeout enabled
+ * Creates a rate limiter using p-queue with timeout enabled
  */
 export const createRateLimiter = (options: {
     concurrency: number;
@@ -19,7 +19,6 @@ export const createRateLimiter = (options: {
         concurrency: options.concurrency,
         interval: options.interval,
         intervalCap: options.intervalCap,
-        throwOnTimeout: true,
     });
 };
 
@@ -28,7 +27,10 @@ export const createRateLimiter = (options: {
  * Throws RateLimitError if no capacity is available.
  */
 export const checkRateLimit = (queue: PQueue) => {
-    if (queue.size >= queue.concurrency) {
+    // Check if the queue is at capacity based on pending and size
+    const totalLoad = queue.size + queue.pending;
+    if (totalLoad >= queue.concurrency * 10) {
+        // Allow 10x concurrency in queue
         throw new RateLimitError("Rate limit exceeded: queue is full");
     }
 };
@@ -60,7 +62,6 @@ export const retryOnRateLimit = async <T>(
     }
 
     throw (
-        lastError ||
-        new Error("Failed to execute after maximum retry attempts")
+        lastError ?? new Error("Failed to execute after maximum retry attempts")
     );
 };

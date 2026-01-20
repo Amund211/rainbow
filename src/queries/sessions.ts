@@ -8,10 +8,7 @@ import {
 import { isNormalizedUUID } from "#helpers/uuid.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
-import {
-    createRateLimiter,
-    retryOnRateLimit,
-} from "#helpers/rateLimiter.ts";
+import { createRateLimiter, retryOnRateLimit } from "#helpers/rateLimiter.ts";
 
 // Rate limiter for sessions queries - 10 requests per second
 const sessionsRateLimiter = createRateLimiter({
@@ -86,107 +83,106 @@ export const getSessionsQueryOptions = ({
                 return [];
             }
 
-            return retryOnRateLimit(
-                async () => {
-                    const response = await fetch(
-                        `${env.VITE_FLASHLIGHT_URL}/v1/sessions`,
-                        {
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-User-Id": getOrSetUserId(),
-                            },
-                            method: "POST",
-                            body: JSON.stringify({
-                                uuid,
-                                start: startISOString,
-                                end: endISOString,
-                            }),
+            return retryOnRateLimit(async () => {
+                const response = await fetch(
+                    `${env.VITE_FLASHLIGHT_URL}/v1/sessions`,
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-User-Id": getOrSetUserId(),
                         },
-                    ).catch((error: unknown) => {
-                        captureException(error, {
-                            extra: {
-                                uuid,
-                                start: startISOString,
-                                end: endISOString,
-                                message: "Failed to get sessions: failed to fetch",
-                            },
-                        });
-                        throw error;
-                    });
-
-            if (!response.ok) {
-                const text = await response.text().catch((error: unknown) => {
-                    captureException(error, {
-                        tags: {
-                            status: response.status,
-                            statusText: response.statusText,
-                        },
-                        extra: {
-                            message:
-                                "Failed to get sessions: failed to read response text when handling response error",
+                        method: "POST",
+                        body: JSON.stringify({
                             uuid,
                             start: startISOString,
                             end: endISOString,
+                        }),
+                    },
+                ).catch((error: unknown) => {
+                    captureException(error, {
+                        extra: {
+                            uuid,
+                            start: startISOString,
+                            end: endISOString,
+                            message: "Failed to get sessions: failed to fetch",
                         },
                     });
                     throw error;
                 });
-                captureMessage("Failed to get sessions: response error", {
-                    level: "error",
-                    tags: {
-                        status: response.status,
-                        statusText: response.statusText,
-                    },
-                    extra: {
-                        uuid,
-                        start: startISOString,
-                        end: endISOString,
-                        text,
-                    },
-                });
-                throw new Error(
-                    `Failed to fetch session data from API. ${response.status.toString()} - ${response.statusText}: ${await response.text()}`,
-                );
-            }
 
-            const apiSessions = (await response
-                .json()
-                .catch((error: unknown) => {
-                    response
+                if (!response.ok) {
+                    const text = await response
                         .text()
-                        .then((text) => {
+                        .catch((error: unknown) => {
                             captureException(error, {
-                                extra: {
-                                    message:
-                                        "Failed to get sessions: failed to parse json",
-                                    uuid,
-                                    start: startISOString,
-                                    end: endISOString,
-                                    text,
+                                tags: {
+                                    status: response.status,
+                                    statusText: response.statusText,
                                 },
-                            });
-                        })
-                        .catch((textError: unknown) => {
-                            captureException(textError, {
                                 extra: {
                                     message:
                                         "Failed to get sessions: failed to read response text when handling response error",
                                     uuid,
                                     start: startISOString,
                                     end: endISOString,
-                                    jsonParseError: error,
                                 },
                             });
+                            throw error;
                         });
-                    throw error;
-                })) as APISessions;
+                    captureMessage("Failed to get sessions: response error", {
+                        level: "error",
+                        tags: {
+                            status: response.status,
+                            statusText: response.statusText,
+                        },
+                        extra: {
+                            uuid,
+                            start: startISOString,
+                            end: endISOString,
+                            text,
+                        },
+                    });
+                    throw new Error(
+                        `Failed to fetch session data from API. ${response.status.toString()} - ${response.statusText}: ${await response.text()}`,
+                    );
+                }
 
-            return apiSessions.map((apiSession) =>
-                apiToSession(apiSession, false),
-            );
-                },
-                sessionsRateLimiter,
-            );
+                const apiSessions = (await response
+                    .json()
+                    .catch((error: unknown) => {
+                        response
+                            .text()
+                            .then((text) => {
+                                captureException(error, {
+                                    extra: {
+                                        message:
+                                            "Failed to get sessions: failed to parse json",
+                                        uuid,
+                                        start: startISOString,
+                                        end: endISOString,
+                                        text,
+                                    },
+                                });
+                            })
+                            .catch((textError: unknown) => {
+                                captureException(textError, {
+                                    extra: {
+                                        message:
+                                            "Failed to get sessions: failed to read response text when handling response error",
+                                        uuid,
+                                        start: startISOString,
+                                        end: endISOString,
+                                        jsonParseError: error,
+                                    },
+                                });
+                            });
+                        throw error;
+                    })) as APISessions;
+
+                return apiSessions.map((apiSession) =>
+                    apiToSession(apiSession, false),
+                );
+            }, sessionsRateLimiter);
         },
     });
 };

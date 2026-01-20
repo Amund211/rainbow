@@ -8,10 +8,7 @@ import {
 import { isNormalizedUUID } from "#helpers/uuid.ts";
 import { captureException, captureMessage } from "@sentry/react";
 import { getOrSetUserId } from "#helpers/userId.ts";
-import {
-    createRateLimiter,
-    retryOnRateLimit,
-} from "#helpers/rateLimiter.ts";
+import { createRateLimiter, retryOnRateLimit } from "#helpers/rateLimiter.ts";
 
 // Rate limiter for history queries - 10 requests per second
 const historyRateLimiter = createRateLimiter({
@@ -67,106 +64,105 @@ export const getHistoryQueryOptions = ({
                 return [];
             }
 
-            return retryOnRateLimit(
-                async () => {
-                    const response = await fetch(
-                        `${env.VITE_FLASHLIGHT_URL}/v1/history`,
-                        {
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-User-Id": getOrSetUserId(),
-                            },
-                            method: "POST",
-                            body: JSON.stringify({
-                                uuid,
-                                start: startISOString,
-                                end: endISOString,
-                                limit,
-                            }),
+            return retryOnRateLimit(async () => {
+                const response = await fetch(
+                    `${env.VITE_FLASHLIGHT_URL}/v1/history`,
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-User-Id": getOrSetUserId(),
                         },
-                    ).catch((error: unknown) => {
-                        captureException(error, {
-                            extra: {
-                                uuid,
-                                start: startISOString,
-                                end: endISOString,
-                                limit,
-                                message: "Failed to get history: failed to fetch",
-                            },
-                        });
-                        throw error;
-                    });
-
-            if (!response.ok) {
-                const text = await response.text().catch((error: unknown) => {
+                        method: "POST",
+                        body: JSON.stringify({
+                            uuid,
+                            start: startISOString,
+                            end: endISOString,
+                            limit,
+                        }),
+                    },
+                ).catch((error: unknown) => {
                     captureException(error, {
                         extra: {
-                            message:
-                                "Failed to get history: failed to read response text while handling response error",
+                            uuid,
+                            start: startISOString,
+                            end: endISOString,
+                            limit,
+                            message: "Failed to get history: failed to fetch",
+                        },
+                    });
+                    throw error;
+                });
+
+                if (!response.ok) {
+                    const text = await response
+                        .text()
+                        .catch((error: unknown) => {
+                            captureException(error, {
+                                extra: {
+                                    message:
+                                        "Failed to get history: failed to read response text while handling response error",
+                                    uuid,
+                                    start: startISOString,
+                                    end: endISOString,
+                                    limit,
+                                },
+                            });
+                            throw error;
+                        });
+
+                    captureMessage("Failed to get history: response error", {
+                        level: "error",
+                        extra: {
+                            status: response.status,
+                            statusText: response.statusText,
+                            text,
                             uuid,
                             start: startISOString,
                             end: endISOString,
                             limit,
                         },
                     });
-                    throw error;
-                });
+                    throw new Error(
+                        `Failed to fetch history data from API. ${response.status.toString()} - ${response.statusText}: ${await response.text()}`,
+                    );
+                }
 
-                captureMessage("Failed to get history: response error", {
-                    level: "error",
-                    extra: {
-                        status: response.status,
-                        statusText: response.statusText,
-                        text,
-                        uuid,
-                        start: startISOString,
-                        end: endISOString,
-                        limit,
-                    },
-                });
-                throw new Error(
-                    `Failed to fetch history data from API. ${response.status.toString()} - ${response.statusText}: ${await response.text()}`,
-                );
-            }
-
-            const apiHistory = (await response
-                .json()
-                .catch((error: unknown) => {
-                    response
-                        .text()
-                        .then((text) => {
-                            captureException(error, {
-                                extra: {
-                                    message:
-                                        "Failed to get history: failed to parse json",
-                                    uuid,
-                                    start: startISOString,
-                                    end: endISOString,
-                                    limit,
-                                    text,
-                                },
+                const apiHistory = (await response
+                    .json()
+                    .catch((error: unknown) => {
+                        response
+                            .text()
+                            .then((text) => {
+                                captureException(error, {
+                                    extra: {
+                                        message:
+                                            "Failed to get history: failed to parse json",
+                                        uuid,
+                                        start: startISOString,
+                                        end: endISOString,
+                                        limit,
+                                        text,
+                                    },
+                                });
+                            })
+                            .catch((textError: unknown) => {
+                                captureException(textError, {
+                                    extra: {
+                                        message:
+                                            "Failed to get history: failed to get response text while handling json parse error",
+                                        uuid,
+                                        start: startISOString,
+                                        end: endISOString,
+                                        limit,
+                                        jsonParseError: error,
+                                    },
+                                });
                             });
-                        })
-                        .catch((textError: unknown) => {
-                            captureException(textError, {
-                                extra: {
-                                    message:
-                                        "Failed to get history: failed to get response text while handling json parse error",
-                                    uuid,
-                                    start: startISOString,
-                                    end: endISOString,
-                                    limit,
-                                    jsonParseError: error,
-                                },
-                            });
-                        });
-                    throw error;
-                })) as APIHistory;
+                        throw error;
+                    })) as APIHistory;
 
-            return apiHistory.map(apiToPlayerDataPIT);
-                },
-                historyRateLimiter,
-            );
+                return apiHistory.map(apiToPlayerDataPIT);
+            }, historyRateLimiter);
         },
     });
 };
