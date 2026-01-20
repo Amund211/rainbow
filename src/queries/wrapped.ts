@@ -9,6 +9,14 @@ import {
     type PlayerDataPIT,
 } from "./playerdata.ts";
 import { apiToSession, type APISession, type Session } from "./sessions.ts";
+import { createRateLimiter, retryOnRateLimit } from "#helpers/rateLimiter.ts";
+
+// Rate limiter for wrapped queries - 10 requests per second
+const wrappedRateLimiter = createRateLimiter({
+    concurrency: 1,
+    interval: 1000,
+    intervalCap: 10,
+});
 
 interface StreakInfo {
     highest: number;
@@ -181,148 +189,159 @@ export const getWrappedQueryOptions = ({
                 throw new Error(`UUID not normalized: ${uuid}`);
             }
 
-            const url = new URL(
-                `${env.VITE_FLASHLIGHT_URL}/v1/wrapped/${uuid}/${year.toString()}`,
-            );
-            url.searchParams.set("timezone", timezone);
+            return retryOnRateLimit(async () => {
+                const url = new URL(
+                    `${env.VITE_FLASHLIGHT_URL}/v1/wrapped/${uuid}/${year.toString()}`,
+                );
+                url.searchParams.set("timezone", timezone);
 
-            const response = await fetch(url, {
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-User-Id": getOrSetUserId(),
-                },
-                method: "GET",
-            }).catch((error: unknown) => {
-                captureException(error, {
-                    extra: {
-                        uuid,
-                        year,
-                        timezone,
-                        message: "Failed to get wrapped: failed to fetch",
+                const response = await fetch(url, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-User-Id": getOrSetUserId(),
                     },
-                });
-                throw error;
-            });
-
-            if (!response.ok) {
-                const text = await response.text().catch((error: unknown) => {
+                    method: "GET",
+                }).catch((error: unknown) => {
                     captureException(error, {
+                        extra: {
+                            uuid,
+                            year,
+                            timezone,
+                            message: "Failed to get wrapped: failed to fetch",
+                        },
+                    });
+                    throw error;
+                });
+
+                if (!response.ok) {
+                    const text = await response
+                        .text()
+                        .catch((error: unknown) => {
+                            captureException(error, {
+                                tags: {
+                                    status: response.status,
+                                    statusText: response.statusText,
+                                },
+                                extra: {
+                                    message:
+                                        "Failed to get wrapped: failed to read response text when handling response error",
+                                    uuid,
+                                    year,
+                                },
+                            });
+                            throw error;
+                        });
+                    captureMessage("Failed to get wrapped: response error", {
+                        level: "error",
                         tags: {
                             status: response.status,
                             statusText: response.statusText,
                         },
                         extra: {
-                            message:
-                                "Failed to get wrapped: failed to read response text when handling response error",
                             uuid,
                             year,
+                            text,
                         },
                     });
-                    throw error;
-                });
-                captureMessage("Failed to get wrapped: response error", {
-                    level: "error",
-                    tags: {
-                        status: response.status,
-                        statusText: response.statusText,
-                    },
-                    extra: {
-                        uuid,
-                        year,
-                        text,
-                    },
-                });
-                throw new Error(
-                    `Failed to fetch wrapped data from API. ${response.status.toString()} - ${response.statusText}: ${text}`,
-                );
-            }
+                    throw new Error(
+                        `Failed to fetch wrapped data from API. ${response.status.toString()} - ${response.statusText}: ${text}`,
+                    );
+                }
 
-            const apiData = (await response.json().catch((error: unknown) => {
-                response
-                    .text()
-                    .then((text) => {
-                        captureException(error, {
-                            extra: {
-                                message:
-                                    "Failed to get wrapped: failed to parse json",
-                                uuid,
-                                year,
-                                timezone,
-                                text,
-                            },
-                        });
-                    })
-                    .catch((textError: unknown) => {
-                        captureException(textError, {
-                            extra: {
-                                message:
-                                    "Failed to get wrapped: failed to read response text when handling response error",
-                                uuid,
-                                year,
-                                timezone,
-                                jsonParseError: error,
-                            },
-                        });
-                    });
-                throw error;
-            })) as APIWrappedData;
+                const apiData = (await response
+                    .json()
+                    .catch((error: unknown) => {
+                        response
+                            .text()
+                            .then((text) => {
+                                captureException(error, {
+                                    extra: {
+                                        message:
+                                            "Failed to get wrapped: failed to parse json",
+                                        uuid,
+                                        year,
+                                        timezone,
+                                        text,
+                                    },
+                                });
+                            })
+                            .catch((textError: unknown) => {
+                                captureException(textError, {
+                                    extra: {
+                                        message:
+                                            "Failed to get wrapped: failed to read response text when handling response error",
+                                        uuid,
+                                        year,
+                                        timezone,
+                                        jsonParseError: error,
+                                    },
+                                });
+                            });
+                        throw error;
+                    })) as APIWrappedData;
 
-            // Convert the API response to application format, keeping nested structure
-            const convertedData: WrappedData = {
-                success: apiData.success,
-                uuid: apiData.uuid,
-                year: apiData.year,
-                totalSessions: apiData.totalSessions,
-                nonConsecutiveSessions: apiData.nonConsecutiveSessions,
-                yearStats: apiData.yearStats
-                    ? {
-                          start: apiToPlayerDataPIT(apiData.yearStats.start),
-                          end: apiToPlayerDataPIT(apiData.yearStats.end),
-                      }
-                    : undefined,
-                // Convert sessionStats, including bestSessions
-                sessionStats: apiData.sessionStats
-                    ? {
-                          ...apiData.sessionStats,
-                          bestSessions: {
-                              highestFKDR: apiToSession(
-                                  apiData.sessionStats.bestSessions.highestFKDR,
+                // Convert the API response to application format, keeping nested structure
+                const convertedData: WrappedData = {
+                    success: apiData.success,
+                    uuid: apiData.uuid,
+                    year: apiData.year,
+                    totalSessions: apiData.totalSessions,
+                    nonConsecutiveSessions: apiData.nonConsecutiveSessions,
+                    yearStats: apiData.yearStats
+                        ? {
+                              start: apiToPlayerDataPIT(
+                                  apiData.yearStats.start,
                               ),
-                              mostKills: apiToSession(
-                                  apiData.sessionStats.bestSessions.mostKills,
-                              ),
-                              mostFinalKills: apiToSession(
-                                  apiData.sessionStats.bestSessions
-                                      .mostFinalKills,
-                              ),
-                              mostWins: apiToSession(
-                                  apiData.sessionStats.bestSessions.mostWins,
-                              ),
-                              longestSession: apiToSession(
-                                  apiData.sessionStats.bestSessions
-                                      .longestSession,
-                              ),
-                              mostWinsPerHour: apiData.sessionStats.bestSessions
-                                  .mostWinsPerHour
-                                  ? apiToSession(
-                                        apiData.sessionStats.bestSessions
-                                            .mostWinsPerHour,
-                                    )
-                                  : undefined,
-                              mostFinalsPerHour: apiData.sessionStats
-                                  .bestSessions.mostFinalsPerHour
-                                  ? apiToSession(
-                                        apiData.sessionStats.bestSessions
-                                            .mostFinalsPerHour,
-                                    )
-                                  : undefined,
-                          },
-                      }
-                    : undefined,
-                cause: apiData.cause,
-            };
+                              end: apiToPlayerDataPIT(apiData.yearStats.end),
+                          }
+                        : undefined,
+                    // Convert sessionStats, including bestSessions
+                    sessionStats: apiData.sessionStats
+                        ? {
+                              ...apiData.sessionStats,
+                              bestSessions: {
+                                  highestFKDR: apiToSession(
+                                      apiData.sessionStats.bestSessions
+                                          .highestFKDR,
+                                  ),
+                                  mostKills: apiToSession(
+                                      apiData.sessionStats.bestSessions
+                                          .mostKills,
+                                  ),
+                                  mostFinalKills: apiToSession(
+                                      apiData.sessionStats.bestSessions
+                                          .mostFinalKills,
+                                  ),
+                                  mostWins: apiToSession(
+                                      apiData.sessionStats.bestSessions
+                                          .mostWins,
+                                  ),
+                                  longestSession: apiToSession(
+                                      apiData.sessionStats.bestSessions
+                                          .longestSession,
+                                  ),
+                                  mostWinsPerHour: apiData.sessionStats
+                                      .bestSessions.mostWinsPerHour
+                                      ? apiToSession(
+                                            apiData.sessionStats.bestSessions
+                                                .mostWinsPerHour,
+                                        )
+                                      : undefined,
+                                  mostFinalsPerHour: apiData.sessionStats
+                                      .bestSessions.mostFinalsPerHour
+                                      ? apiToSession(
+                                            apiData.sessionStats.bestSessions
+                                                .mostFinalsPerHour,
+                                        )
+                                      : undefined,
+                              },
+                          }
+                        : undefined,
+                    cause: apiData.cause,
+                };
 
-            return convertedData;
+                return convertedData;
+            }, wrappedRateLimiter);
         },
     });
 };
