@@ -37,7 +37,8 @@ await test("checkRateLimit", async (t) => {
         });
 
         // Fill the queue beyond the threshold (10x concurrency)
-        for (let i = 0; i < 15; i++) {
+        const TASKS_TO_FILL_QUEUE = 15;
+        for (let i = 0; i < TASKS_TO_FILL_QUEUE; i++) {
             void limiter.add(async () => {
                 await new Promise((resolve) => {
                     setTimeout(resolve, 100);

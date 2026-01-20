@@ -7,6 +7,11 @@ export class RateLimitError extends Error {
     }
 }
 
+// Configuration constants
+const QUEUE_CAPACITY_MULTIPLIER = 10;
+const BASE_RETRY_DELAY_MS = 1000;
+const MAX_RETRY_DELAY_MS = 10000;
+
 /**
  * Creates a rate limiter using p-queue with timeout enabled
  */
@@ -29,7 +34,7 @@ export const createRateLimiter = (options: {
 export const checkRateLimit = (queue: PQueue) => {
     // Check if the queue is at capacity based on pending and size
     const totalLoad = queue.size + queue.pending;
-    if (totalLoad >= queue.concurrency * 10) {
+    if (totalLoad >= queue.concurrency * QUEUE_CAPACITY_MULTIPLIER) {
         // Allow 10x concurrency in queue
         throw new RateLimitError("Rate limit exceeded: queue is full");
     }
@@ -53,7 +58,10 @@ export const retryOnRateLimit = async <T>(
             if (error instanceof RateLimitError && attempt < maxRetries) {
                 lastError = error;
                 // Wait before retrying (exponential backoff)
-                const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+                const delay = Math.min(
+                    BASE_RETRY_DELAY_MS * Math.pow(2, attempt),
+                    MAX_RETRY_DELAY_MS,
+                );
                 await new Promise((resolve) => setTimeout(resolve, delay));
                 continue;
             }
