@@ -287,8 +287,8 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
                 />
                 <Legend />
                 <Tooltip
-                    labelFormatter={(time: number) => {
-                        return renderTimeFull(time);
+                    labelFormatter={(label) => {
+                        return renderTimeFull(Number(label));
                     }}
                     contentStyle={{
                         backgroundColor: theme.palette.background.paper,
