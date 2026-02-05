@@ -277,10 +277,41 @@ export const computeStatProgression = (
 
             if (increasePerDay === 0) {
                 // Will make no progress
-                // TODO: Display upward milestone and infinite time
+                // Special case: when endValue is 0, set milestone to 1
+                const nextMilestoneValue = endValue === 0 ? 1 : NaN;
+                const daysUntilMilestone = Infinity;
+
                 return {
-                    error: true,
-                    reason: "No progress",
+                    stat,
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                    endValue,
+                    nextMilestoneValue,
+                    daysUntilMilestone,
+                    progressPerDay: increasePerDay,
+                    trendingUpward: true,
+                };
+            }
+
+            // Special case: when endValue is 0, set milestone to 1
+            if (endValue === 0) {
+                const nextMilestoneValue = 1;
+                const daysUntilMilestone =
+                    (nextMilestoneValue - endValue) / increasePerDay;
+
+                return {
+                    stat,
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                    endValue,
+                    nextMilestoneValue,
+                    daysUntilMilestone,
+                    progressPerDay: increasePerDay,
+                    trendingUpward: true,
                 };
             }
 
