@@ -1137,3 +1137,110 @@ await test("computeStatProgression - stars/experience stat", async (t) => {
         });
     }
 });
+
+await test("edge case: stat wipe", async (t) => {
+    // Test that progression calculation handles the edge case of stats going from high to zero
+    // This simulates a stat reset/wipe scenario
+    // We don't care about the specific behavior, just that it doesn't crash
+    const startDate = new Date("2024-01-01T00:00:00Z");
+    const endDate = new Date("2024-01-11T00:00:00Z");
+
+    // Test all gamemode-specific stats that support progression
+    // Excluding: winstreak (not implemented), index (not implemented yet - TODO: add support)
+    const statsToTest = [
+        "gamesPlayed",
+        "wins",
+        "losses",
+        "bedsBroken",
+        "bedsLost",
+        "finalKills",
+        "finalDeaths",
+        "kills",
+        "deaths",
+        "fkdr",
+        "kdr",
+    ] as const;
+
+    const gamemodes = ALL_GAMEMODE_KEYS;
+
+    for (const gamemode of gamemodes) {
+        await t.test(`gamemode: ${gamemode}`, async (t) => {
+            for (const stat of statsToTest) {
+                await t.test(`stat: ${stat}`, () => {
+                    // Start with very high stats
+                    const startBuilder = new PlayerDataBuilder(
+                        TEST_UUID,
+                        startDate,
+                    );
+                    const highStatValue = 100000;
+
+                    // Build high stats for all relevant stat keys
+                    const highStatsBuilder = new StatsBuilder()
+                        .withStat("gamesPlayed", highStatValue)
+                        .withStat("wins", highStatValue)
+                        .withStat("losses", highStatValue)
+                        .withStat("bedsBroken", highStatValue)
+                        .withStat("bedsLost", highStatValue)
+                        .withStat("finalKills", highStatValue)
+                        .withStat("finalDeaths", highStatValue)
+                        .withStat("kills", highStatValue)
+                        .withStat("deaths", highStatValue);
+
+                    startBuilder.withGamemodeStats(
+                        gamemode,
+                        highStatsBuilder.build(),
+                    );
+
+                    // End with all stats at 0
+                    const endBuilder = new PlayerDataBuilder(
+                        TEST_UUID,
+                        endDate,
+                    );
+                    const zeroStatsBuilder = new StatsBuilder()
+                        .withStat("gamesPlayed", 0)
+                        .withStat("wins", 0)
+                        .withStat("losses", 0)
+                        .withStat("bedsBroken", 0)
+                        .withStat("bedsLost", 0)
+                        .withStat("finalKills", 0)
+                        .withStat("finalDeaths", 0)
+                        .withStat("kills", 0)
+                        .withStat("deaths", 0);
+
+                    endBuilder.withGamemodeStats(
+                        gamemode,
+                        zeroStatsBuilder.build(),
+                    );
+
+                    const history: History = [
+                        startBuilder.build(),
+                        endBuilder.build(),
+                    ];
+
+                    // Should not throw an error
+                    const result = computeStatProgression(
+                        history,
+                        endDate,
+                        stat,
+                        gamemode,
+                    );
+
+                    // Should not return an error
+                    if (result.error) {
+                        assert.fail(
+                            `Expected success but got error: ${result.reason}`,
+                        );
+                    }
+
+                    // For this edge case, verify the end value is 0
+                    // (We don't care about other progression details, just that it doesn't crash)
+                    assert.strictEqual(
+                        result.endValue,
+                        0,
+                        `Expected endValue to be 0 for stat wipe scenario`,
+                    );
+                });
+            }
+        });
+    }
+});
