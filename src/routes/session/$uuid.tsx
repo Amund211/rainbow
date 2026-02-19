@@ -138,6 +138,94 @@ export const Route = createFileRoute("/session/$uuid")({
     },
     validateSearch: sessionSearchSchema,
     component: RouteComponent,
+    head: ({ params: { uuid: rawUUID } }) => {
+        const uuid = normalizeUUID(rawUUID);
+        if (!uuid) {
+            return {
+                meta: [
+                    {
+                        title: "Session Stats - Prism Overlay",
+                    },
+                    {
+                        name: "description",
+                        content:
+                            "View session stats, including daily, weekly, and monthly stats, as well as a progression towards stat milestones, and individual session breakdowns.",
+                    },
+                ],
+            };
+        }
+
+        const usernameQueryData = queryClient.getQueryData(
+            getUsernameQueryOptions(uuid).queryKey,
+        );
+        const username =
+            usernameQueryData !== undefined ? usernameQueryData.username : uuid;
+        const title = `${username}'s Session Stats - Prism Overlay`;
+        const description = `View ${username}'s Hypixel Bed Wars session stats, including daily, weekly, and monthly progress, stat milestones, and detailed session breakdowns.`;
+        const url = `https://prismoverlay.com/session/${uuid}`;
+
+        return {
+            meta: [
+                {
+                    title,
+                },
+                {
+                    name: "description",
+                    content: description,
+                },
+                {
+                    property: "og:type",
+                    content: "website",
+                },
+                {
+                    property: "og:url",
+                    content: url,
+                },
+                {
+                    property: "og:title",
+                    content: title,
+                },
+                {
+                    property: "og:description",
+                    content: description,
+                },
+                {
+                    property: "og:image",
+                    content: "https://prismoverlay.com/who.png",
+                },
+                {
+                    property: "og:site_name",
+                    content: "Prism Overlay",
+                },
+                {
+                    property: "twitter:card",
+                    content: "summary",
+                },
+                {
+                    property: "twitter:url",
+                    content: url,
+                },
+                {
+                    property: "twitter:title",
+                    content: title,
+                },
+                {
+                    property: "twitter:description",
+                    content: description,
+                },
+                {
+                    property: "twitter:image",
+                    content: "https://prismoverlay.com/who.png",
+                },
+            ],
+            links: [
+                {
+                    rel: "canonical",
+                    href: url,
+                },
+            ],
+        };
+    },
 });
 
 const RouterLinkIconButton = createLink(IconButton);
