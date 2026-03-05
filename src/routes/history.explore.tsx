@@ -51,6 +51,7 @@ import { usePlayerVisits } from "#contexts/PlayerVisits/hooks.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
 import { captureException } from "@sentry/react";
 import { historyExploreSearchSchema } from "#schemas/historySearch.ts";
+import { useAssume } from "#hooks/useAssumption.ts";
 
 const normalizeUUIDsSkippingInvalid = (uuids: readonly string[]) => {
     return uuids
@@ -111,6 +112,7 @@ function Index() {
     const uuids = normalizeUUIDsSkippingInvalid(rawUUIDs);
     const navigate = Route.useNavigate();
     const { visitPlayer } = usePlayerVisits();
+    const assume = useAssume();
 
     // Register visits for all players on page load
     const [initialUUIDs] = React.useState(uuids);
@@ -273,6 +275,13 @@ function Index() {
                     onChange={(event) => {
                         const newGamemodes = event.target
                             .value as GamemodeKey[];
+                        assume(
+                            newGamemodes.every((g) =>
+                                ALL_GAMEMODE_KEYS.includes(g),
+                            ),
+                            "Gamemodes select value contains invalid key",
+                            () => ({ value: event.target.value }),
+                        );
                         navigate({
                             search: (oldSearch) => ({
                                 ...oldSearch,
@@ -305,6 +314,11 @@ function Index() {
                     fullWidth
                     onChange={(event) => {
                         const newStats = event.target.value as StatKey[];
+                        assume(
+                            newStats.every((s) => ALL_STAT_KEYS.includes(s)),
+                            "Stats select value contains invalid key",
+                            () => ({ value: event.target.value }),
+                        );
                         navigate({
                             search: (oldSearch) => ({
                                 ...oldSearch,
