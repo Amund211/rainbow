@@ -172,19 +172,6 @@ export const HistoryChartTitle: React.FC<HistoryChartTitleProps> = ({
     variants,
 }) => {
     const uuidToUsername = useUUIDToUsername(uuids);
-    const assume = useAssume();
-    assume(uuids.length > 0, "uuids should be non-empty", () => ({
-        uuidsLength: uuids.length,
-    }));
-    assume(stats.length > 0, "stats should be non-empty", () => ({
-        statsLength: stats.length,
-    }));
-    assume(gamemodes.length > 0, "gamemodes should be non-empty", () => ({
-        gamemodesLength: gamemodes.length,
-    }));
-    assume(variants.length > 0, "variants should be non-empty", () => ({
-        variantsLength: variants.length,
-    }));
     return (
         <Typography variant="h6">
             {contextAwareStatDisplayName(

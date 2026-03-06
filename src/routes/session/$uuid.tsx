@@ -464,6 +464,11 @@ const Sessions: React.FC<SessionsProps> = ({
                                                         session.start.queriedAt,
                                                     sessionEnd:
                                                         session.end.queriedAt,
+                                                    uuid,
+                                                    start,
+                                                    end,
+                                                    gamemode,
+                                                    stat,
                                                 }),
                                             );
                                             return null;
