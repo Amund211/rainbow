@@ -1,156 +1,143 @@
-import test from "node:test";
+import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import {
     LOCAL_DEVELOPMENT_USER_ID,
     newUserId,
     STAGING_USER_ID,
     validateUserId,
 } from "./userId.ts";
-import assert from "node:assert";
 import { isNormalizedUUID } from "./uuid.ts";
 
-await test("newUserId", async (t) => {
-    await t.test(
-        "should generate a new user ID like rnb_<uuid-v4>",
-        async (t) => {
-            for (let i = 0; i < 10; i++) {
-                const userId = newUserId();
-                await t.test(userId, () => {
-                    assert.ok(
-                        userId.startsWith("rnb_"),
-                        "User ID should start with 'rnb_'",
-                    );
+describe("newUserId", () => {
+    describe("should generate a new user ID like rnb_<uuid-v4>", () => {
+        for (let i = 0; i < 10; i++) {
+            const userId = newUserId();
+            test(userId, () => {
+                expect(
+                    userId.startsWith("rnb_"),
+                    "User ID should start with 'rnb_'",
+                ).toBeTruthy();
 
-                    const suffix = userId.slice(4);
+                const suffix = userId.slice(4);
 
-                    assert.ok(
-                        isNormalizedUUID(suffix),
-                        "User ID suffix should be a normalized UUID",
-                    );
-                });
-            }
-        },
-    );
+                expect(
+                    isNormalizedUUID(suffix),
+                    "User ID suffix should be a normalized UUID",
+                ).toBeTruthy();
+            });
+        }
+    });
 
-    await t.test(
-        "should generate a new user ID that passes validation",
-        async (t) => {
-            for (let i = 0; i < 10; i++) {
-                const userId = newUserId();
-                await t.test(userId, () => {
-                    assert.ok(
-                        validateUserId(userId),
-                        "User ID should be valid",
-                    );
-                });
-            }
-        },
-    );
+    describe("should generate a new user ID that passes validation", () => {
+        for (let i = 0; i < 10; i++) {
+            const userId = newUserId();
+            test(userId, () => {
+                expect(
+                    validateUserId(userId),
+                    "User ID should be valid",
+                ).toBeTruthy();
+            });
+        }
+    });
 
-    await t.test("without crypto.randomUUID", async (t) => {
+    describe("without crypto.randomUUID", () => {
         let originalRandomUUID: typeof crypto.randomUUID | undefined;
-        t.before(() => {
+        beforeAll(() => {
             originalRandomUUID = crypto.randomUUID.bind(crypto);
 
             // Simulate an environment without crypto.randomUUID
             crypto.randomUUID =
                 undefined as unknown as typeof crypto.randomUUID;
         });
-        t.after(() => {
-            assert.ok(
+        afterAll(() => {
+            expect(
                 originalRandomUUID,
                 "crypto.randomUUID should be restored after the test",
-            );
-            crypto.randomUUID = originalRandomUUID;
+            ).toBeTruthy();
+            crypto.randomUUID = originalRandomUUID!;
         });
 
-        await t.test(
+        test(
             "should generate a new user ID like rnb_<random-string>",
-            async (t) => {
+            () => {
                 for (let i = 0; i < 10; i++) {
                     const userId = newUserId();
-                    await t.test(userId, () => {
-                        assert.ok(
-                            userId.startsWith("rnb_"),
-                            "User ID should start with 'rnb_'",
-                        );
+                    expect(
+                        userId.startsWith("rnb_"),
+                        "User ID should start with 'rnb_'",
+                    ).toBeTruthy();
 
-                        const suffix = userId.slice(4);
+                    const suffix = userId.slice(4);
 
-                        assert.ok(
-                            /^([a-f0-9-]+-){3}([a-f0-9-]+)$/.test(suffix),
-                            "User ID suffix should be a four random hex strings",
-                        );
+                    expect(
+                        /^([a-f0-9-]+-){3}([a-f0-9-]+)$/.test(suffix),
+                        "User ID suffix should be a four random hex strings",
+                    ).toBeTruthy();
 
-                        assert.strictEqual(
-                            suffix.split("-").length,
-                            4,
-                            "User ID suffix should consist of 4 parts",
-                        );
+                    expect(
+                        suffix.split("-").length,
+                        "User ID suffix should consist of 4 parts",
+                    ).toBe(4);
 
-                        for (const part of suffix.split("-")) {
-                            assert.strictEqual(
-                                part.length,
-                                12,
-                                "Each part of the user ID suffix should be 12 characters long",
-                            );
-                        }
-                    });
+                    for (const part of suffix.split("-")) {
+                        expect(
+                            part.length,
+                            "Each part of the user ID suffix should be 12 characters long",
+                        ).toBe(12);
+                    }
                 }
             },
         );
 
-        await t.test(
+        test(
             "should generate a new user ID that passes validation",
-            async (t) => {
+            () => {
                 for (let i = 0; i < 10; i++) {
                     const userId = newUserId();
-                    await t.test(userId, () => {
-                        assert.ok(
-                            validateUserId(userId),
-                            "User ID should be valid",
-                        );
-                    });
+                    expect(
+                        validateUserId(userId),
+                        "User ID should be valid",
+                    ).toBeTruthy();
                 }
             },
         );
     });
 });
 
-await test("getOrSetUserId", async (t) => {
-    await t.test("in development mode", () => {
+describe("getOrSetUserId", () => {
+    test("in development mode", () => {
         // We use import.meta.env.DEV to return this from getOrSetUserId(), so we can't test
         // in node. Instead we just do some basic checks on the exported constant.
-        assert.ok(
+        expect(
             validateUserId(LOCAL_DEVELOPMENT_USER_ID),
             "Development user ID should be valid",
-        );
+        ).toBeTruthy();
 
-        assert.ok(
+        expect(
             LOCAL_DEVELOPMENT_USER_ID.startsWith("rnb_"),
             "Development user ID should start with 'rnb_'",
-        );
+        ).toBeTruthy();
 
-        assert.strictEqual(LOCAL_DEVELOPMENT_USER_ID, "rnb_local_development");
+        expect(LOCAL_DEVELOPMENT_USER_ID).toBe("rnb_local_development");
     });
 
-    await t.test("in staging", () => {
+    test("in staging", () => {
         // We use the current hostname to return this from getOrSetUserId(), so we don't test
         // this here. Instead we just do some basic checks on the exported constant.
-        assert.ok(
+        expect(
             validateUserId(STAGING_USER_ID),
             "Staging user ID should be valid",
-        );
+        ).toBeTruthy();
 
-        assert.ok(
+        expect(
             STAGING_USER_ID.startsWith("rnb_"),
             "Staging user ID should start with 'rnb_'",
-        );
+        ).toBeTruthy();
 
-        assert.strictEqual(STAGING_USER_ID, "rnb_staging");
+        expect(STAGING_USER_ID).toBe("rnb_staging");
     });
 });
 
-await test("validateUserId", async (t) => {
+describe("validateUserId", () => {
     const cases = [
         {
             input: "rnb_4a6113bb-5f94-4bc6-9e71-fc94e90c1fb2",
@@ -183,9 +170,9 @@ await test("validateUserId", async (t) => {
     ];
 
     for (const tc of cases) {
-        await t.test(tc.input ?? "<null>", () => {
+        test(tc.input ?? "<null>", () => {
             const result = validateUserId(tc.input);
-            assert.strictEqual(result, tc.expected);
+            expect(result).toBe(tc.expected);
         });
     }
 });

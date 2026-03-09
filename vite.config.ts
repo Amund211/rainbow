@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { reactClickToComponent } from "vite-plugin-react-click-to-component";
@@ -50,6 +51,14 @@ export default defineConfig(({ mode }) => {
          */
         resolve: {
             alias: { "#": path.resolve(import.meta.dirname, "src") },
+        },
+        test: {
+            coverage: {
+                provider: "v8",
+            },
+            env: {
+                VITE_FLASHLIGHT_URL: "http://localhost:5173/flashlight",
+            },
         },
         ...((mode === "proxy-staging" || mode === "proxy-production") && {
             server: {
