@@ -8,7 +8,7 @@ import react from "eslint-plugin-react";
 import pluginQuery from "@tanstack/eslint-plugin-query";
 
 export default tseslint.config(
-    { ignores: ["dist", "src/routeTree.gen.ts"] },
+    { ignores: ["dist", "src/routeTree.gen.ts", "coverage"] },
     {
         settings: { react: { version: "detect" } },
         extends: [
