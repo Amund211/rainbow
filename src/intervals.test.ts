@@ -55,32 +55,26 @@ describe("getTimeIntervals", () => {
                     date,
                 });
 
-                expect(
-                    day.start.toISOString(),
-                    "day start",
-                ).toBe(expected.day.start.toISOString());
-                expect(
-                    day.end.toISOString(),
-                    "day end",
-                ).toBe(expected.day.end.toISOString());
+                expect(day.start.toISOString(), "day start").toBe(
+                    expected.day.start.toISOString(),
+                );
+                expect(day.end.toISOString(), "day end").toBe(
+                    expected.day.end.toISOString(),
+                );
 
-                expect(
-                    week.start.toISOString(),
-                    "week start",
-                ).toBe(expected.week.start.toISOString());
-                expect(
-                    week.end.toISOString(),
-                    "week end",
-                ).toBe(expected.week.end.toISOString());
+                expect(week.start.toISOString(), "week start").toBe(
+                    expected.week.start.toISOString(),
+                );
+                expect(week.end.toISOString(), "week end").toBe(
+                    expected.week.end.toISOString(),
+                );
 
-                expect(
-                    month.start.toISOString(),
-                    "month start",
-                ).toBe(expected.month.start.toISOString());
-                expect(
-                    month.end.toISOString(),
-                    "month end",
-                ).toBe(expected.month.end.toISOString());
+                expect(month.start.toISOString(), "month start").toBe(
+                    expected.month.start.toISOString(),
+                );
+                expect(month.end.toISOString(), "month end").toBe(
+                    expected.month.end.toISOString(),
+                );
             });
         }
     });
@@ -94,19 +88,19 @@ describe("getTimeIntervals", () => {
         // With last x days, all intervals stop at the end of the current date
         const end = new Date(2024, 1, 14, 23, 59, 59, 999);
 
-        expect(
-            day.start.toISOString(),
-        ).toBe(new Date(2024, 1, 14, 0, 0, 0, 0).toISOString());
+        expect(day.start.toISOString()).toBe(
+            new Date(2024, 1, 14, 0, 0, 0, 0).toISOString(),
+        );
         expect(day.end.toISOString()).toBe(end.toISOString());
 
-        expect(
-            week.start.toISOString(),
-        ).toBe(new Date(2024, 1, 8, 0, 0, 0, 0).toISOString());
+        expect(week.start.toISOString()).toBe(
+            new Date(2024, 1, 8, 0, 0, 0, 0).toISOString(),
+        );
         expect(week.end.toISOString()).toBe(end.toISOString());
 
-        expect(
-            month.start.toISOString(),
-        ).toBe(new Date(2024, 0, 16, 0, 0, 0, 0).toISOString());
+        expect(month.start.toISOString()).toBe(
+            new Date(2024, 0, 16, 0, 0, 0, 0).toISOString(),
+        );
         expect(month.end.toISOString()).toBe(end.toISOString());
     });
 });
@@ -137,9 +131,9 @@ describe("time helpers", () => {
         ];
         for (const { date, expected } of cases) {
             test(date.toISOString(), () => {
-                expect(
-                    endOfDay(date).toISOString(),
-                ).toBe(expected.toISOString());
+                expect(endOfDay(date).toISOString()).toBe(
+                    expected.toISOString(),
+                );
             });
         }
     });
@@ -159,9 +153,9 @@ describe("time helpers", () => {
         ];
         for (const { date, expected } of cases) {
             test(date.toISOString(), () => {
-                expect(
-                    endOfWeek(date).toISOString(),
-                ).toBe(expected.toISOString());
+                expect(endOfWeek(date).toISOString()).toBe(
+                    expected.toISOString(),
+                );
             });
         }
     });
@@ -203,9 +197,9 @@ describe("time helpers", () => {
         ];
         for (const { date, expected } of cases) {
             test(date.toISOString(), () => {
-                expect(
-                    endOfMonth(date).toISOString(),
-                ).toBe(expected.toISOString());
+                expect(endOfMonth(date).toISOString()).toBe(
+                    expected.toISOString(),
+                );
             });
         }
     });
@@ -235,9 +229,9 @@ describe("time helpers", () => {
         ];
         for (const { date, expected } of cases) {
             test(date.toISOString(), () => {
-                expect(
-                    endOfLastDay(date).toISOString(),
-                ).toBe(expected.toISOString());
+                expect(endOfLastDay(date).toISOString()).toBe(
+                    expected.toISOString(),
+                );
             });
         }
     });
@@ -257,9 +251,9 @@ describe("time helpers", () => {
         ];
         for (const { date, expected } of cases) {
             test(date.toISOString(), () => {
-                expect(
-                    endOfLastWeek(date).toISOString(),
-                ).toBe(expected.toISOString());
+                expect(endOfLastWeek(date).toISOString()).toBe(
+                    expected.toISOString(),
+                );
             });
         }
     });
@@ -297,9 +291,9 @@ describe("time helpers", () => {
         ];
         for (const { date, expected } of cases) {
             test(date.toISOString(), () => {
-                expect(
-                    endOfLastMonth(date).toISOString(),
-                ).toBe(expected.toISOString());
+                expect(endOfLastMonth(date).toISOString()).toBe(
+                    expected.toISOString(),
+                );
             });
         }
     });

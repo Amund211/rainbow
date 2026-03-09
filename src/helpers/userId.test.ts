@@ -49,57 +49,52 @@ describe("newUserId", () => {
                 undefined as unknown as typeof crypto.randomUUID;
         });
         afterAll(() => {
-            expect(
-                originalRandomUUID,
-                "crypto.randomUUID should be restored after the test",
-            ).toBeTruthy();
-            crypto.randomUUID = originalRandomUUID!;
+            if (!originalRandomUUID) {
+                throw new Error(
+                    "crypto.randomUUID should be restored after the test",
+                );
+            }
+            crypto.randomUUID = originalRandomUUID;
         });
 
-        test(
-            "should generate a new user ID like rnb_<random-string>",
-            () => {
-                for (let i = 0; i < 10; i++) {
-                    const userId = newUserId();
+        test("should generate a new user ID like rnb_<random-string>", () => {
+            for (let i = 0; i < 10; i++) {
+                const userId = newUserId();
+                expect(
+                    userId.startsWith("rnb_"),
+                    "User ID should start with 'rnb_'",
+                ).toBeTruthy();
+
+                const suffix = userId.slice(4);
+
+                expect(
+                    /^([a-f0-9-]+-){3}([a-f0-9-]+)$/.test(suffix),
+                    "User ID suffix should be a four random hex strings",
+                ).toBeTruthy();
+
+                expect(
+                    suffix.split("-").length,
+                    "User ID suffix should consist of 4 parts",
+                ).toBe(4);
+
+                for (const part of suffix.split("-")) {
                     expect(
-                        userId.startsWith("rnb_"),
-                        "User ID should start with 'rnb_'",
-                    ).toBeTruthy();
-
-                    const suffix = userId.slice(4);
-
-                    expect(
-                        /^([a-f0-9-]+-){3}([a-f0-9-]+)$/.test(suffix),
-                        "User ID suffix should be a four random hex strings",
-                    ).toBeTruthy();
-
-                    expect(
-                        suffix.split("-").length,
-                        "User ID suffix should consist of 4 parts",
-                    ).toBe(4);
-
-                    for (const part of suffix.split("-")) {
-                        expect(
-                            part.length,
-                            "Each part of the user ID suffix should be 12 characters long",
-                        ).toBe(12);
-                    }
+                        part.length,
+                        "Each part of the user ID suffix should be 12 characters long",
+                    ).toBe(12);
                 }
-            },
-        );
+            }
+        });
 
-        test(
-            "should generate a new user ID that passes validation",
-            () => {
-                for (let i = 0; i < 10; i++) {
-                    const userId = newUserId();
-                    expect(
-                        validateUserId(userId),
-                        "User ID should be valid",
-                    ).toBeTruthy();
-                }
-            },
-        );
+        test("should generate a new user ID that passes validation", () => {
+            for (let i = 0; i < 10; i++) {
+                const userId = newUserId();
+                expect(
+                    validateUserId(userId),
+                    "User ID should be valid",
+                ).toBeTruthy();
+            }
+        });
     });
 });
 

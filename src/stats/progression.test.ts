@@ -689,324 +689,290 @@ describe("computeStatProgression - quotient stats", () => {
                             },
                         ];
                         for (const { divisor, goal, daysToReach } of cases) {
-                            test(
-                                `divisor constant at ${divisor.toString()}`,
-                                () => {
-                                    const startDate = new Date(
-                                        "2024-01-01T00:00:00Z",
-                                    );
-                                    const endDate = new Date(
-                                        "2024-01-11T00:00:00Z",
-                                    );
-                                    const startBuilder = new StatsBuilder();
-                                    const endBuilder = new StatsBuilder();
+                            test(`divisor constant at ${divisor.toString()}`, () => {
+                                const startDate = new Date(
+                                    "2024-01-01T00:00:00Z",
+                                );
+                                const endDate = new Date(
+                                    "2024-01-11T00:00:00Z",
+                                );
+                                const startBuilder = new StatsBuilder();
+                                const endBuilder = new StatsBuilder();
 
-                                    startBuilder
-                                        .withStat(dividendStat, 100)
-                                        .withStat(divisorStat, divisor);
-                                    endBuilder
-                                        .withStat(dividendStat, 200)
-                                        .withStat(divisorStat, divisor);
+                                startBuilder
+                                    .withStat(dividendStat, 100)
+                                    .withStat(divisorStat, divisor);
+                                endBuilder
+                                    .withStat(dividendStat, 200)
+                                    .withStat(divisorStat, divisor);
 
-                                    const history: History = [
-                                        new PlayerDataBuilder(
-                                            TEST_UUID,
-                                            startDate,
+                                const history: History = [
+                                    new PlayerDataBuilder(TEST_UUID, startDate)
+                                        .withGamemodeStats(
+                                            gamemode,
+                                            startBuilder.build(),
                                         )
-                                            .withGamemodeStats(
-                                                gamemode,
-                                                startBuilder.build(),
-                                            )
-                                            .build(),
-                                        new PlayerDataBuilder(
-                                            TEST_UUID,
-                                            endDate,
+                                        .build(),
+                                    new PlayerDataBuilder(TEST_UUID, endDate)
+                                        .withGamemodeStats(
+                                            gamemode,
+                                            endBuilder.build(),
                                         )
-                                            .withGamemodeStats(
-                                                gamemode,
-                                                endBuilder.build(),
-                                            )
-                                            .build(),
-                                    ];
+                                        .build(),
+                                ];
 
-                                    const result = computeStatProgression(
-                                        history,
-                                        endDate,
-                                        stat,
-                                        gamemode,
+                                const result = computeStatProgression(
+                                    history,
+                                    endDate,
+                                    stat,
+                                    gamemode,
+                                );
+
+                                if (result.error) {
+                                    expect.unreachable(
+                                        `Expected success but got error: ${result.reason}`,
                                     );
+                                }
 
-                                    if (result.error) {
-                                        expect.unreachable(
-                                            `Expected success but got error: ${result.reason}`,
-                                        );
-                                    }
-
-                                    expect(result).toEqual({
-                                        stat,
-                                        endValue: 200 / divisor,
-                                        sessionQuotient: 100,
-                                        progressPerDay:
-                                            (goal - 200 / divisor) /
-                                            daysToReach,
-                                        dividendPerDay: 10,
-                                        divisorPerDay: 0,
-                                        nextMilestoneValue: goal,
-                                        daysUntilMilestone: daysToReach,
-                                        trendingUpward: true,
-                                        trackingDataTimeInterval: {
-                                            start: startDate,
-                                            end: endDate,
-                                        },
-                                    });
-                                },
-                            );
+                                expect(result).toEqual({
+                                    stat,
+                                    endValue: 200 / divisor,
+                                    sessionQuotient: 100,
+                                    progressPerDay:
+                                        (goal - 200 / divisor) / daysToReach,
+                                    dividendPerDay: 10,
+                                    divisorPerDay: 0,
+                                    nextMilestoneValue: goal,
+                                    daysUntilMilestone: daysToReach,
+                                    trendingUpward: true,
+                                    trackingDataTimeInterval: {
+                                        start: startDate,
+                                        end: endDate,
+                                    },
+                                });
+                            });
                         }
                     });
 
-                    test(
-                        "edge case - goal quotient equal to session quotient (up)",
-                        () => {
-                            const startDate = new Date("2024-01-01T00:00:00Z");
-                            const endDate = new Date("2024-01-11T00:00:00Z");
-                            const startBuilder = new StatsBuilder();
-                            const endBuilder = new StatsBuilder();
+                    test("edge case - goal quotient equal to session quotient (up)", () => {
+                        const startDate = new Date("2024-01-01T00:00:00Z");
+                        const endDate = new Date("2024-01-11T00:00:00Z");
+                        const startBuilder = new StatsBuilder();
+                        const endBuilder = new StatsBuilder();
 
-                            startBuilder
-                                .withStat(dividendStat, 0)
-                                .withStat(divisorStat, 5);
-                            endBuilder
-                                .withStat(dividendStat, 10)
-                                .withStat(divisorStat, 10);
+                        startBuilder
+                            .withStat(dividendStat, 0)
+                            .withStat(divisorStat, 5);
+                        endBuilder
+                            .withStat(dividendStat, 10)
+                            .withStat(divisorStat, 10);
 
-                            const history: History = [
-                                new PlayerDataBuilder(TEST_UUID, startDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        startBuilder.build(),
-                                    )
-                                    .build(),
-                                new PlayerDataBuilder(TEST_UUID, endDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        endBuilder.build(),
-                                    )
-                                    .build(),
-                            ];
+                        const history: History = [
+                            new PlayerDataBuilder(TEST_UUID, startDate)
+                                .withGamemodeStats(
+                                    gamemode,
+                                    startBuilder.build(),
+                                )
+                                .build(),
+                            new PlayerDataBuilder(TEST_UUID, endDate)
+                                .withGamemodeStats(gamemode, endBuilder.build())
+                                .build(),
+                        ];
 
-                            const result = computeStatProgression(
-                                history,
-                                endDate,
-                                stat,
-                                gamemode,
+                        const result = computeStatProgression(
+                            history,
+                            endDate,
+                            stat,
+                            gamemode,
+                        );
+
+                        if (result.error) {
+                            expect.unreachable(
+                                `Expected success but got error: ${result.reason}`,
                             );
+                        }
 
-                            if (result.error) {
-                                expect.unreachable(
-                                    `Expected success but got error: ${result.reason}`,
-                                );
-                            }
+                        expect(result).toEqual({
+                            stat,
+                            endValue: 1,
+                            sessionQuotient: 2,
+                            progressPerDay: 0,
+                            dividendPerDay: 1,
+                            divisorPerDay: 0.5,
+                            nextMilestoneValue: 2,
+                            daysUntilMilestone: Infinity,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
+                    });
 
-                            expect(result).toEqual({
-                                stat,
-                                endValue: 1,
-                                sessionQuotient: 2,
-                                progressPerDay: 0,
-                                dividendPerDay: 1,
-                                divisorPerDay: 0.5,
-                                nextMilestoneValue: 2,
-                                daysUntilMilestone: Infinity,
-                                trendingUpward: true,
-                                trackingDataTimeInterval: {
-                                    start: startDate,
-                                    end: endDate,
-                                },
-                            });
-                        },
-                    );
+                    test("edge case - goal quotient equal to session quotient (down)", () => {
+                        const startDate = new Date("2024-01-01T00:00:00Z");
+                        const endDate = new Date("2024-01-11T00:00:00Z");
+                        const startBuilder = new StatsBuilder();
+                        const endBuilder = new StatsBuilder();
 
-                    test(
-                        "edge case - goal quotient equal to session quotient (down)",
-                        () => {
-                            const startDate = new Date("2024-01-01T00:00:00Z");
-                            const endDate = new Date("2024-01-11T00:00:00Z");
-                            const startBuilder = new StatsBuilder();
-                            const endBuilder = new StatsBuilder();
+                        startBuilder
+                            .withStat(dividendStat, 5)
+                            .withStat(divisorStat, 0);
+                        endBuilder
+                            .withStat(dividendStat, 10)
+                            .withStat(divisorStat, 5);
 
-                            startBuilder
-                                .withStat(dividendStat, 5)
-                                .withStat(divisorStat, 0);
-                            endBuilder
-                                .withStat(dividendStat, 10)
-                                .withStat(divisorStat, 5);
+                        const history: History = [
+                            new PlayerDataBuilder(TEST_UUID, startDate)
+                                .withGamemodeStats(
+                                    gamemode,
+                                    startBuilder.build(),
+                                )
+                                .build(),
+                            new PlayerDataBuilder(TEST_UUID, endDate)
+                                .withGamemodeStats(gamemode, endBuilder.build())
+                                .build(),
+                        ];
 
-                            const history: History = [
-                                new PlayerDataBuilder(TEST_UUID, startDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        startBuilder.build(),
-                                    )
-                                    .build(),
-                                new PlayerDataBuilder(TEST_UUID, endDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        endBuilder.build(),
-                                    )
-                                    .build(),
-                            ];
+                        const result = computeStatProgression(
+                            history,
+                            endDate,
+                            stat,
+                            gamemode,
+                        );
 
-                            const result = computeStatProgression(
-                                history,
-                                endDate,
-                                stat,
-                                gamemode,
+                        if (result.error) {
+                            expect.unreachable(
+                                `Expected success but got error: ${result.reason}`,
                             );
+                        }
 
-                            if (result.error) {
-                                expect.unreachable(
-                                    `Expected success but got error: ${result.reason}`,
-                                );
-                            }
+                        expect(result).toEqual({
+                            stat,
+                            endValue: 2,
+                            sessionQuotient: 1,
+                            progressPerDay: 0,
+                            dividendPerDay: 0.5,
+                            divisorPerDay: 0.5,
+                            nextMilestoneValue: 1,
+                            daysUntilMilestone: Infinity,
+                            trendingUpward: false,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
+                    });
 
-                            expect(result).toEqual({
-                                stat,
-                                endValue: 2,
-                                sessionQuotient: 1,
-                                progressPerDay: 0,
-                                dividendPerDay: 0.5,
-                                divisorPerDay: 0.5,
-                                nextMilestoneValue: 1,
-                                daysUntilMilestone: Infinity,
-                                trendingUpward: false,
-                                trackingDataTimeInterval: {
-                                    start: startDate,
-                                    end: endDate,
-                                },
-                            });
-                        },
-                    );
+                    test("edge case - goal quotient higher than session quotient (up)", () => {
+                        const startDate = new Date("2024-01-01T00:00:00Z");
+                        const endDate = new Date("2024-01-11T00:00:00Z");
+                        const startBuilder = new StatsBuilder();
+                        const endBuilder = new StatsBuilder();
 
-                    test(
-                        "edge case - goal quotient higher than session quotient (up)",
-                        () => {
-                            const startDate = new Date("2024-01-01T00:00:00Z");
-                            const endDate = new Date("2024-01-11T00:00:00Z");
-                            const startBuilder = new StatsBuilder();
-                            const endBuilder = new StatsBuilder();
+                        startBuilder
+                            .withStat(dividendStat, 1)
+                            .withStat(divisorStat, 5);
+                        endBuilder
+                            .withStat(dividendStat, 10)
+                            .withStat(divisorStat, 10);
 
-                            startBuilder
-                                .withStat(dividendStat, 1)
-                                .withStat(divisorStat, 5);
-                            endBuilder
-                                .withStat(dividendStat, 10)
-                                .withStat(divisorStat, 10);
+                        const history: History = [
+                            new PlayerDataBuilder(TEST_UUID, startDate)
+                                .withGamemodeStats(
+                                    gamemode,
+                                    startBuilder.build(),
+                                )
+                                .build(),
+                            new PlayerDataBuilder(TEST_UUID, endDate)
+                                .withGamemodeStats(gamemode, endBuilder.build())
+                                .build(),
+                        ];
 
-                            const history: History = [
-                                new PlayerDataBuilder(TEST_UUID, startDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        startBuilder.build(),
-                                    )
-                                    .build(),
-                                new PlayerDataBuilder(TEST_UUID, endDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        endBuilder.build(),
-                                    )
-                                    .build(),
-                            ];
+                        const result = computeStatProgression(
+                            history,
+                            endDate,
+                            stat,
+                            gamemode,
+                        );
 
-                            const result = computeStatProgression(
-                                history,
-                                endDate,
-                                stat,
-                                gamemode,
+                        if (result.error) {
+                            expect.unreachable(
+                                `Expected success but got error: ${result.reason}`,
                             );
+                        }
 
-                            if (result.error) {
-                                expect.unreachable(
-                                    `Expected success but got error: ${result.reason}`,
-                                );
-                            }
+                        expect(result).toEqual({
+                            stat,
+                            endValue: 1,
+                            sessionQuotient: 9 / 5,
+                            progressPerDay: 0,
+                            dividendPerDay: 0.9,
+                            divisorPerDay: 0.5,
+                            nextMilestoneValue: 2,
+                            daysUntilMilestone: Infinity,
+                            trendingUpward: true,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
+                    });
 
-                            expect(result).toEqual({
-                                stat,
-                                endValue: 1,
-                                sessionQuotient: 9 / 5,
-                                progressPerDay: 0,
-                                dividendPerDay: 0.9,
-                                divisorPerDay: 0.5,
-                                nextMilestoneValue: 2,
-                                daysUntilMilestone: Infinity,
-                                trendingUpward: true,
-                                trackingDataTimeInterval: {
-                                    start: startDate,
-                                    end: endDate,
-                                },
-                            });
-                        },
-                    );
+                    test("edge case - goal quotient lower than session quotient (down)", () => {
+                        const startDate = new Date("2024-01-01T00:00:00Z");
+                        const endDate = new Date("2024-01-11T00:00:00Z");
+                        const startBuilder = new StatsBuilder();
+                        const endBuilder = new StatsBuilder();
 
-                    test(
-                        "edge case - goal quotient lower than session quotient (down)",
-                        () => {
-                            const startDate = new Date("2024-01-01T00:00:00Z");
-                            const endDate = new Date("2024-01-11T00:00:00Z");
-                            const startBuilder = new StatsBuilder();
-                            const endBuilder = new StatsBuilder();
+                        startBuilder
+                            .withStat(dividendStat, 4)
+                            .withStat(divisorStat, 0);
+                        endBuilder
+                            .withStat(dividendStat, 10)
+                            .withStat(divisorStat, 5);
 
-                            startBuilder
-                                .withStat(dividendStat, 4)
-                                .withStat(divisorStat, 0);
-                            endBuilder
-                                .withStat(dividendStat, 10)
-                                .withStat(divisorStat, 5);
+                        const history: History = [
+                            new PlayerDataBuilder(TEST_UUID, startDate)
+                                .withGamemodeStats(
+                                    gamemode,
+                                    startBuilder.build(),
+                                )
+                                .build(),
+                            new PlayerDataBuilder(TEST_UUID, endDate)
+                                .withGamemodeStats(gamemode, endBuilder.build())
+                                .build(),
+                        ];
 
-                            const history: History = [
-                                new PlayerDataBuilder(TEST_UUID, startDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        startBuilder.build(),
-                                    )
-                                    .build(),
-                                new PlayerDataBuilder(TEST_UUID, endDate)
-                                    .withGamemodeStats(
-                                        gamemode,
-                                        endBuilder.build(),
-                                    )
-                                    .build(),
-                            ];
+                        const result = computeStatProgression(
+                            history,
+                            endDate,
+                            stat,
+                            gamemode,
+                        );
 
-                            const result = computeStatProgression(
-                                history,
-                                endDate,
-                                stat,
-                                gamemode,
+                        if (result.error) {
+                            expect.unreachable(
+                                `Expected success but got error: ${result.reason}`,
                             );
+                        }
 
-                            if (result.error) {
-                                expect.unreachable(
-                                    `Expected success but got error: ${result.reason}`,
-                                );
-                            }
-
-                            expect(result).toEqual({
-                                stat,
-                                endValue: 2,
-                                sessionQuotient: 1.2,
-                                progressPerDay: 0,
-                                dividendPerDay: 0.6,
-                                divisorPerDay: 0.5,
-                                nextMilestoneValue: 1,
-                                daysUntilMilestone: Infinity,
-                                trendingUpward: false,
-                                trackingDataTimeInterval: {
-                                    start: startDate,
-                                    end: endDate,
-                                },
-                            });
-                        },
-                    );
+                        expect(result).toEqual({
+                            stat,
+                            endValue: 2,
+                            sessionQuotient: 1.2,
+                            progressPerDay: 0,
+                            dividendPerDay: 0.6,
+                            divisorPerDay: 0.5,
+                            nextMilestoneValue: 1,
+                            daysUntilMilestone: Infinity,
+                            trendingUpward: false,
+                            trackingDataTimeInterval: {
+                                start: startDate,
+                                end: endDate,
+                            },
+                        });
+                    });
                 });
             }
         });

@@ -100,15 +100,12 @@ describe("historyExploreSearchSchema validation", () => {
         expect(result.stats).toEqual(["fkdr"]);
     });
 
-    test(
-        "stats array with invalid values -> fallback to default",
-        () => {
-            const result = historyExploreSearchSchema.parse({
-                stats: ["invalid1", "invalid2"],
-            });
-            expect(result.stats).toEqual(["fkdr"]);
-        },
-    );
+    test("stats array with invalid values -> fallback to default", () => {
+        const result = historyExploreSearchSchema.parse({
+            stats: ["invalid1", "invalid2"],
+        });
+        expect(result.stats).toEqual(["fkdr"]);
+    });
 
     test("invalid gamemodes -> fallback to default", () => {
         const result = historyExploreSearchSchema.parse({
@@ -117,15 +114,12 @@ describe("historyExploreSearchSchema validation", () => {
         expect(result.gamemodes).toEqual(["overall"]);
     });
 
-    test(
-        "gamemodes array with invalid values -> fallback to default",
-        () => {
-            const result = historyExploreSearchSchema.parse({
-                gamemodes: ["invalid1", "invalid2"],
-            });
-            expect(result.gamemodes).toEqual(["overall"]);
-        },
-    );
+    test("gamemodes array with invalid values -> fallback to default", () => {
+        const result = historyExploreSearchSchema.parse({
+            gamemodes: ["invalid1", "invalid2"],
+        });
+        expect(result.gamemodes).toEqual(["overall"]);
+    });
 
     test("invalid variantSelection -> fallback to default", () => {
         const result = historyExploreSearchSchema.parse({

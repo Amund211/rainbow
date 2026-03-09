@@ -82,27 +82,21 @@ describe("sessionSearchSchema validation", () => {
         expect(result.sessionTableMode).toBe("total");
     });
 
-    test(
-        "invalid showExtrapolatedSessions -> fallback to default",
-        () => {
-            const result = sessionSearchSchema.parse({
-                showExtrapolatedSessions: "invalid",
-            });
-            expect(result.showExtrapolatedSessions).toBe(false);
-        },
-    );
+    test("invalid showExtrapolatedSessions -> fallback to default", () => {
+        const result = sessionSearchSchema.parse({
+            showExtrapolatedSessions: "invalid",
+        });
+        expect(result.showExtrapolatedSessions).toBe(false);
+    });
 
-    test(
-        "invalid timeIntervalDefinition -> fallback to default",
-        () => {
-            const result = sessionSearchSchema.parse({
-                timeIntervalDefinition: "invalid",
-            });
-            expect(result.timeIntervalDefinition).toEqual({
-                type: "contained",
-            });
-        },
-    );
+    test("invalid timeIntervalDefinition -> fallback to default", () => {
+        const result = sessionSearchSchema.parse({
+            timeIntervalDefinition: "invalid",
+        });
+        expect(result.timeIntervalDefinition).toEqual({
+            type: "contained",
+        });
+    });
 
     test("invalid trackingStart -> fallback to default", () => {
         const result = sessionSearchSchema.parse({
@@ -112,38 +106,29 @@ describe("sessionSearchSchema validation", () => {
         expect(result.trackingStart).toEqual(expectedDefault);
     });
 
-    test(
-        "default trackingStart is 1 year ago from now (same date)",
-        () => {
-            const result = sessionSearchSchema.parse({});
-            const now = new Date();
-            const expectedDate = new Date();
-            expectedDate.setFullYear(expectedDate.getFullYear() - 1);
-            expectedDate.setHours(0, 0, 0, 0);
+    test("default trackingStart is 1 year ago from now (same date)", () => {
+        const result = sessionSearchSchema.parse({});
+        const now = new Date();
+        const expectedDate = new Date();
+        expectedDate.setFullYear(expectedDate.getFullYear() - 1);
+        expectedDate.setHours(0, 0, 0, 0);
 
-            // Verify the year is exactly 1 year less
-            expect(result.trackingStart.getFullYear()).toBe(
-                now.getFullYear() - 1,
-            );
+        // Verify the year is exactly 1 year less
+        expect(result.trackingStart.getFullYear()).toBe(now.getFullYear() - 1);
 
-            // Verify the month and day are the same
-            // NOTE: This test will fail on leap years when run on Feb 29
-            // because setFullYear on Feb 29 of a leap year going back to a non-leap year
-            // will result in March 1 instead of Feb 28
-            expect(result.trackingStart.getMonth()).toBe(
-                expectedDate.getMonth(),
-            );
-            expect(result.trackingStart.getDate()).toBe(
-                expectedDate.getDate(),
-            );
+        // Verify the month and day are the same
+        // NOTE: This test will fail on leap years when run on Feb 29
+        // because setFullYear on Feb 29 of a leap year going back to a non-leap year
+        // will result in March 1 instead of Feb 28
+        expect(result.trackingStart.getMonth()).toBe(expectedDate.getMonth());
+        expect(result.trackingStart.getDate()).toBe(expectedDate.getDate());
 
-            // Also verify it's at the start of the day (midnight)
-            expect(result.trackingStart.getHours()).toBe(0);
-            expect(result.trackingStart.getMinutes()).toBe(0);
-            expect(result.trackingStart.getSeconds()).toBe(0);
-            expect(result.trackingStart.getMilliseconds()).toBe(0);
-        },
-    );
+        // Also verify it's at the start of the day (midnight)
+        expect(result.trackingStart.getHours()).toBe(0);
+        expect(result.trackingStart.getMinutes()).toBe(0);
+        expect(result.trackingStart.getSeconds()).toBe(0);
+        expect(result.trackingStart.getMilliseconds()).toBe(0);
+    });
 
     test("date coercion understands simple date strings", () => {
         // NOTE: These should be UTC dates with timezone in production
@@ -176,11 +161,10 @@ describe("sessionSearchSchema validation", () => {
             },
         });
         expect(result.timeIntervalDefinition.type).toBe("contained");
-        expect(result.timeIntervalDefinition.date).toBeInstanceOf(Date);
-        expect(
-            result.timeIntervalDefinition.date!.getFullYear(),
-        ).toBe(2024);
-        expect(result.timeIntervalDefinition.date!.getMonth()).toBe(5);
+        const containedDate = result.timeIntervalDefinition.date;
+        expect(containedDate).toBeInstanceOf(Date);
+        expect(containedDate?.getFullYear()).toBe(2024);
+        expect(containedDate?.getMonth()).toBe(5);
     });
 
     test("timeIntervalDefinition with until type and date", () => {
@@ -191,40 +175,33 @@ describe("sessionSearchSchema validation", () => {
             },
         });
         expect(result.timeIntervalDefinition.type).toBe("until");
-        expect(result.timeIntervalDefinition.date).toBeInstanceOf(Date);
-        expect(
-            result.timeIntervalDefinition.date!.getFullYear(),
-        ).toBe(2024);
-        expect(result.timeIntervalDefinition.date!.getMonth()).toBe(11);
+        const untilDate = result.timeIntervalDefinition.date;
+        expect(untilDate).toBeInstanceOf(Date);
+        expect(untilDate?.getFullYear()).toBe(2024);
+        expect(untilDate?.getMonth()).toBe(11);
     });
 
-    test(
-        "timeIntervalDefinition contained with invalid date -> fallback to undefined",
-        () => {
-            const result = sessionSearchSchema.parse({
-                timeIntervalDefinition: {
-                    type: "contained",
-                    date: "invalid-date",
-                },
-            });
-            expect(result.timeIntervalDefinition.type).toBe("contained");
-            expect(result.timeIntervalDefinition.date).toBe(undefined);
-        },
-    );
+    test("timeIntervalDefinition contained with invalid date -> fallback to undefined", () => {
+        const result = sessionSearchSchema.parse({
+            timeIntervalDefinition: {
+                type: "contained",
+                date: "invalid-date",
+            },
+        });
+        expect(result.timeIntervalDefinition.type).toBe("contained");
+        expect(result.timeIntervalDefinition.date).toBe(undefined);
+    });
 
-    test(
-        "timeIntervalDefinition until with invalid date -> fallback to undefined",
-        () => {
-            const result = sessionSearchSchema.parse({
-                timeIntervalDefinition: {
-                    type: "until",
-                    date: "invalid-date",
-                },
-            });
-            expect(result.timeIntervalDefinition.type).toBe("until");
-            expect(result.timeIntervalDefinition.date).toBe(undefined);
-        },
-    );
+    test("timeIntervalDefinition until with invalid date -> fallback to undefined", () => {
+        const result = sessionSearchSchema.parse({
+            timeIntervalDefinition: {
+                type: "until",
+                date: "invalid-date",
+            },
+        });
+        expect(result.timeIntervalDefinition.type).toBe("until");
+        expect(result.timeIntervalDefinition.date).toBe(undefined);
+    });
 
     test("all valid gamemode values", () => {
         for (const gamemode of ALL_GAMEMODE_KEYS) {
