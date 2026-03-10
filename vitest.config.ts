@@ -11,5 +11,23 @@ export default defineConfig({
             include: ["src/**/*.{ts,tsx}"],
             exclude: ["src/routeTree.gen.ts"],
         },
+        projects: [
+            {
+                extends: true,
+                test: {
+                    name: "unit",
+                    include: ["src/**/*.test.ts"],
+                },
+            },
+            {
+                extends: true,
+                test: {
+                    name: "ui",
+                    include: ["src/**/*.ui.test.tsx"],
+                    environment: "jsdom",
+                    setupFiles: ["./src/test/setup.ts"],
+                },
+            },
+        ],
     },
 });
