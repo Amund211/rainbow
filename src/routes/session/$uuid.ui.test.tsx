@@ -67,4 +67,12 @@ describe("Session detail page", () => {
             ).toBeInTheDocument();
         });
     });
+
+    it("renders history charts", async () => {
+        await waitFor(() => {
+            expect(
+                document.querySelector(".recharts-responsive-container"),
+            ).toBeInTheDocument();
+        });
+    });
 });
