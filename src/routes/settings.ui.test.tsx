@@ -1,14 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderRoute } from "#test/render.tsx";
+import { renderRoute, getRouteComponent } from "#test/render.tsx";
 import { Route } from "./settings.tsx";
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const SettingsPage = Route.options.component!;
+const SettingsPage = getRouteComponent(Route);
 
 describe("Settings page", () => {
-    it("renders Default player heading", async () => {
+    beforeEach(() => {
         renderRoute(SettingsPage, { route: "/settings" });
+    });
+
+    it("renders Default player heading", async () => {
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Default player" }),
@@ -17,14 +19,12 @@ describe("Settings page", () => {
     });
 
     it("renders info tooltip about default player", async () => {
-        renderRoute(SettingsPage, { route: "/settings" });
         await waitFor(() => {
             expect(screen.getByTestId("InfoOutlinedIcon")).toBeInTheDocument();
         });
     });
 
     it("renders the user multi-select input", async () => {
-        renderRoute(SettingsPage, { route: "/settings" });
         await waitFor(() => {
             expect(
                 screen.getByPlaceholderText("Set default player"),

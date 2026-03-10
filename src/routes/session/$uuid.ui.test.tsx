@@ -1,23 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderAppRoute } from "#test/render.tsx";
+import { expectVariantToggle } from "#test/assertions.ts";
 import { TEST_UUID } from "#mocks/data.ts";
 
 describe("Session detail page", () => {
-    it("renders player username in heading", async () => {
+    beforeEach(() => {
         renderAppRoute(`/session/${TEST_UUID}`);
-        await waitFor(
-            () => {
-                expect(
-                    screen.getByText("TestPlayer's session stats"),
-                ).toBeInTheDocument();
-            },
-            { timeout: 5000 },
-        );
+    });
+
+    it("renders player username in heading", async () => {
+        await waitFor(() => {
+            expect(
+                screen.getByText("TestPlayer's session stats"),
+            ).toBeInTheDocument();
+        });
     });
 
     it("renders gamemode and stat selectors", async () => {
-        renderAppRoute(`/session/${TEST_UUID}`);
         await waitFor(() => {
             expect(screen.getByLabelText("Gamemode")).toBeInTheDocument();
         });
@@ -25,7 +25,6 @@ describe("Session detail page", () => {
     });
 
     it("renders variant toggle with All time / Session / Both", async () => {
-        renderAppRoute(`/session/${TEST_UUID}`);
         await waitFor(() => {
             expect(
                 screen.getByRole("group", {
@@ -33,36 +32,25 @@ describe("Session detail page", () => {
                 }),
             ).toBeInTheDocument();
         });
-        expect(screen.getByText("All time")).toBeInTheDocument();
-        expect(screen.getByText("Session")).toBeInTheDocument();
-        expect(screen.getByText("Both")).toBeInTheDocument();
+        expectVariantToggle();
     });
 
     it("renders session table", async () => {
-        renderAppRoute(`/session/${TEST_UUID}`);
-        await waitFor(
-            () => {
-                expect(screen.getByRole("table")).toBeInTheDocument();
-            },
-            { timeout: 5000 },
-        );
+        await waitFor(() => {
+            expect(screen.getByRole("table")).toBeInTheDocument();
+        });
     });
 
     it("renders stat progression cards", async () => {
-        renderAppRoute(`/session/${TEST_UUID}`);
-        await waitFor(
-            () => {
-                // Progression card titles include interval type prefix
-                expect(screen.getByText(/^Daily /)).toBeInTheDocument();
-            },
-            { timeout: 5000 },
-        );
+        await waitFor(() => {
+            // Progression card titles include interval type prefix
+            expect(screen.getByText(/^Daily /)).toBeInTheDocument();
+        });
         expect(screen.getByText(/^Weekly /)).toBeInTheDocument();
         expect(screen.getByText(/^Monthly /)).toBeInTheDocument();
     });
 
     it("renders player search input for switching players", async () => {
-        renderAppRoute(`/session/${TEST_UUID}`);
         await waitFor(() => {
             expect(
                 screen.getByPlaceholderText("Search players"),
@@ -71,16 +59,12 @@ describe("Session detail page", () => {
     });
 
     it("shows session table mode toggle (total/rate)", async () => {
-        renderAppRoute(`/session/${TEST_UUID}`);
-        await waitFor(
-            () => {
-                expect(
-                    screen.getByRole("group", {
-                        name: "Session table mode",
-                    }),
-                ).toBeInTheDocument();
-            },
-            { timeout: 5000 },
-        );
+        await waitFor(() => {
+            expect(
+                screen.getByRole("group", {
+                    name: "Session table mode",
+                }),
+            ).toBeInTheDocument();
+        });
     });
 });

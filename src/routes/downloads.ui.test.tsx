@@ -1,14 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
-import { renderRoute } from "#test/render.tsx";
+import { renderRoute, getRouteComponent } from "#test/render.tsx";
 import { Route } from "./downloads.tsx";
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const DownloadsPage = Route.options.component!;
+const DownloadsPage = getRouteComponent(Route);
 
 describe("Downloads page", () => {
-    it("renders the archive table with download versions", async () => {
+    beforeEach(() => {
         renderRoute(DownloadsPage, { route: "/downloads" });
+    });
+
+    it("renders the archive table with download versions", async () => {
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Archive" }),
@@ -23,7 +25,6 @@ describe("Downloads page", () => {
     });
 
     it("shows download links pointing to GitHub releases", async () => {
-        renderRoute(DownloadsPage, { route: "/downloads" });
         await waitFor(() => {
             expect(
                 screen.getByRole("table", { name: "Archive" }),
@@ -39,7 +40,6 @@ describe("Downloads page", () => {
     });
 
     it("shows OS labels in the archive", async () => {
-        renderRoute(DownloadsPage, { route: "/downloads" });
         await waitFor(() => {
             expect(
                 screen.getByRole("table", { name: "Archive" }),
@@ -51,7 +51,6 @@ describe("Downloads page", () => {
     });
 
     it("renders trademark attribution footnotes", async () => {
-        renderRoute(DownloadsPage, { route: "/downloads" });
         await waitFor(() => {
             expect(
                 screen.getByText(/Windows and the Windows logo/),

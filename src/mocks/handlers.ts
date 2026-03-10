@@ -9,7 +9,7 @@ import {
     wrappedResponse,
 } from "./data.ts";
 
-const API_BASE = "http://localhost:5173/flashlight";
+const API_BASE = import.meta.env.VITE_FLASHLIGHT_URL;
 
 export const handlers = [
     // Username lookup by UUID

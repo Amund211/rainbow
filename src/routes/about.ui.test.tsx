@@ -1,14 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderRoute } from "#test/render.tsx";
+import { renderRoute, getRouteComponent } from "#test/render.tsx";
 import { Route } from "./about.tsx";
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const AboutPage = Route.options.component!;
+const AboutPage = getRouteComponent(Route);
 
 describe("About page", () => {
-    it("renders Discord section with invite link", async () => {
+    beforeEach(() => {
         renderRoute(AboutPage, { route: "/about" });
+    });
+
+    it("renders Discord section with invite link", async () => {
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Discord" }),
@@ -23,7 +25,6 @@ describe("About page", () => {
     });
 
     it("renders Disclaimer section", async () => {
-        renderRoute(AboutPage, { route: "/about" });
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Disclaimer" }),
@@ -35,7 +36,6 @@ describe("About page", () => {
     });
 
     it("renders Privacy section", async () => {
-        renderRoute(AboutPage, { route: "/about" });
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Privacy" }),
@@ -47,7 +47,6 @@ describe("About page", () => {
     });
 
     it("renders Hypixel API Policy section", async () => {
-        renderRoute(AboutPage, { route: "/about" });
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Hypixel API Policy" }),

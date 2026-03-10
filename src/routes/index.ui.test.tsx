@@ -1,21 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderRoute } from "#test/render.tsx";
+import { renderRoute, getRouteComponent } from "#test/render.tsx";
 import { Route } from "./index.tsx";
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const HomePage = Route.options.component!;
+const HomePage = getRouteComponent(Route);
 
 describe("Home page", () => {
-    it("renders player search input", async () => {
+    beforeEach(() => {
         renderRoute(HomePage, { route: "/" });
+    });
+
+    it("renders player search input", async () => {
         await waitFor(() => {
             expect(screen.getByRole("combobox")).toBeInTheDocument();
         });
     });
 
     it("contains meta description about Prism Overlay", async () => {
-        renderRoute(HomePage, { route: "/" });
         await waitFor(() => {
             expect(
                 document.querySelector('meta[content*="Prism Overlay"]'),
@@ -24,7 +25,6 @@ describe("Home page", () => {
     });
 
     it("contains canonical link", async () => {
-        renderRoute(HomePage, { route: "/" });
         await waitFor(() => {
             expect(
                 document.querySelector('link[href="https://prismoverlay.com"]'),

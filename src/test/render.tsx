@@ -16,6 +16,13 @@ import { KnownAliasesProvider } from "#contexts/KnownAliases/provider.tsx";
 import { routeTree } from "../routeTree.gen.ts";
 import type { FC } from "react";
 
+export function getRouteComponent(route: {
+    options: { component?: FC };
+}): FC {
+    if (!route.options.component) throw new Error("Route has no component");
+    return route.options.component;
+}
+
 const theme = createTheme({
     colorSchemes: { dark: true },
 });

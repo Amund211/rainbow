@@ -38,38 +38,30 @@ export const makePlayerDataPIT = (
     ...overrides,
 });
 
-export const makePlayerDataPIT2 = (
-    overrides: Partial<APIPlayerDataPIT> = {},
-): APIPlayerDataPIT => ({
-    uuid: TEST_UUID,
-    queriedAt: "2025-06-01T20:54:03.892Z",
-    experience: 506000,
-    solo: makeStats({ gamesPlayed: 20, wins: 12, losses: 8 }),
-    doubles: makeStats({
-        gamesPlayed: 36,
-        wins: 27,
-        losses: 9,
-        finalKills: 230,
-    }),
-    threes: makeStats({ gamesPlayed: 20, wins: 16, losses: 4 }),
-    fours: makeStats({
-        gamesPlayed: 38,
-        wins: 26,
-        losses: 12,
-        finalKills: 225,
-    }),
-    overall: makeStats({
-        gamesPlayed: 114,
-        wins: 81,
-        losses: 33,
-        finalKills: 240,
-    }),
-    ...overrides,
-});
-
 export const historyResponse: APIPlayerDataPIT[] = [
     makePlayerDataPIT(),
-    makePlayerDataPIT2(),
+    makePlayerDataPIT({
+        queriedAt: "2025-06-01T20:54:03.892Z",
+        experience: 506000,
+        doubles: makeStats({
+            gamesPlayed: 36,
+            wins: 27,
+            losses: 9,
+            finalKills: 230,
+        }),
+        fours: makeStats({
+            gamesPlayed: 38,
+            wins: 26,
+            losses: 12,
+            finalKills: 225,
+        }),
+        overall: makeStats({
+            gamesPlayed: 114,
+            wins: 81,
+            losses: 33,
+            finalKills: 240,
+        }),
+    }),
 ];
 
 export const sessionsResponse: APISession[] = [
@@ -108,11 +100,34 @@ export const sessionsResponse: APISession[] = [
 
 const makeWrappedSession = (): APISession => ({
     start: makePlayerDataPIT({ queriedAt: "2025-06-15T14:00:00.000Z" }),
-    end: makePlayerDataPIT2({ queriedAt: "2025-06-15T16:30:00.000Z" }),
+    end: makePlayerDataPIT({
+        queriedAt: "2025-06-15T16:30:00.000Z",
+        experience: 506000,
+        doubles: makeStats({
+            gamesPlayed: 36,
+            wins: 27,
+            losses: 9,
+            finalKills: 230,
+        }),
+        fours: makeStats({
+            gamesPlayed: 38,
+            wins: 26,
+            losses: 12,
+            finalKills: 225,
+        }),
+        overall: makeStats({
+            gamesPlayed: 114,
+            wins: 81,
+            losses: 33,
+            finalKills: 240,
+        }),
+    }),
     consecutive: true,
 });
 
-export const wrappedResponse = {
+export const makeWrappedResponse = (
+    overrides: Record<string, unknown> = {},
+) => ({
     success: true,
     uuid: TEST_UUID,
     year: 2025,
@@ -123,9 +138,27 @@ export const wrappedResponse = {
             queriedAt: "2025-01-13T21:09:30.145Z",
             experience: 400000,
         }),
-        end: makePlayerDataPIT2({
+        end: makePlayerDataPIT({
             queriedAt: "2025-12-30T14:13:05.162Z",
             experience: 600000,
+            doubles: makeStats({
+                gamesPlayed: 36,
+                wins: 27,
+                losses: 9,
+                finalKills: 230,
+            }),
+            fours: makeStats({
+                gamesPlayed: 38,
+                wins: 26,
+                losses: 12,
+                finalKills: 225,
+            }),
+            overall: makeStats({
+                gamesPlayed: 114,
+                wins: 81,
+                losses: 33,
+                finalKills: 240,
+            }),
         }),
     },
     sessionStats: {
@@ -188,8 +221,8 @@ export const wrappedResponse = {
         },
         playtimeDistribution: {
             hourlyDistribution: [
-                5, 6, 4, 3, 2, 1, 0.5, 0.2, 0, 0, 0, 0.1, 0, 0, 0.5, 1, 2, 3, 4,
-                5, 6, 7, 6, 5,
+                5, 6, 4, 3, 2, 1, 0.5, 0.2, 0, 0, 0, 0.1, 0, 0, 0.5, 1, 2, 3,
+                4, 5, 6, 7, 6, 5,
             ],
             dayHourDistribution: {
                 Monday: Array.from({ length: 24 }, () => 1),
@@ -202,4 +235,7 @@ export const wrappedResponse = {
             } as Record<string, number[]>,
         },
     },
-};
+    ...overrides,
+});
+
+export const wrappedResponse = makeWrappedResponse();
