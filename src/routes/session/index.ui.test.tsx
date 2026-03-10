@@ -1,13 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderRoute, getRouteComponent } from "#test/render.tsx";
-import { Route } from "./index.tsx";
-
-const SessionSearchPage = getRouteComponent(Route);
+import { renderAppRoute } from "#test/render.tsx";
 
 describe("Session search page", () => {
     beforeEach(() => {
-        renderRoute(SessionSearchPage, { route: "/session" });
+        renderAppRoute("/session");
     });
 
     it("renders player search input", async () => {

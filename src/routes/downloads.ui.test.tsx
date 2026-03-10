@@ -1,13 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
-import { renderRoute, getRouteComponent } from "#test/render.tsx";
-import { Route } from "./downloads.tsx";
-
-const DownloadsPage = getRouteComponent(Route);
+import { renderAppRoute } from "#test/render.tsx";
 
 describe("Downloads page", () => {
     beforeEach(() => {
-        renderRoute(DownloadsPage, { route: "/downloads" });
+        renderAppRoute("/downloads");
     });
 
     it("renders the archive table with download versions", async () => {

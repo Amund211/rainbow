@@ -1,13 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderRoute, getRouteComponent } from "#test/render.tsx";
-import { Route } from "./index.tsx";
-
-const WrappedSearchPage = getRouteComponent(Route);
+import { renderAppRoute } from "#test/render.tsx";
 
 describe("Wrapped search page", () => {
     beforeEach(() => {
-        renderRoute(WrappedSearchPage, { route: "/wrapped" });
+        renderAppRoute("/wrapped");
     });
 
     it("renders player search input", async () => {

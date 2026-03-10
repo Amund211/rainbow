@@ -1,13 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderRoute, getRouteComponent } from "#test/render.tsx";
-import { Route } from "./settings.tsx";
-
-const SettingsPage = getRouteComponent(Route);
+import { renderAppRoute } from "#test/render.tsx";
 
 describe("Settings page", () => {
     beforeEach(() => {
-        renderRoute(SettingsPage, { route: "/settings" });
+        renderAppRoute("/settings");
     });
 
     it("renders Default player heading", async () => {

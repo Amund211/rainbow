@@ -1,13 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderRoute, getRouteComponent } from "#test/render.tsx";
-import { Route } from "./about.tsx";
-
-const AboutPage = getRouteComponent(Route);
+import { renderAppRoute } from "#test/render.tsx";
 
 describe("About page", () => {
     beforeEach(() => {
-        renderRoute(AboutPage, { route: "/about" });
+        renderAppRoute("/about");
     });
 
     it("renders Discord section with invite link", async () => {

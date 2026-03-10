@@ -1,8 +1,6 @@
 import { render, type RenderOptions } from "@testing-library/react";
 import {
     createMemoryHistory,
-    createRootRoute,
-    createRoute,
     createRouter,
     RouterProvider,
 } from "@tanstack/react-router";
@@ -14,14 +12,6 @@ import { CurrentUserProvider } from "#contexts/CurrentUser/provider.tsx";
 import { PlayerVisitsProvider } from "#contexts/PlayerVisits/provider.tsx";
 import { KnownAliasesProvider } from "#contexts/KnownAliases/provider.tsx";
 import { routeTree } from "../routeTree.gen.ts";
-import type { FC } from "react";
-
-export function getRouteComponent(route: {
-    options: { component?: FC };
-}): FC {
-    if (!route.options.component) throw new Error("Route has no component");
-    return route.options.component;
-}
 
 const theme = createTheme({
     colorSchemes: { dark: true },
@@ -58,42 +48,6 @@ function Providers({
             </LocalizationProvider>
         </QueryClientProvider>
     );
-}
-
-interface RenderRouteOptions extends Omit<RenderOptions, "wrapper"> {
-    route?: string;
-    initialEntries?: string[];
-}
-
-/**
- * Render a component inside a minimal TanStack Router + all app providers.
- * Best for components that don't use Route.useSearch/useParams/useLoaderDeps.
- */
-export function renderRoute(Component: FC, options: RenderRouteOptions = {}) {
-    const { route = "/", initialEntries, ...renderOptions } = options;
-
-    const queryClient = createQueryClient();
-    const rootRoute = createRootRoute();
-    const testRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: route,
-        component: Component,
-    });
-    rootRoute.addChildren([testRoute]);
-
-    const router = createRouter({
-        routeTree: rootRoute,
-        history: createMemoryHistory({
-            initialEntries: initialEntries ?? [route],
-        }),
-        defaultPendingMinMs: 0,
-    });
-
-    const result = render(
-        <Providers queryClient={queryClient} router={router} />,
-        renderOptions,
-    );
-    return { ...result, queryClient, router };
 }
 
 /**
