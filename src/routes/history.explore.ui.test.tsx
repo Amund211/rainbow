@@ -52,14 +52,11 @@ describe("History explore page", () => {
 
     it("renders Start and End date pickers", async () => {
         await waitFor(() => {
-            expect(
-                document.querySelector('label[for][data-shrink="true"]'),
-            ).toBeInTheDocument();
+            expect(screen.getAllByText("Start").length).toBeGreaterThanOrEqual(
+                1,
+            );
         });
-        const datePickerLabels = screen.getAllByText("Start");
-        expect(datePickerLabels.length).toBeGreaterThanOrEqual(1);
-        const endLabels = screen.getAllByText("End");
-        expect(endLabels.length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText("End").length).toBeGreaterThanOrEqual(1);
     });
 
     it("renders meta description with compare text", async () => {

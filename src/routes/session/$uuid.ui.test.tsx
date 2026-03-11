@@ -70,6 +70,7 @@ describe("Session detail page", () => {
         });
     });
 
+    // recharts doesn't expose semantic roles in jsdom, so we query by class name
     it("renders history charts", async () => {
         await waitFor(() => {
             expect(
@@ -79,37 +80,17 @@ describe("Session detail page", () => {
     });
 
     describe("session table content", () => {
-        it("contains Start column header", async () => {
-            await waitFor(() => {
-                expect(screen.getByRole("table")).toBeInTheDocument();
-            });
-            const table = screen.getByRole("table");
-            expect(within(table).getByText("Start")).toBeInTheDocument();
-        });
-
-        it("contains Duration column header", async () => {
-            await waitFor(() => {
-                expect(screen.getByRole("table")).toBeInTheDocument();
-            });
-            const table = screen.getByRole("table");
-            expect(within(table).getByText("Duration")).toBeInTheDocument();
-        });
-
-        it("contains Games column header", async () => {
-            await waitFor(() => {
-                expect(screen.getByRole("table")).toBeInTheDocument();
-            });
-            const table = screen.getByRole("table");
-            expect(within(table).getByText("Games")).toBeInTheDocument();
-        });
-
-        it("contains Wins column header", async () => {
-            await waitFor(() => {
-                expect(screen.getByRole("table")).toBeInTheDocument();
-            });
-            const table = screen.getByRole("table");
-            expect(within(table).getByText("Wins")).toBeInTheDocument();
-        });
+        it.each(["Start", "Duration", "Games", "Wins"])(
+            "contains %s column header",
+            async (header) => {
+                await waitFor(() => {
+                    expect(screen.getByRole("table")).toBeInTheDocument();
+                });
+                expect(
+                    within(screen.getByRole("table")).getByText(header),
+                ).toBeInTheDocument();
+            },
+        );
 
         it("renders 2 session rows from mock data", async () => {
             await waitFor(() => {
@@ -123,7 +104,7 @@ describe("Session detail page", () => {
     });
 
     describe("session table mode toggle", () => {
-        it("contains Total button text", async () => {
+        it("contains Total and Rate (/hour) buttons", async () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole("group", {
@@ -135,19 +116,6 @@ describe("Session detail page", () => {
                 name: "Session table mode",
             });
             expect(within(toggleGroup).getByText("Total")).toBeInTheDocument();
-        });
-
-        it("contains Rate (/hour) button text", async () => {
-            await waitFor(() => {
-                expect(
-                    screen.getByRole("group", {
-                        name: "Session table mode",
-                    }),
-                ).toBeInTheDocument();
-            });
-            const toggleGroup = screen.getByRole("group", {
-                name: "Session table mode",
-            });
             expect(
                 within(toggleGroup).getByText("Rate (/hour)"),
             ).toBeInTheDocument();
@@ -163,6 +131,7 @@ describe("Session detail page", () => {
     });
 
     describe("chart rendering", () => {
+        // recharts doesn't expose semantic roles in jsdom, so we query by class name
         it("renders multiple chart containers (progression + main chart)", async () => {
             await waitFor(() => {
                 const containers = document.querySelectorAll(
@@ -177,14 +146,11 @@ describe("Session detail page", () => {
         it("includes the player name in the page heading", async () => {
             await waitFor(() => {
                 expect(
-                    screen.getByText("TestPlayer's session stats"),
+                    screen.getByRole("heading", {
+                        name: "TestPlayer's session stats",
+                    }),
                 ).toBeInTheDocument();
             });
-            // Verify it is rendered as a heading element
-            const heading = screen
-                .getByText("TestPlayer's session stats")
-                .closest("h6");
-            expect(heading).toBeInTheDocument();
         });
     });
 });

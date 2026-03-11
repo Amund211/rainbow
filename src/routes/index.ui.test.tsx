@@ -98,16 +98,16 @@ describe("Home page with favorites", () => {
             expect(screen.getByText(TEST_USERNAME)).toBeInTheDocument();
         });
 
-        const deleteButton = document.querySelector(
-            `#delete-favorite-${TEST_UUID}`,
+        // Find the button via the icon's aria-label, then click its parent IconButton.
+        // Using dispatchEvent instead of fireEvent.click because the latter wraps in
+        // act() which hangs due to re-renders triggered by removePlayerVisits.
+        const deleteButton = screen
+            .getByLabelText(`Remove ${TEST_USERNAME} from favorites`)
+            .closest("button");
+        expect(deleteButton).toBeInTheDocument();
+        deleteButton!.dispatchEvent(
+            new MouseEvent("click", { bubbles: true, cancelable: true }),
         );
-        expect(deleteButton).toBeTruthy();
-
-        if (deleteButton) {
-            deleteButton.dispatchEvent(
-                new MouseEvent("click", { bubbles: true, cancelable: true }),
-            );
-        }
 
         const stored = localStorage.getItem("playerVisits");
         expect(stored).not.toBeNull();
