@@ -18,50 +18,74 @@ describe("Wrapped detail page", () => {
     });
 
     it("renders wrapped header with year title", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             expect(screen.getByText("2025 Wrapped")).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("renders session overview section", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             // Duplicated in export image, so use getAllByText
             expect(
                 screen.getAllByText("Session Overview").length,
             ).toBeGreaterThanOrEqual(1);
         });
+
+        rendered.unmount();
     });
 
     it("renders total sessions stat", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             expect(
                 screen.getAllByText("Total Sessions").length,
             ).toBeGreaterThanOrEqual(1);
         });
+
+        rendered.unmount();
     });
 
     it("renders flawless sessions section", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             expect(
                 screen.getAllByText("Flawless Sessions").length,
             ).toBeGreaterThanOrEqual(1);
         });
+
+        rendered.unmount();
     });
 
     it("renders export summary button when data loads", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             expect(
                 screen.getByRole("button", { name: /Export Summary/ }),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("renders player search input", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             expect(
                 screen.getByPlaceholderText("Search players"),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it.each([
@@ -73,9 +97,7 @@ describe("Wrapped detail page", () => {
         "Stars Gained",
     ])("renders %s in year stats", async (label) => {
         await waitFor(() => {
-            expect(
-                screen.getAllByText(label).length,
-            ).toBeGreaterThanOrEqual(1);
+            expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1);
         });
     });
 
@@ -89,46 +111,58 @@ describe("Wrapped detail page", () => {
         "Most Finals/Hour",
     ])("renders %s in best sessions", async (label) => {
         await waitFor(() => {
-            expect(
-                screen.getAllByText(label).length,
-            ).toBeGreaterThanOrEqual(1);
+            expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1);
         });
     });
 
     it("renders Best Sessions heading", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             expect(
                 screen.getAllByText(/Best Sessions/).length,
             ).toBeGreaterThanOrEqual(1);
         });
+
+        rendered.unmount();
     });
 
-    it.each([
-        "Highest Ended Winstreaks",
-        "Highest Ended Final Kill Streaks",
-    ])("renders %s in streaks", async (label) => {
-        await waitFor(() => {
-            expect(
-                screen.getAllByText(label).length,
-            ).toBeGreaterThanOrEqual(1);
-        });
-    });
+    it.each(["Highest Ended Winstreaks", "Highest Ended Final Kill Streaks"])(
+        "renders %s in streaks",
+        async (label) => {
+            const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText(label).length,
+                ).toBeGreaterThanOrEqual(1);
+            });
+
+            rendered.unmount();
+        },
+    );
 
     it("renders Streaks heading", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             expect(
                 screen.getAllByText(/Streaks/).length,
             ).toBeGreaterThanOrEqual(1);
         });
+
+        rendered.unmount();
     });
 
     it("renders winstreak values from mock data", async () => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
             // Overall winstreak highest is 30
-            expect(screen.getAllByText("30").length).toBeGreaterThanOrEqual(
-                1,
-            );
+            expect(screen.getAllByText("30").length).toBeGreaterThanOrEqual(1);
         });
+
+        rendered.unmount();
     });
 
     it.each([
@@ -138,11 +172,13 @@ describe("Wrapped detail page", () => {
         "Finals/Session",
         "Avg Length",
     ])("renders %s in average stats", async (label) => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
-            expect(
-                screen.getAllByText(label).length,
-            ).toBeGreaterThanOrEqual(1);
+            expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1);
         });
+
+        rendered.unmount();
     });
 
     it.each([
@@ -156,11 +192,15 @@ describe("Wrapped detail page", () => {
             /25\s*% of sessions with no losses and no final deaths/,
         ],
     ] as const)("renders %s", async (_label, matcher) => {
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
+
         await waitFor(() => {
-            expect(
-                screen.getAllByText(matcher).length,
-            ).toBeGreaterThanOrEqual(1);
+            expect(screen.getAllByText(matcher).length).toBeGreaterThanOrEqual(
+                1,
+            );
         });
+
+        rendered.unmount();
     });
 });
 
@@ -175,13 +215,15 @@ describe("Wrapped detail page - loading state", () => {
             }),
         );
 
-        renderAppRoute(`/wrapped/${TEST_UUID}`);
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
 
         await waitFor(() => {
             expect(
                 screen.getByText("Loading your year in review..."),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 });
 
@@ -196,13 +238,15 @@ describe("Wrapped detail page - error state", () => {
             }),
         );
 
-        renderAppRoute(`/wrapped/${TEST_UUID}`);
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
 
         await waitFor(() => {
             expect(
                 screen.getByText(/Failed loading your year in review/),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 });
 
@@ -219,13 +263,15 @@ describe("Wrapped detail page - no sessions state", () => {
             }),
         );
 
-        renderAppRoute(`/wrapped/${TEST_UUID}`);
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
 
         await waitFor(() => {
             expect(
                 screen.getByText(/didn't record any sessions/),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 });
 
@@ -239,12 +285,14 @@ describe("Wrapped detail page - no year stats state", () => {
             }),
         );
 
-        renderAppRoute(`/wrapped/${TEST_UUID}`);
+        const { rendered } = renderAppRoute(`/wrapped/${TEST_UUID}`);
 
         await waitFor(() => {
             expect(
                 screen.getByText(/didn't record any stats/),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 });

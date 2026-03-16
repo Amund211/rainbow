@@ -13,9 +13,9 @@ function TestConsumer() {
     return (
         <div>
             <div data-testid="current">{ctx.currentUser ?? "none"}</div>
-            <button onClick={() => ctx.setCurrentUser(UUID_A)}>Set A</button>
-            <button onClick={() => ctx.setCurrentUser(UUID_B)}>Set B</button>
-            <button onClick={() => ctx.setCurrentUser(null)}>Clear</button>
+            <button onClick={() => { ctx.setCurrentUser(UUID_A); }}>Set A</button>
+            <button onClick={() => { ctx.setCurrentUser(UUID_B); }}>Set B</button>
+            <button onClick={() => { ctx.setCurrentUser(null); }}>Clear</button>
         </div>
     );
 }

@@ -1,13 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import { renderAppRoute } from "#test/render.tsx";
 
 describe("Downloads page", () => {
-    beforeEach(() => {
-        renderAppRoute("/downloads");
-    });
-
     it("renders the archive table with download versions", async () => {
+        const { rendered } = renderAppRoute("/downloads");
+
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Archive" }),
@@ -19,9 +17,13 @@ describe("Downloads page", () => {
         expect(within(table).getByText("Version")).toBeInTheDocument();
         expect(within(table).getByText("Operating System")).toBeInTheDocument();
         expect(within(table).getByText("Released At")).toBeInTheDocument();
+
+        rendered.unmount();
     });
 
     it("shows download links pointing to GitHub releases", async () => {
+        const { rendered } = renderAppRoute("/downloads");
+
         await waitFor(() => {
             expect(
                 screen.getByRole("table", { name: "Archive" }),
@@ -34,9 +36,13 @@ describe("Downloads page", () => {
             "href",
             expect.stringContaining("github.com/Amund211/prism/releases"),
         );
+
+        rendered.unmount();
     });
 
     it("shows OS labels in the archive", async () => {
+        const { rendered } = renderAppRoute("/downloads");
+
         await waitFor(() => {
             expect(
                 screen.getByRole("table", { name: "Archive" }),
@@ -45,9 +51,13 @@ describe("Downloads page", () => {
         expect(screen.getAllByText("Windows").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Mac OS").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Linux").length).toBeGreaterThan(0);
+
+        rendered.unmount();
     });
 
     it("renders trademark attribution footnotes", async () => {
+        const { rendered } = renderAppRoute("/downloads");
+
         await waitFor(() => {
             expect(
                 screen.getByText(/Windows and the Windows logo/),
@@ -59,5 +69,7 @@ describe("Downloads page", () => {
         expect(
             screen.getByText(/Linux is the registered trademark/),
         ).toBeInTheDocument();
+
+        rendered.unmount();
     });
 });

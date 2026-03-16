@@ -26,6 +26,7 @@ export default defineConfig({
                     include: ["src/**/*.ui.test.tsx"],
                     environment: "jsdom",
                     setupFiles: ["./src/test/setup.ts"],
+                    execArgv: ["--no-webstorage"],
                 },
             },
         ],

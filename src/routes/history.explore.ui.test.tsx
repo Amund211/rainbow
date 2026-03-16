@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderAppRoute } from "#test/render.tsx";
 import { expectVariantToggle } from "#test/assertions.ts";
@@ -7,18 +7,20 @@ import { TEST_UUID } from "#mocks/data.ts";
 const PLAYER_URL_BASE = `/history/explore?uuids=%5B%22${TEST_UUID}%22%5D&start=${encodeURIComponent("2025-06-01T00:00:00.000Z")}&end=${encodeURIComponent("2025-06-02T00:00:00.000Z")}&stats=%5B%22fkdr%22%5D&gamemodes=%5B%22overall%22%5D&variantSelection=session&limit=50`;
 
 describe("History explore page", () => {
-    beforeEach(() => {
-        renderAppRoute("/history/explore");
-    });
-
     it("renders gamemode and stat select dropdowns", async () => {
+        const { rendered } = renderAppRoute("/history/explore");
+
         await waitFor(() => {
             expect(screen.getByLabelText("Gamemodes")).toBeInTheDocument();
         });
         expect(screen.getByLabelText("Stat")).toBeInTheDocument();
+
+        rendered.unmount();
     });
 
     it("renders time filter chips", async () => {
+        const { rendered } = renderAppRoute("/history/explore");
+
         await waitFor(() => {
             expect(screen.getByText("Today")).toBeInTheDocument();
         });
@@ -29,9 +31,13 @@ describe("History explore page", () => {
         expect(screen.getByText("Last month")).toBeInTheDocument();
         expect(screen.getByText("This year")).toBeInTheDocument();
         expect(screen.getByText("Last year")).toBeInTheDocument();
+
+        rendered.unmount();
     });
 
     it("renders variant toggle group", async () => {
+        const { rendered } = renderAppRoute("/history/explore");
+
         await waitFor(() => {
             expect(
                 screen.getByRole("group", {
@@ -40,34 +46,50 @@ describe("History explore page", () => {
             ).toBeInTheDocument();
         });
         expectVariantToggle();
+
+        rendered.unmount();
     });
 
     it("renders user multi-select for adding players", async () => {
+        const { rendered } = renderAppRoute("/history/explore");
+
         await waitFor(() => {
             expect(
                 screen.getByPlaceholderText("Add players"),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("renders Start and End date pickers", async () => {
+        const { rendered } = renderAppRoute("/history/explore");
+
         await waitFor(() => {
             expect(screen.getAllByText("Start").length).toBeGreaterThanOrEqual(
                 1,
             );
         });
         expect(screen.getAllByText("End").length).toBeGreaterThanOrEqual(1);
+
+        rendered.unmount();
     });
 
     it("renders meta description with compare text", async () => {
+        const { rendered } = renderAppRoute("/history/explore");
+
         await waitFor(() => {
             expect(
                 document.querySelector('meta[content*="Compare the stats"]'),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("renders canonical link", async () => {
+        const { rendered } = renderAppRoute("/history/explore");
+
         await waitFor(() => {
             expect(
                 document.querySelector(
@@ -75,9 +97,13 @@ describe("History explore page", () => {
                 ),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("disables the go-to-session-page button when no player is selected", async () => {
+        const { rendered } = renderAppRoute("/history/explore");
+
         await waitFor(() => {
             expect(screen.getByLabelText("Gamemodes")).toBeInTheDocument();
         });
@@ -86,28 +112,34 @@ describe("History explore page", () => {
         );
         expect(button).toBeInTheDocument();
         expect(button).toBeDisabled();
+
+        rendered.unmount();
     });
 });
 
 describe("History explore page with player selected via URL", () => {
     it("renders username", async () => {
-        renderAppRoute(PLAYER_URL_BASE);
+        const { rendered } = renderAppRoute(PLAYER_URL_BASE);
         await waitFor(() => {
             expect(screen.getByText("TestPlayer")).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("renders a chart when a player is selected", async () => {
-        renderAppRoute(PLAYER_URL_BASE);
+        const { rendered } = renderAppRoute(PLAYER_URL_BASE);
         await waitFor(() => {
             expect(
                 document.querySelector(".recharts-responsive-container"),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("enables the go-to-session-page button with single player, stat, and gamemode", async () => {
-        renderAppRoute(PLAYER_URL_BASE);
+        const { rendered } = renderAppRoute(PLAYER_URL_BASE);
         await waitFor(() => {
             expect(screen.getByText("TestPlayer")).toBeInTheDocument();
         });
@@ -116,5 +148,7 @@ describe("History explore page with player selected via URL", () => {
         );
         expect(button).toBeInTheDocument();
         expect(button).not.toBeDisabled();
+
+        rendered.unmount();
     });
 });

@@ -98,10 +98,7 @@ describe("getStat", () => {
 
     test("computes fkdr correctly", () => {
         // overall: 200 / 35
-        expect(getStat(playerData, "overall", "fkdr")).toBeCloseTo(
-            200 / 35,
-            5,
-        );
+        expect(getStat(playerData, "overall", "fkdr")).toBeCloseTo(200 / 35, 5);
     });
 
     test("computes fkdr when finalDeaths is 0", () => {
@@ -117,10 +114,7 @@ describe("getStat", () => {
 
     test("computes kdr correctly", () => {
         // overall: 300 / 250
-        expect(getStat(playerData, "overall", "kdr")).toBeCloseTo(
-            300 / 250,
-            5,
-        );
+        expect(getStat(playerData, "overall", "kdr")).toBeCloseTo(300 / 250, 5);
     });
 
     test("computes kdr when deaths is 0", () => {
@@ -164,9 +158,9 @@ describe("computeStat", () => {
     const history: History = [baseline];
 
     test("returns overall stat directly for variant=overall", () => {
-        expect(computeStat(current, "overall", "kills", "overall", history)).toBe(
-            300,
-        );
+        expect(
+            computeStat(current, "overall", "kills", "overall", history),
+        ).toBe(300);
     });
 
     test("computes session stat as current - baseline for variant=session", () => {

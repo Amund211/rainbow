@@ -1,21 +1,8 @@
 import { render, type RenderOptions } from "@testing-library/react";
-import {
-    createMemoryHistory,
-    createRouter,
-    RouterProvider,
-} from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createTheme, ThemeProvider } from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { CurrentUserProvider } from "#contexts/CurrentUser/provider.tsx";
-import { PlayerVisitsProvider } from "#contexts/PlayerVisits/provider.tsx";
-import { KnownAliasesProvider } from "#contexts/KnownAliases/provider.tsx";
+import { createMemoryHistory, createRouter } from "@tanstack/react-router";
+import { QueryClient } from "@tanstack/react-query";
 import { routeTree } from "../routeTree.gen.ts";
-
-const theme = createTheme({
-    colorSchemes: { dark: true },
-});
+import App from "#App.tsx";
 
 function createQueryClient() {
     return new QueryClient({
@@ -25,35 +12,11 @@ function createQueryClient() {
     });
 }
 
-function Providers({
-    queryClient,
-    router,
-}: {
-    queryClient: QueryClient;
-    router: ReturnType<typeof createRouter>;
-}) {
-    return (
-        <QueryClientProvider client={queryClient}>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <ThemeProvider theme={theme} noSsr>
-                    <CurrentUserProvider>
-                        <PlayerVisitsProvider>
-                            <KnownAliasesProvider>
-                                {/* @ts-expect-error -- test router type mismatch */}
-                                <RouterProvider router={router} />
-                            </KnownAliasesProvider>
-                        </PlayerVisitsProvider>
-                    </CurrentUserProvider>
-                </ThemeProvider>
-            </LocalizationProvider>
-        </QueryClientProvider>
-    );
-}
-
 /**
  * Render the real app route tree navigated to a specific URL.
  * Use this for components that depend on Route.useSearch/useParams/useLoaderDeps.
  */
+// Render the real app at a given route
 export function renderAppRoute(
     initialEntry: string,
     options: Omit<RenderOptions, "wrapper"> = {},
@@ -68,8 +31,8 @@ export function renderAppRoute(
     });
 
     const result = render(
-        <Providers queryClient={queryClient} router={router} />,
+        <App router={router} queryClient={queryClient} />,
         options,
     );
-    return { ...result, queryClient, router };
+    return { rendered: result, queryClient, router };
 }

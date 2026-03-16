@@ -1,33 +1,41 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderAppRoute } from "#test/render.tsx";
 import { TEST_UUID, TEST_USERNAME } from "#mocks/data.ts";
 
 describe("Home page", () => {
-    beforeEach(() => {
-        renderAppRoute("/");
-    });
-
     it("renders player search input", async () => {
+        const { rendered } = renderAppRoute("/");
+
         await waitFor(() => {
             expect(screen.getByRole("combobox")).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("contains meta description about Prism Overlay", async () => {
+        const { rendered } = renderAppRoute("/");
+
         await waitFor(() => {
             expect(
                 document.querySelector('meta[content*="Prism Overlay"]'),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("contains canonical link", async () => {
+        const { rendered } = renderAppRoute("/");
+
         await waitFor(() => {
             expect(
                 document.querySelector('link[href="https://prismoverlay.com"]'),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 });
 
@@ -46,11 +54,13 @@ describe("Home page with favorites", () => {
                 },
             }),
         );
-        renderAppRoute("/");
+        const { rendered } = renderAppRoute("/");
 
         await waitFor(() => {
             expect(screen.getByText(TEST_USERNAME)).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("renders delete button with correct aria-label", async () => {
@@ -63,23 +73,27 @@ describe("Home page with favorites", () => {
                 },
             }),
         );
-        renderAppRoute("/");
+        const { rendered } = renderAppRoute("/");
 
         await waitFor(() => {
             expect(
                 screen.getByLabelText(`Remove ${TEST_USERNAME} from favorites`),
             ).toBeInTheDocument();
         });
+
+        rendered.unmount();
     });
 
     it("does not render favorites section when localStorage is empty", async () => {
-        renderAppRoute("/");
+        const { rendered } = renderAppRoute("/");
 
         await waitFor(() => {
             expect(screen.getByRole("combobox")).toBeInTheDocument();
         });
 
         expect(screen.queryByText(TEST_USERNAME)).not.toBeInTheDocument();
+
+        rendered.unmount();
     });
 
     it("removes favorite from localStorage when delete button is clicked", async () => {
@@ -92,7 +106,7 @@ describe("Home page with favorites", () => {
                 },
             }),
         );
-        renderAppRoute("/");
+        const { rendered } = renderAppRoute("/");
 
         await waitFor(() => {
             expect(screen.getByText(TEST_USERNAME)).toBeInTheDocument();
@@ -113,5 +127,7 @@ describe("Home page with favorites", () => {
         expect(stored).not.toBeNull();
         const parsed = JSON.parse(stored ?? "{}") as Record<string, unknown>;
         expect(parsed[TEST_UUID]).toBeUndefined();
+
+        rendered.unmount();
     });
 });

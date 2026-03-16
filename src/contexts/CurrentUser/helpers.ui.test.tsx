@@ -20,14 +20,14 @@ describe("persistCurrentUser", () => {
     });
 
     test("throws on non-normalized UUID", () => {
-        expect(() => persistCurrentUser("not-a-uuid")).toThrow(
+        expect(() => { persistCurrentUser("not-a-uuid"); }).toThrow(
             "UUID not normalized",
         );
     });
 
     test("throws on UUID without dashes", () => {
         expect(() =>
-            persistCurrentUser("aaaaaaaabbbbccccddddeeeeeeeeeeee"),
+            { persistCurrentUser("aaaaaaaabbbbccccddddeeeeeeeeeeee"); },
         ).toThrow("UUID not normalized");
     });
 });

@@ -3,7 +3,6 @@ import { visitPlayer, removePlayerVisits, orderPlayers } from "./helpers.ts";
 
 const UUID_A = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const UUID_B = "11111111-2222-3333-4444-555555555555";
-const UUID_C = "99999999-8888-7777-6666-555555555555";
 
 describe("visitPlayer", () => {
     test("adds a new player with visit count 1", () => {
@@ -132,4 +131,3 @@ describe("orderPlayers", () => {
         expect(orderPlayers(visits)).toEqual([UUID_B]);
     });
 });
-

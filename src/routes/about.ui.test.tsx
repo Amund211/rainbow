@@ -1,13 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderAppRoute } from "#test/render.tsx";
 
 describe("About page", () => {
-    beforeEach(() => {
-        renderAppRoute("/about");
-    });
-
     it("renders Discord section with invite link", async () => {
+        const { rendered } = renderAppRoute("/about");
+
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Discord" }),
@@ -19,9 +17,13 @@ describe("About page", () => {
             "href",
             "https://discord.gg/k4FGUnEHYg",
         );
+
+        rendered.unmount();
     });
 
     it("renders Disclaimer section", async () => {
+        const { rendered } = renderAppRoute("/about");
+
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Disclaimer" }),
@@ -30,6 +32,8 @@ describe("About page", () => {
         expect(
             screen.getByText(/not associated with or endorsed by Mojang/),
         ).toBeInTheDocument();
+
+        rendered.unmount();
     });
 
     it("renders Privacy section", async () => {
@@ -44,11 +48,15 @@ describe("About page", () => {
     });
 
     it("renders Hypixel API Policy section", async () => {
+        const { rendered } = renderAppRoute("/about");
+
         await waitFor(() => {
             expect(
                 screen.getByRole("heading", { name: "Hypixel API Policy" }),
             ).toBeInTheDocument();
         });
         expect(screen.getByText("Hypixel API policy")).toBeInTheDocument();
+
+        rendered.unmount();
     });
 });
