@@ -13,35 +13,41 @@ const { version: reactVersion } = require("react/package.json") as {
 // Derive rules from plugins' recommended configs so we don't have to maintain
 // them manually. New recommended rules are picked up automatically on plugin updates.
 //
-// Note: 'react-hooks' is a reserved name in oxlint (implemented natively), so
-// eslint-plugin-react-hooks must be aliased. We remap the 'react-hooks/' prefix
-// to 'react-hooks-js/' accordingly.
+// Note: 'react-hooks' is a reserved name in oxlint (implemented natively as part
+// of the 'react' plugin), so eslint-plugin-react-hooks must be aliased. We remap
+// the 'react-hooks/' prefix to 'react-hooks-js/' accordingly.
 // eslint-plugin-react-hooks v7 recommended-latest includes both core hooks rules
 // AND all React Compiler rules (formerly in eslint-plugin-react-compiler).
-const reactHooksRecommendedRules = Object.fromEntries(
-    Object.entries(
-        (
-            require("eslint-plugin-react-hooks") as {
-                configs: {
-                    flat: {
-                        "recommended-latest": {
-                            rules: Record<
-                                string,
-                                string | [string, ...unknown[]]
-                            >;
-                        };
+const reactHooksRecommendedRules: DummyRuleMap = (() => {
+    const { rules } = (
+        require("eslint-plugin-react-hooks") as {
+            configs: {
+                flat: {
+                    "recommended-latest": {
+                        rules: Record<string, string | [string, ...unknown[]]>;
                     };
                 };
-            }
-        ).configs.flat["recommended-latest"].rules,
-    ).map(([key, value]) => [
-        key.replace("react-hooks/", "react-hooks-js/"),
-        value,
-    ]),
-) as DummyRuleMap;
+            };
+        }
+    ).configs.flat["recommended-latest"];
 
-const tanstackQueryRecommendedRules = Object.fromEntries(
-    (
+    if (!rules || Object.keys(rules).length === 0) {
+        throw new Error(
+            "Failed to extract rules from eslint-plugin-react-hooks " +
+                "recommended-latest. The plugin structure may have changed.",
+        );
+    }
+
+    return Object.fromEntries(
+        Object.entries(rules).map(([key, value]) => [
+            key.replace("react-hooks/", "react-hooks-js/"),
+            value,
+        ]),
+    ) as DummyRuleMap;
+})();
+
+const tanstackQueryRecommendedRules: DummyRuleMap = (() => {
+    const configs = (
         require("@tanstack/eslint-plugin-query") as {
             configs: {
                 "flat/recommended": Array<{
@@ -49,8 +55,21 @@ const tanstackQueryRecommendedRules = Object.fromEntries(
                 }>;
             };
         }
-    ).configs["flat/recommended"].flatMap((c) => Object.entries(c.rules ?? {})),
-) as DummyRuleMap;
+    ).configs["flat/recommended"];
+
+    const rules = Object.fromEntries(
+        configs.flatMap((c) => Object.entries(c.rules ?? {})),
+    ) as DummyRuleMap;
+
+    if (Object.keys(rules).length === 0) {
+        throw new Error(
+            "Failed to extract rules from @tanstack/eslint-plugin-query " +
+                "flat/recommended. The plugin structure may have changed.",
+        );
+    }
+
+    return rules;
+})();
 
 export default defineConfig({
     plugins: ["typescript", "react"],
