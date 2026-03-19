@@ -1,4 +1,5 @@
 import { defineConfig } from "oxlint";
+import type { DummyRuleMap } from "oxlint";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -9,12 +10,55 @@ const { version: reactVersion } = require("react/package.json") as {
     version: string;
 };
 
+// Derive rules from plugins' recommended configs so we don't have to maintain
+// them manually. New recommended rules are picked up automatically on plugin updates.
+//
+// Note: 'react-hooks' is a reserved name in oxlint (implemented natively), so
+// eslint-plugin-react-hooks must be aliased. We remap the 'react-hooks/' prefix
+// to 'react-hooks-js/' accordingly.
+// eslint-plugin-react-hooks v7 recommended-latest includes both core hooks rules
+// AND all React Compiler rules (formerly in eslint-plugin-react-compiler).
+const reactHooksRecommendedRules = Object.fromEntries(
+    Object.entries(
+        (
+            require("eslint-plugin-react-hooks") as {
+                configs: {
+                    flat: {
+                        "recommended-latest": {
+                            rules: Record<
+                                string,
+                                string | [string, ...unknown[]]
+                            >;
+                        };
+                    };
+                };
+            }
+        ).configs.flat["recommended-latest"].rules,
+    ).map(([key, value]) => [
+        key.replace("react-hooks/", "react-hooks-js/"),
+        value,
+    ]),
+) as DummyRuleMap;
+
+const tanstackQueryRecommendedRules = Object.fromEntries(
+    (
+        require("@tanstack/eslint-plugin-query") as {
+            configs: {
+                "flat/recommended": Array<{
+                    rules?: Record<string, string | [string, ...unknown[]]>;
+                }>;
+            };
+        }
+    ).configs["flat/recommended"].flatMap((c) => Object.entries(c.rules ?? {})),
+) as DummyRuleMap;
+
 export default defineConfig({
     plugins: ["typescript", "react"],
     jsPlugins: [
-        // React Compiler rules (no native oxlint equivalent)
-        "eslint-plugin-react-compiler",
-        // TanStack Query rules (no native oxlint equivalent)
+        // 'react-hooks' is reserved in oxlint (native implementation), so we alias.
+        // recommended-latest covers core hooks rules + React Compiler rules.
+        { name: "react-hooks-js", specifier: "eslint-plugin-react-hooks" },
+        // TanStack Query rules (no native oxlint equivalent).
         "@tanstack/eslint-plugin-query",
     ],
     categories: {
@@ -31,17 +75,15 @@ export default defineConfig({
     },
     ignorePatterns: ["dist", "src/routeTree.gen.ts"],
     rules: {
-        // Not needed with the new JSX transform (React 17+)
+        // Rules derived from plugin recommended configs (spread above). The rules
+        // section below contains only overrides to the defaults above.
+        ...reactHooksRecommendedRules,
+        ...tanstackQueryRecommendedRules,
+        // Not needed with the new JSX transform (React 17+).
         "react/react-in-jsx-scope": "off",
-        // React Compiler enforcement via JS plugin
-        "react-compiler/react-compiler": "error",
-        // TanStack Query recommended rules via JS plugin
-        "@tanstack/query/exhaustive-deps": "error",
-        "@tanstack/query/no-rest-destructuring": "warn",
-        "@tanstack/query/stable-query-client": "error",
-        "@tanstack/query/no-unstable-deps": "error",
-        "@tanstack/query/infinite-query-property-order": "error",
-        "@tanstack/query/no-void-query-fn": "error",
-        "@tanstack/query/mutation-property-order": "error",
+        // Native oxlint already covers exhaustive-deps (as react/exhaustive-deps)
+        // via the correctness category. Disable the JS plugin duplicate to avoid
+        // reporting the same violation twice.
+        "react-hooks-js/exhaustive-deps": "off",
     },
 });
