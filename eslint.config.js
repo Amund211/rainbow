@@ -6,6 +6,8 @@ import tseslint from "typescript-eslint";
 import reactCompiler from "eslint-plugin-react-compiler";
 import react from "eslint-plugin-react";
 import pluginQuery from "@tanstack/eslint-plugin-query";
+import oxlint from "eslint-plugin-oxlint";
+import { oxlintBaseConfig } from "./oxlint.config.base.js";
 
 export default tseslint.config(
     { ignores: ["dist", "src/routeTree.gen.ts"] },
@@ -48,4 +50,5 @@ export default tseslint.config(
         },
     },
     ...pluginQuery.configs["flat/recommended"],
+    ...oxlint.buildFromOxlintConfig(oxlintBaseConfig),
 );
