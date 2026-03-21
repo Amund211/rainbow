@@ -6,13 +6,7 @@ import { isNormalizedUUID } from "#helpers/uuid.ts";
 export const CurrentUserProvider: React.FC<{
     children: React.ReactNode;
 }> = ({ children }) => {
-    const persistedCurrentUser = usePersistedCurrentUser();
-    const [currentUser, setCurrentUser] = React.useState(persistedCurrentUser);
-
-    // Update the state on this page when the persisted value has changed in another tab
-    React.useEffect(() => {
-        setCurrentUser(persistedCurrentUser);
-    }, [persistedCurrentUser]);
+    const [persistedCurrentUser, refresh] = usePersistedCurrentUser();
 
     const setCurrentUserAndPersist = (newUUID: string | null) => {
         if (newUUID !== null && !isNormalizedUUID(newUUID)) {
@@ -20,13 +14,13 @@ export const CurrentUserProvider: React.FC<{
         }
 
         persistCurrentUser(newUUID);
-        setCurrentUser(newUUID);
+        refresh();
     };
 
     return (
         <CurrentUserContext.Provider
             value={{
-                currentUser,
+                currentUser: persistedCurrentUser,
                 setCurrentUser: setCurrentUserAndPersist,
             }}
         >

@@ -12,24 +12,16 @@ import { isNormalizedUUID } from "#helpers/uuid.ts";
 export const PlayerVisitsProvider: React.FC<{
     children: React.ReactNode;
 }> = ({ children }) => {
-    const persistedPlayerVisits = usePersistedPlayerVisits();
-    const [playerVisits, setPlayerVisits] = React.useState(
-        persistedPlayerVisits,
-    );
-
-    // Update the state on this page when the persisted value has changed in another tab
-    React.useEffect(() => {
-        setPlayerVisits(persistedPlayerVisits);
-    }, [persistedPlayerVisits]);
+    const [persistedPlayerVisits, refresh] = usePersistedPlayerVisits();
 
     const visitPlayerAndPersist = (uuid: string) => {
         if (!isNormalizedUUID(uuid)) {
             throw new Error(`UUID not normalized: ${uuid}`);
         }
 
-        const newVisits = visitPlayer(playerVisits, uuid);
-        setPlayerVisits(newVisits);
+        const newVisits = visitPlayer(persistedPlayerVisits, uuid);
         persistPlayerVisits(newVisits);
+        refresh();
     };
 
     const removePlayerVisitsAndPersist = (uuid: string) => {
@@ -37,12 +29,12 @@ export const PlayerVisitsProvider: React.FC<{
             throw new Error(`UUID not normalized: ${uuid}`);
         }
 
-        const newVisits = removePlayerVisits(playerVisits, uuid);
-        setPlayerVisits(newVisits);
+        const newVisits = removePlayerVisits(persistedPlayerVisits, uuid);
         persistPlayerVisits(newVisits);
+        refresh();
     };
 
-    const favoriteUUIDs = orderPlayers(playerVisits);
+    const favoriteUUIDs = orderPlayers(persistedPlayerVisits);
 
     const orderUUIDsByScore = (
         uuids: string[],

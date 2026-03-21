@@ -134,7 +134,7 @@ export const presentRecentKnownAliases = (
     );
 };
 
-export const usePersistedKnownAliases = (): KnownAliases => {
-    const stored = useLocalStorage(localStorageKey);
-    return parseStoredAliases(stored);
+export const usePersistedKnownAliases = (): [KnownAliases, () => void] => {
+    const [stored, refresh] = useLocalStorage(localStorageKey);
+    return [parseStoredAliases(stored), refresh];
 };

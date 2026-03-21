@@ -27,8 +27,8 @@ export const persistCurrentUser = (uuid: string | null): void => {
     }
 };
 
-export const usePersistedCurrentUser = (): string | null => {
-    const stored = useLocalStorage(localStorageKey);
+export const usePersistedCurrentUser = (): [string | null, () => void] => {
+    const [stored, refresh] = useLocalStorage(localStorageKey);
 
-    return parseStoredUUID(stored);
+    return [parseStoredUUID(stored), refresh];
 };

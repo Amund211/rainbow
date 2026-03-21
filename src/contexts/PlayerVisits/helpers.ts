@@ -128,8 +128,8 @@ export const persistPlayerVisits = (visits: PlayerVisits) => {
     localStorage.setItem(localStorageKey, JSON.stringify(visits));
 };
 
-export const usePersistedPlayerVisits = (): PlayerVisits => {
-    const stored = useLocalStorage(localStorageKey);
+export const usePersistedPlayerVisits = (): [PlayerVisits, () => void] => {
+    const [stored, refresh] = useLocalStorage(localStorageKey);
 
-    return parseStoredInfo(stored);
+    return [parseStoredInfo(stored), refresh];
 };

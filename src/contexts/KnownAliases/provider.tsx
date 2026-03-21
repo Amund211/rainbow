@@ -11,15 +11,7 @@ import { isNormalizedUUID } from "#helpers/uuid.ts";
 export const KnownAliasesProvider: React.FC<{
     children: React.ReactNode;
 }> = ({ children }) => {
-    const persistedKnownAliases = usePersistedKnownAliases();
-    const [knownAliases, setKnownAliases] = React.useState(
-        persistedKnownAliases,
-    );
-
-    // Update the state on this page when the persisted value has changed in another tab
-    React.useEffect(() => {
-        setKnownAliases(persistedKnownAliases);
-    }, [persistedKnownAliases]);
+    const [persistedKnownAliases, refresh] = usePersistedKnownAliases();
 
     const addKnownAliasAndPersist = (alias: {
         uuid: string;
@@ -29,15 +21,15 @@ export const KnownAliasesProvider: React.FC<{
             throw new Error(`UUID not normalized: ${alias.uuid}`);
         }
 
-        const newAliases = addKnownAlias(knownAliases, alias);
-        setKnownAliases(newAliases);
+        const newAliases = addKnownAlias(persistedKnownAliases, alias);
         persistKnownAliases(newAliases);
+        refresh();
     };
 
     return (
         <KnownAliasesContext.Provider
             value={{
-                knownAliases: presentRecentKnownAliases(knownAliases),
+                knownAliases: presentRecentKnownAliases(persistedKnownAliases),
                 addKnownAlias: addKnownAliasAndPersist,
             }}
         >
