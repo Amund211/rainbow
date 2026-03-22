@@ -2,26 +2,29 @@ import React from "react";
 import { PlayerVisitsContext } from "./context.ts";
 import {
     orderPlayers,
-    persistPlayerVisits,
+    parseStoredPlayerVisits,
     removePlayerVisits,
-    usePersistedPlayerVisits,
     visitPlayer,
+    localStorageKey,
+    stringifyPlayerVisits,
 } from "./helpers.ts";
 import { isNormalizedUUID } from "#helpers/uuid.ts";
+import { useLocalStorage } from "#hooks/useLocalStorage.ts";
 
 export const PlayerVisitsProvider: React.FC<{
     children: React.ReactNode;
 }> = ({ children }) => {
-    const [persistedPlayerVisits, refresh] = usePersistedPlayerVisits();
+    const [storedPlayerVisits, setStoredPlayerVisits] =
+        useLocalStorage(localStorageKey);
+    const playerVisits = parseStoredPlayerVisits(storedPlayerVisits);
 
     const visitPlayerAndPersist = (uuid: string) => {
         if (!isNormalizedUUID(uuid)) {
             throw new Error(`UUID not normalized: ${uuid}`);
         }
 
-        const newVisits = visitPlayer(persistedPlayerVisits, uuid);
-        persistPlayerVisits(newVisits);
-        refresh();
+        const newVisits = visitPlayer(playerVisits, uuid);
+        setStoredPlayerVisits(stringifyPlayerVisits(newVisits));
     };
 
     const removePlayerVisitsAndPersist = (uuid: string) => {
@@ -29,12 +32,11 @@ export const PlayerVisitsProvider: React.FC<{
             throw new Error(`UUID not normalized: ${uuid}`);
         }
 
-        const newVisits = removePlayerVisits(persistedPlayerVisits, uuid);
-        persistPlayerVisits(newVisits);
-        refresh();
+        const newVisits = removePlayerVisits(playerVisits, uuid);
+        setStoredPlayerVisits(stringifyPlayerVisits(newVisits));
     };
 
-    const favoriteUUIDs = orderPlayers(persistedPlayerVisits);
+    const favoriteUUIDs = orderPlayers(playerVisits);
 
     const orderUUIDsByScore = (
         uuids: string[],

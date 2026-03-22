@@ -1,14 +1,29 @@
 import React from "react";
 
-const makeSubscribe = (
-    key: string,
-    onSubscribe: (onStoreChange: () => void) => void,
-    onUnsubscribe: () => void,
-) => {
-    return (onStoreChange: () => void) => {
-        onSubscribe(onStoreChange);
+declare global {
+    interface WindowEventMap {
+        // Assert that we will only publish this event with that name
+        // so we're allowed to assign the handler
+        useLocalStorageWrite: CustomEvent<UseLocalStorageWriteEventPayload>;
+    }
+}
 
-        const listener = (e: StorageEvent) => {
+interface UseLocalStorageWriteEventPayload {
+    key: string;
+    value: string | null;
+}
+
+const makeSubscribe = (key: string) => {
+    return (onStoreChange: () => void) => {
+        const customEventListener = (
+            e: CustomEvent<UseLocalStorageWriteEventPayload>,
+        ) => {
+            if (e.detail.key !== key) return;
+
+            onStoreChange();
+        };
+
+        const storageListener = (e: StorageEvent) => {
             // `key` is `null` on clear -> process it
             // https://developer.mozilla.org/en-US/docs/Web/API/Window/storage_event#event_properties
             if (e.key !== key && e.key != null) return;
@@ -16,11 +31,18 @@ const makeSubscribe = (
             onStoreChange();
         };
 
-        window.addEventListener("storage", listener);
+        // Listen to our custom event that we dispatch on write to localstorage to get
+        // immediate updates in the same tab.
+        // Listen to the storage event to get updates from other tabs.
+        window.addEventListener("useLocalStorageWrite", customEventListener);
+        window.addEventListener("storage", storageListener);
 
         return () => {
-            onUnsubscribe();
-            window.removeEventListener("storage", listener);
+            window.removeEventListener(
+                "useLocalStorageWrite",
+                customEventListener,
+            );
+            window.removeEventListener("storage", storageListener);
         };
     };
 };
@@ -31,29 +53,35 @@ const makeGetSnapshot = (key: string) => {
     };
 };
 
-function noop() {
-    // no-op
-}
-
 /**
- * @returns [value, refresh], where `value` is the current value of the localStorage item, and `refresh` is a function that can be called to imperatively refresh the value from the outside.
+ * Create a write function for a given localStorage key, which updates any
+ * useLocalStorage hooks subscribed to that key.
  */
-export const useLocalStorage = (key: string): [string | null, () => void] => {
-    // Keep the onStoreChange callback so we can imperatively refresh from the outside
-    // T
-    const [refresh, setRefresh] = React.useState<() => void>(() => noop);
+export const makeLocalStorageWrite = (key: string) => {
+    return (value: string | null) => {
+        if (value === null) {
+            localStorage.removeItem(key);
+        } else {
+            localStorage.setItem(key, value);
+        }
 
-    const subscribe = React.useMemo(() => {
-        const onSubscribe = (onStoreChange: () => void) => {
-            setRefresh(() => onStoreChange);
-        };
-        const onUnsubscribe = () => {
-            setRefresh(() => noop);
-        };
-        return makeSubscribe(key, onSubscribe, onUnsubscribe);
-    }, [key]);
+        window.dispatchEvent(
+            new CustomEvent<UseLocalStorageWriteEventPayload>(
+                "useLocalStorageWrite",
+                {
+                    detail: { key, value },
+                },
+            ),
+        );
+    };
+};
 
+export const useLocalStorage = (
+    key: string,
+): [string | null, (value: string | null) => void] => {
+    const subscribe = React.useMemo(() => makeSubscribe(key), [key]);
     const getSnapshot = React.useMemo(() => makeGetSnapshot(key), [key]);
+    const write = React.useMemo(() => makeLocalStorageWrite(key), [key]);
 
-    return [React.useSyncExternalStore(subscribe, getSnapshot), refresh];
+    return [React.useSyncExternalStore(subscribe, getSnapshot), write];
 };

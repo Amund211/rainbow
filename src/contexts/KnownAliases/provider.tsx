@@ -2,16 +2,20 @@ import React from "react";
 import { KnownAliasesContext } from "./context.ts";
 import {
     addKnownAlias,
-    persistKnownAliases,
+    parseStoredAliases,
     presentRecentKnownAliases,
-    usePersistedKnownAliases,
+    localStorageKey,
+    stringifyKnownAliases,
 } from "./helpers.ts";
 import { isNormalizedUUID } from "#helpers/uuid.ts";
+import { useLocalStorage } from "#hooks/useLocalStorage.ts";
 
 export const KnownAliasesProvider: React.FC<{
     children: React.ReactNode;
 }> = ({ children }) => {
-    const [persistedKnownAliases, refresh] = usePersistedKnownAliases();
+    const [storedKnownAliases, setStoredKnownAliases] =
+        useLocalStorage(localStorageKey);
+    const knownAliases = parseStoredAliases(storedKnownAliases);
 
     const addKnownAliasAndPersist = (alias: {
         uuid: string;
@@ -21,15 +25,14 @@ export const KnownAliasesProvider: React.FC<{
             throw new Error(`UUID not normalized: ${alias.uuid}`);
         }
 
-        const newAliases = addKnownAlias(persistedKnownAliases, alias);
-        persistKnownAliases(newAliases);
-        refresh();
+        const newAliases = addKnownAlias(knownAliases, alias);
+        setStoredKnownAliases(stringifyKnownAliases(newAliases));
     };
 
     return (
         <KnownAliasesContext.Provider
             value={{
-                knownAliases: presentRecentKnownAliases(persistedKnownAliases),
+                knownAliases: presentRecentKnownAliases(knownAliases),
                 addKnownAlias: addKnownAliasAndPersist,
             }}
         >
