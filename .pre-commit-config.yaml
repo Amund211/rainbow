@@ -11,10 +11,11 @@ repos:
           - id: check-merge-conflict
           - id: check-added-large-files
 
-    - repo: https://github.com/pre-commit/mirrors-prettier
-      rev: v4.0.0-alpha.8
+    - repo: https://github.com/oxc-project/mirrors-oxfmt
+      rev: 3c7999c43590548921418ba746ae49d2c0851222  # v0.41.0 - no version tags yet, use commit SHA
       hooks:
-          - id: prettier
+          - id: oxfmt
+            additional_dependencies: ["oxfmt@0.41.0"]
 
     - repo: local
       hooks:
