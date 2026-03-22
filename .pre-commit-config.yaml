@@ -11,15 +11,10 @@ repos:
           - id: check-merge-conflict
           - id: check-added-large-files
 
-    - repo: https://github.com/oxc-project/mirrors-oxfmt
-      rev: 3c7999c43590548921418ba746ae49d2c0851222
-      hooks:
-          - id: oxfmt
-
     - repo: local
       hooks:
-          - id: eslint
-            name: ESLint
+          - id: lint
+            name: lint
             entry: npm run "lint:fix"
             language: system
             pass_filenames: false
