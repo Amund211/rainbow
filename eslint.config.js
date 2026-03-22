@@ -48,4 +48,10 @@ export default tseslint.config(
         },
     },
     ...pluginQuery.configs["flat/recommended"],
+    {
+        files: ["src/routes/**/*.tsx"],
+        rules: {
+            "react-refresh/only-export-components": "off",
+        },
+    },
 );
