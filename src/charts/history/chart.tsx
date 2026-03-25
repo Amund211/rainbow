@@ -244,7 +244,8 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
             data={mutableChartData}
             responsive
             width="100%"
-            height={300}
+            height="100%"
+            style={{ minHeight: 300, minWidth: 100 }}
             syncId="history-chart"
             syncMethod="value"
         >
@@ -354,6 +355,7 @@ export const SimpleHistoryChart: React.FC<SimpleHistoryChartProps> = ({
             responsive
             width="100%"
             height={50}
+            style={{ minWidth: 100 }}
             syncId="history-chart"
             syncMethod="value"
         >
