@@ -1,4 +1,3 @@
-import { queryClient } from "#queryClient.ts";
 import { getUsernameQueryOptions } from "#queries/username.ts";
 import { getWrappedQueryOptions, type WrappedData } from "#queries/wrapped.ts";
 import { type Session } from "#queries/sessions.ts";
@@ -59,7 +58,11 @@ export const Route = createFileRoute("/wrapped/$uuid")({
     loaderDeps: ({ search: { year } }) => {
         return { year };
     },
-    loader: ({ params: { uuid: rawUUID }, deps: { year } }) => {
+    loader: ({
+        params: { uuid: rawUUID },
+        deps: { year },
+        context: { queryClient },
+    }) => {
         const uuid = normalizeUUID(rawUUID);
         if (!uuid) return;
 
@@ -1912,6 +1915,12 @@ function RouteComponent() {
     const [exportApi, setExportApi] = React.useState<{
         download: () => Promise<void>;
     } | null>(null);
+    const handleExportReady = React.useCallback(
+        (api: { download: () => Promise<void> }) => {
+            setExportApi(api);
+        },
+        [],
+    );
 
     // Register visits for player on page load
     const [initialUUID] = React.useState(uuid);
@@ -1994,9 +2003,7 @@ function RouteComponent() {
                 />
                 {wrappedData?.yearStats && username && (
                     <ExportImageMount
-                        onReady={(api) => {
-                            setExportApi(api);
-                        }}
+                        onReady={handleExportReady}
                         filename={`${username}-${year.toString()}-wrapped.png`}
                     >
                         <ExportStatsCard

@@ -1,50 +1,25 @@
-import "fake-indexeddb/auto";
+import { beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 
-import "@testing-library/jest-dom/vitest";
-import { cleanup, configure } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll, vi } from "vitest";
-import { server } from "#mocks/server.ts";
+import { worker } from "#mocks/worker.ts";
 
-// Suppress Recharts ResponsiveContainer dimension warnings in jsdom.
-// jsdom has no layout engine, so getBoundingClientRect() returns zeros and
-// ResponsiveContainer calculates -1 dimensions, producing ~100 warnings per run.
-// See: https://github.com/recharts/recharts/issues/2268
-// See: https://github.com/jsdom/jsdom/issues/653
-const originalWarn = console.warn;
-console.warn = (...args: Parameters<typeof console.warn>) => {
-    if (
-        typeof args[0] === "string" &&
-        args[0].includes("of chart should be greater than 0")
-    ) {
-        return;
-    }
-    originalWarn(...args);
-};
-
-configure({ asyncUtilTimeout: 5000 });
-
-// jsdom does not implement window.matchMedia
-Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-    })),
+// Start the MSW service worker before all tests in the file, and stop it
+// after. This avoids the overhead of starting/stopping the service worker for
+// each individual test.
+beforeAll(async () => {
+    await worker.start({ onUnhandledRequest: "error", quiet: true });
 });
 
-beforeAll(() => {
-    server.listen({ onUnhandledRequest: "warn" });
+beforeEach(() => {
+    // Ensure localstorage doesn't leak between tests
+    localStorage.clear();
 });
+
 afterEach(() => {
-    server.resetHandlers();
-    cleanup();
+    // Remove any request handlers added in individual test cases so they
+    // don't affect subsequent tests.
+    worker.resetHandlers();
 });
+
 afterAll(() => {
-    server.close();
+    worker.stop();
 });

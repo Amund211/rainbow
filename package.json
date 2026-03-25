@@ -18,8 +18,11 @@
         "lint:fix": "run-p eslint:write prettier:write",
         "test": "vitest run",
         "test:unit": "vitest run --project unit",
+        "test:ui": "vitest run --project ui --browser.headless",
         "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage",
+        "test:watch:unit": "vitest --project unit",
+        "test:watch:ui": "vitest --project ui",
+        "test:coverage": "vitest run --coverage --browser.headless",
         "preview": "vite preview",
         "knip": "knip",
         "knip:fix": "knip --fix"
@@ -62,7 +65,8 @@
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^5.1.4",
-        "@vitest/coverage-v8": "^4.0.18",
+        "@vitest/browser-playwright": "^4.1.1",
+        "@vitest/coverage-v8": "^4.1.1",
         "eslint": "^9.39.2",
         "eslint-plugin-react": "^7.37.5",
         "eslint-plugin-react-compiler": "^19.0.0-beta-714736e-20250131",
@@ -79,7 +83,8 @@
         "typescript-eslint": "^8.56.1",
         "vite": "^7.3.1",
         "vite-plugin-react-click-to-component": "^4.2.0",
-        "vitest": "^4.0.18"
+        "vitest": "^4.1.1",
+        "vitest-browser-react": "^2.1.0"
     },
     "prettier": {
         "tabWidth": 4

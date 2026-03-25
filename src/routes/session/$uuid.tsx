@@ -1,4 +1,3 @@
-import { queryClient } from "#queryClient.ts";
 import { getUsernameQueryOptions } from "#queries/username.ts";
 import { timeIntervalsFromDefinition } from "#intervals.ts";
 import { HistoryChart, SimpleHistoryChart } from "#charts/history/chart.tsx";
@@ -97,6 +96,7 @@ export const Route = createFileRoute("/session/$uuid")({
     loader: ({
         params: { uuid: rawUUID },
         deps: { timeIntervals, trackingInterval },
+        context: { queryClient },
     }) => {
         const uuid = normalizeUUID(rawUUID);
         if (!uuid) return;
@@ -502,7 +502,10 @@ const Sessions: React.FC<SessionsProps> = ({
                                                 return formattedNumber;
                                             }
 
-                                            return value.toLocaleString(/*TODO: format based on stat type*/);
+                                            return value
+                                                .toLocaleString
+                                                /*TODO: format based on stat type*/
+                                                ();
                                         };
 
                                         const textColor: TypographyOwnProps["color"] =

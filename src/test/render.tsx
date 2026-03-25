@@ -1,7 +1,8 @@
-import { render, type RenderOptions } from "@testing-library/react";
-import { createMemoryHistory, createRouter } from "@tanstack/react-router";
+import { render } from "vitest-browser-react";
+
 import { QueryClient } from "@tanstack/react-query";
-import { routeTree } from "../routeTree.gen.ts";
+import { createAppRouter } from "#createRouter.ts";
+import { noopPersister } from "#test/persister.ts";
 import App from "#App.tsx";
 
 function createQueryClient() {
@@ -13,26 +14,20 @@ function createQueryClient() {
 }
 
 /**
- * Render the real app route tree navigated to a specific URL.
- * Use this for components that depend on Route.useSearch/useParams/useLoaderDeps.
+ * Render the real app, starting at a specific URL.
  */
-// Render the real app at a given route
-export function renderAppRoute(
-    initialEntry: string,
-    options: Omit<RenderOptions, "wrapper"> = {},
-) {
+export async function renderAppRoute(initialEntry: string) {
     const queryClient = createQueryClient();
+    const router = createAppRouter(queryClient);
 
-    const router = createRouter({
-        routeTree,
-        history: createMemoryHistory({ initialEntries: [initialEntry] }),
-        defaultPendingMinMs: 0,
-        context: undefined,
-    });
+    window.history.pushState({}, "", initialEntry);
 
-    const result = render(
-        <App router={router} queryClient={queryClient} />,
-        options,
+    const screen = await render(
+        <App
+            router={router}
+            queryClient={queryClient}
+            persister={noopPersister}
+        />,
     );
-    return { rendered: result, queryClient, router };
+    return { screen, queryClient, router };
 }
