@@ -213,6 +213,8 @@ const Sessions: React.FC<SessionsProps> = ({
         }),
     );
 
+    if (!localStorage.getItem("lkjlkjlkjlk")) throw new Error("Debugging");
+
     const renderHeader = (showExtrapolatedToggle?: JSX.Element) => (
         <Stack
             direction="row"
