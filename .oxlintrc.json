@@ -23,7 +23,13 @@
     "options": {
         "typeAware": true
     },
-  "rules": {
-    "vitest/no-importing-vitest-globals": "off"
-  }
+    "rules": {
+        "vitest/no-importing-vitest-globals": "off",
+        "typescript/prefer-readonly-parameter-types": [
+            "error",
+            {
+                "ignoreInferredTypes": true
+            }
+        ]
+    }
 }
