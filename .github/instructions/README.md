@@ -82,8 +82,8 @@ This starts the server at http://localhost:5173/ with proxy to production backen
 
 ### Core Commands (Use These Regularly)
 
-| Command              | Purpose              | Typical Duration | Critical Notes                            |
-| -------------------- | -------------------- | ---------------- | ----------------------------------------- |
+| Command                          | Purpose              | Typical Duration | Critical Notes                            |
+| -------------------------------- | -------------------- | ---------------- | ----------------------------------------- |
 | `pnpm install --frozen-lockfile` | Install dependencies | 30-60s           | Always run before other commands          |
 | `pnpm run lint:check`            | Check code style     | 10-30s           | Must pass for CI                          |
 | `pnpm test`                      | Run all tests        | 5-10s            | Requires Node 24+                         |
