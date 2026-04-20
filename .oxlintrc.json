@@ -117,6 +117,12 @@
             "error",
             { "includeExports": false, "allowSeparateTypeImports": true }
         ],
+        "typescript/prefer-readonly-parameter-types": [
+            "error",
+            {
+                "ignoreInferredTypes": true
+            }
+        ],
 
         "@tanstack/query/exhaustive-deps": "error",
         "@tanstack/query/no-rest-destructuring": "error",
