@@ -12,7 +12,6 @@ import {
 } from "recharts";
 import type { GamemodeKey, StatKey, VariantKey } from "#stats/keys.ts";
 import React from "react";
-import type { ReactNode } from "react";
 import { generateChartData } from "./data.ts";
 import { makeDataKey } from "./dataKeys.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
@@ -24,13 +23,13 @@ import { useSynchronizeCharts } from "#contexts/ChartSynchronizer/hooks.ts";
 import { useAssume } from "#hooks/useAssumption.ts";
 
 interface HistoryChartProps {
-    start: Date;
-    end: Date;
-    uuids: readonly string[];
-    gamemodes: readonly GamemodeKey[];
-    stats: readonly StatKey[];
-    variants: readonly VariantKey[];
-    limit: number;
+    readonly start: Date;
+    readonly end: Date;
+    readonly uuids: readonly string[];
+    readonly gamemodes: readonly GamemodeKey[];
+    readonly stats: readonly StatKey[];
+    readonly variants: readonly VariantKey[];
+    readonly limit: number;
 }
 
 type TimeDenomination = "year" | "month" | "day" | "hour";
@@ -58,8 +57,8 @@ const getSmallestTimeDenomination = (
 // string overrides all of these string unions, but we keep them here to be explicit about our intentions
 // oxlint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 interface KeyConfig<T extends StatKey | GamemodeKey | VariantKey | string> {
-    value: T;
-    shown: boolean;
+    readonly value: T;
+    readonly shown: boolean;
 }
 
 const contextAwareStatDisplayName = (
@@ -290,7 +289,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
             <Legend />
             <Tooltip
                 // oxlint-disable-next-line typescript/promise-function-async
-                labelFormatter={(label: ReactNode) => {
+                labelFormatter={(label) => {
                     if (typeof label === "number") {
                         return renderTimeFull(label);
                     }
@@ -310,13 +309,13 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
 };
 
 interface SimpleHistoryChartProps {
-    start: Date;
-    end: Date;
-    uuid: string;
-    gamemode: GamemodeKey;
-    stat: StatKey;
-    variant: VariantKey;
-    limit: number;
+    readonly start: Date;
+    readonly end: Date;
+    readonly uuid: string;
+    readonly gamemode: GamemodeKey;
+    readonly stat: StatKey;
+    readonly variant: VariantKey;
+    readonly limit: number;
 }
 
 export const SimpleHistoryChart: React.FC<SimpleHistoryChartProps> = ({
@@ -455,11 +454,11 @@ export const SimpleHistoryChart: React.FC<SimpleHistoryChartProps> = ({
 };
 
 interface LinesProps {
-    uuids: readonly string[];
-    gamemodes: readonly GamemodeKey[];
-    stats: readonly StatKey[];
-    variants: readonly VariantKey[];
-    uuidToUsername: Record<string, string | undefined>;
+    readonly uuids: readonly string[];
+    readonly gamemodes: readonly GamemodeKey[];
+    readonly stats: readonly StatKey[];
+    readonly variants: readonly VariantKey[];
+    readonly uuidToUsername: Readonly<Record<string, string | undefined>>;
 }
 
 const STROKES = [

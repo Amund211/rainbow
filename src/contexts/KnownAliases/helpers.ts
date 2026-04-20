@@ -6,13 +6,13 @@ export const localStorageKey = "knownAliases";
 const loadedAt = new Date();
 
 interface AliasInfo {
-    username: string;
-    lastResolved: Date;
+    readonly username: string;
+    readonly lastResolved: Date;
 }
 
-export type KnownAliases = Record<string, AliasInfo[] | undefined>;
+export type KnownAliases = Record<string, readonly AliasInfo[] | undefined>;
 
-export const stringifyKnownAliases = (aliases: KnownAliases): string => {
+export const stringifyKnownAliases = (aliases: Readonly<KnownAliases>): string => {
     const toStore: Record<string, { username: string; lastResolved: string }[]> = {};
 
     for (const [uuid, aliasInfos] of Object.entries(aliases)) {
@@ -95,8 +95,8 @@ export const parseStoredAliases = (stored: string | null): KnownAliases => {
 };
 
 export const addKnownAlias = (
-    aliases: KnownAliases,
-    alias: { uuid: string; username: string },
+    aliases: Readonly<KnownAliases>,
+    alias: { readonly uuid: string; readonly username: string },
 ) => {
     if (!isNormalizedUUID(alias.uuid)) {
         throw new Error(`UUID not normalized: ${alias.uuid}`);
@@ -119,8 +119,8 @@ export const addKnownAlias = (
 
 const writeToLocalStorage = makeLocalStorageWrite(localStorageKey);
 export const addKnownAliasAndPersist = (alias: {
-    uuid: string;
-    username: string;
+    readonly uuid: string;
+    readonly username: string;
 }): void => {
     const aliases = parseStoredAliases(localStorage.getItem(localStorageKey));
     const newAliases = addKnownAlias(aliases, alias);
@@ -130,7 +130,7 @@ export const addKnownAliasAndPersist = (alias: {
 
 // Convert known aliases to a map uuid -> username[] while filtering out old aliases
 export const presentRecentKnownAliases = (
-    aliases: KnownAliases,
+    aliases: Readonly<KnownAliases>,
 ): Record<string, string[] | undefined> => {
     return Object.fromEntries(
         Object.entries(aliases).map(([uuid, uuidAliases]) => [

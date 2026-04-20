@@ -10,6 +10,7 @@ import { PlayerVisitsProvider } from "#contexts/PlayerVisits/provider.tsx";
 import { KnownAliasesProvider } from "#contexts/KnownAliases/provider.tsx";
 import type { AppRouter } from "#createRouter.ts";
 import type { QueryClient } from "@tanstack/react-query";
+import React from "react";
 
 const theme = createTheme({
     colorSchemes: {
@@ -18,12 +19,12 @@ const theme = createTheme({
 });
 
 interface AppProps {
-    router: AppRouter;
-    queryClient: QueryClient;
-    persister: Persister;
+    readonly router: AppRouter;
+    readonly queryClient: QueryClient;
+    readonly persister: Persister;
 }
 
-export function App({ router, queryClient, persister }: AppProps) {
+export const App: React.FC<AppProps> = ({ router, queryClient, persister }) => {
     return (
         <PersistQueryClientProvider
             client={queryClient}
@@ -47,4 +48,4 @@ export function App({ router, queryClient, persister }: AppProps) {
             </LocalizationProvider>
         </PersistQueryClientProvider>
     );
-}
+};

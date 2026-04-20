@@ -5,13 +5,13 @@ export const localStorageKey = "playerVisits";
 const loadedAt = new Date();
 
 interface PlayerInfo {
-    visitedCount: number;
-    lastVisited: Date;
+    readonly visitedCount: number;
+    readonly lastVisited: Date;
 }
 
 export type PlayerVisits = Record<string, PlayerInfo | undefined>;
 
-export const stringifyPlayerVisits = (visits: PlayerVisits): string => {
+export const stringifyPlayerVisits = (visits: Readonly<PlayerVisits>): string => {
     const toStore: Record<string, { visitedCount: number; lastVisited: string }> = {};
 
     for (const [uuid, info] of Object.entries(visits)) {
@@ -93,7 +93,7 @@ const computeScore = (info: PlayerInfo): number => {
     return info.visitedCount * lastVisitedWeight(info.lastVisited);
 };
 
-export const orderPlayers = (players: PlayerVisits): string[] => {
+export const orderPlayers = (players: Readonly<PlayerVisits>): string[] => {
     return Object.entries(players)
         .map(([uuid, info]) => {
             if (info === undefined) {
@@ -108,7 +108,7 @@ export const orderPlayers = (players: PlayerVisits): string[] => {
         .map(([uuid]) => uuid);
 };
 
-export const removePlayerVisits = (visits: PlayerVisits, uuid: string) => {
+export const removePlayerVisits = (visits: Readonly<PlayerVisits>, uuid: string) => {
     if (!isNormalizedUUID(uuid)) {
         throw new Error(`UUID not normalized: ${uuid}`);
     }
@@ -117,7 +117,7 @@ export const removePlayerVisits = (visits: PlayerVisits, uuid: string) => {
     return newVisits;
 };
 
-export const visitPlayer = (visits: PlayerVisits, uuid: string) => {
+export const visitPlayer = (visits: Readonly<PlayerVisits>, uuid: string) => {
     if (!isNormalizedUUID(uuid)) {
         throw new Error(`UUID not normalized: ${uuid}`);
     }

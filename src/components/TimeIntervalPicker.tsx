@@ -5,8 +5,8 @@ import { Button, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import React from "react";
 
 interface TimeIntervalPickerProps {
-    intervalDefinition: TimeIntervalDefinition;
-    onIntervalChange: (intervalDefinition: TimeIntervalDefinition) => void;
+    readonly intervalDefinition: TimeIntervalDefinition;
+    readonly onIntervalChange: (intervalDefinition: TimeIntervalDefinition) => void;
 }
 
 export const TimeIntervalPicker: React.FC<TimeIntervalPickerProps> = ({
@@ -15,9 +15,6 @@ export const TimeIntervalPicker: React.FC<TimeIntervalPickerProps> = ({
 }) => {
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const open = Boolean(anchorEl);
-    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-        setAnchorEl(event.currentTarget);
-    };
     const handleClose = () => {
         setAnchorEl(null);
     };
@@ -67,7 +64,9 @@ export const TimeIntervalPicker: React.FC<TimeIntervalPickerProps> = ({
                     aria-controls={open ? "interval-picker-menu" : undefined}
                     aria-haspopup="true"
                     aria-expanded={open ? "true" : undefined}
-                    onClick={handleClick}
+                    onClick={(event) => {
+                            setAnchorEl(event.currentTarget);
+                        }}
                 >
                     <Typography variant="caption">
                         {shortIntervalDescription}

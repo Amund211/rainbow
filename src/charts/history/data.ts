@@ -9,7 +9,7 @@ type ChartDataEntry = Record<DataKey, number | undefined | null> & {
 };
 
 type MutableChartData = ChartDataEntry[];
-export type ChartData = readonly ChartDataEntry[];
+export type ChartData = readonly Readonly<ChartDataEntry>[];
 
 const generateChartDataFromSingleHistory = (history: History): ChartData => {
     const data: MutableChartData = [];
@@ -91,7 +91,7 @@ export const generateChartData = (histories: readonly History[]): ChartData => {
         histories.length > 1 ? clusterChartData(chartData) : chartData;
 
     // Merge duplicate queriedAt values
-    const mergedChartData: MutableChartData = [clusteredChartData[0]];
+    const mergedChartData: MutableChartData = [clusteredChartData[0] as ChartDataEntry];
     for (const entry of clusteredChartData) {
         // oxlint-disable-next-line unicorn/prefer-at
         const lastEntry = mergedChartData[mergedChartData.length - 1];

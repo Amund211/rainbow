@@ -120,7 +120,8 @@
         "typescript/prefer-readonly-parameter-types": [
             "error",
             {
-                "ignoreInferredTypes": true
+                "ignoreInferredTypes": true,
+                "treatMethodsAsReadonly": true
             }
         ],
 

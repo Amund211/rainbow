@@ -11,17 +11,17 @@ type APIHistory = readonly APIPlayerDataPIT[];
 export type History = readonly PlayerDataPIT[];
 
 interface HistoryQueryOptions {
-    uuid: string;
-    start: Date;
-    end: Date;
-    limit: number;
+    readonly uuid: string;
+    readonly start: Date;
+    readonly end: Date;
+    readonly limit: number;
 }
 export const getHistoryQueryOptions = ({
     uuid,
     start,
     end,
     limit,
-}: HistoryQueryOptions) => {
+}: Readonly<HistoryQueryOptions>) => {
     const currentTime = Date.now();
     const currentTimeIsInWindow =
         currentTime >= start.getTime() && currentTime <= end.getTime();

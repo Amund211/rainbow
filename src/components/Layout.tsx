@@ -83,9 +83,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     const location = useLocation();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const menuOpen = Boolean(anchorEl);
-    const handleClickMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
-        setAnchorEl(event.currentTarget);
-    };
     const handleCloseMenu = () => {
         setAnchorEl(null);
     };
@@ -142,7 +139,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         <Stack direction="row" gap={1}>
                             <DarkModeSwitch />
                             <IconButton
-                                onClick={handleClickMenu}
+                                onClick={(event) => {
+                                    setAnchorEl(event.currentTarget);
+                                }}
                                 aria-label="Open toolbar menu"
                             >
                                 {menuOpen ? <MenuOpen /> : <MenuIcon />}

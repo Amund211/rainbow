@@ -5,7 +5,7 @@ import { ChartSynchronizerContext } from "./context.ts";
 
 export const useSynchronizeCharts = (
     chartData: ChartData,
-    dataKey: DataKey,
+    dataKey: Readonly<DataKey>,
 ):
     | { yMax: number | undefined; synchronized: true }
     | { yMax?: undefined; synchronized: false } => {

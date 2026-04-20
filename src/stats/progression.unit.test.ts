@@ -12,7 +12,7 @@ import type { GamemodeKey, StatKey } from "./keys.ts";
 const TEST_UUID = "0123e456-7890-1234-5678-90abcdef1234";
 
 class StatsBuilder {
-    private readonly stats: StatsPIT;
+    private readonly stats: { -readonly [K in keyof StatsPIT]: StatsPIT[K] };
 
     constructor() {
         this.stats = {
@@ -105,7 +105,16 @@ class StatsBuilder {
 }
 
 class PlayerDataBuilder {
-    private player: PlayerDataPIT;
+    private player: {
+        uuid: string;
+        queriedAt: Date;
+        experience: number;
+        solo: { -readonly [K in keyof StatsPIT]: StatsPIT[K] };
+        doubles: { -readonly [K in keyof StatsPIT]: StatsPIT[K] };
+        threes: { -readonly [K in keyof StatsPIT]: StatsPIT[K] };
+        fours: { -readonly [K in keyof StatsPIT]: StatsPIT[K] };
+        overall: { -readonly [K in keyof StatsPIT]: StatsPIT[K] };
+    };
 
     constructor(uuid: string, queriedAt: Date) {
         const emptyStats: StatsPIT = {

@@ -16,9 +16,9 @@ export function createQueryClient() {
 
 // From: https://tanstack.com/query/latest/docs/framework/react/plugins/persistQueryClient
 // https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
-export function createIDBPersister(idbValidKey: IDBValidKey = "reactQuery") {
+export function createIDBPersister(idbValidKey = "reactQuery") {
     return {
-        persistClient: async (client: PersistedClient) => {
+        persistClient: async (client) => {
             await set(idbValidKey, client);
         },
         restoreClient: async () => {

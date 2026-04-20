@@ -120,7 +120,7 @@ describe("Layout - Desktop navigation", () => {
 
 describe("Layout - Mobile navigation", () => {
     const openBurgerMenu = async (
-        screen: Awaited<ReturnType<typeof renderAppRoute>>["screen"],
+        screen: Readonly<Awaited<ReturnType<typeof renderAppRoute>>["screen"]>,
     ) => {
         const menuButton = screen.getByLabelText("Open toolbar menu");
         await expect.element(menuButton).toBeInTheDocument();

@@ -218,7 +218,7 @@ const Sessions: React.FC<SessionsProps> = ({
         }),
     );
 
-    const renderHeader = (showExtrapolatedToggle?: JSX.Element) => (
+    const renderHeader = (showExtrapolatedToggle?: Readonly<JSX.Element>) => (
         <Stack
             direction="row"
             gap={1}

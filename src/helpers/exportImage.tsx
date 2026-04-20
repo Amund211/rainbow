@@ -30,7 +30,7 @@ function useOffscreenHost() {
 }
 
 /** Wait for <img> in a subtree to finish loading/decoding */
-async function waitForImages(root: HTMLElement) {
+async function waitForImages(root: Pick<HTMLElement, "querySelectorAll">) {
     const imgs = [...root.querySelectorAll("img")];
     await Promise.all(
         imgs.map(async (img) => {
@@ -101,21 +101,21 @@ async function waitForLayoutSettlement() {
 }
 
 interface ExportImageMountProps {
-    children: React.ReactNode;
+    readonly children: React.ReactNode;
     /** Optional: expose a ref callback so caller can trigger export */
-    onReady?: (api: { download: () => Promise<void> }) => void;
-    filename?: string;
+    readonly onReady?: (api: { readonly download: () => Promise<void> }) => void;
+    readonly filename?: string;
 }
 
 /**
  * Mount this component once somewhere near the root of your app,
  * then call the download function from the onReady callback.
  */
-export function ExportImageMount({
+export const ExportImageMount: React.FC<ExportImageMountProps> = ({
     children,
     onReady,
     filename,
-}: ExportImageMountProps) {
+}) => {
     const host = useOffscreenHost();
     const captureRef = useRef<HTMLDivElement | null>(null);
 
@@ -144,4 +144,4 @@ export function ExportImageMount({
     }, [onReady, download]);
 
     return createPortal(<div ref={captureRef}>{children}</div>, host);
-}
+};

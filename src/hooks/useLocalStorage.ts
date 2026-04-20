@@ -11,21 +11,21 @@ declare global {
 const EVENT_NAME = "useLocalStorageWrite";
 
 interface UseLocalStorageWriteEventPayload {
-    key: string;
-    value: string | null;
+    readonly key: string;
+    readonly value: string | null;
 }
 
 const makeSubscribe = (key: string) => {
     return (onStoreChange: () => void) => {
         const customEventListener = (
-            e: CustomEvent<UseLocalStorageWriteEventPayload>,
+            e: Readonly<CustomEvent<UseLocalStorageWriteEventPayload>>,
         ) => {
             if (e.detail.key !== key) return;
 
             onStoreChange();
         };
 
-        const storageListener = (e: StorageEvent) => {
+        const storageListener = (e: { readonly key: string | null }) => {
             // `key` is `null` on clear -> process it
             // https://developer.mozilla.org/en-US/docs/Web/API/Window/storage_event#event_properties
             if (e.key !== key && e.key !== null) return;
