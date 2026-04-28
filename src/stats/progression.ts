@@ -58,8 +58,12 @@ export const findSmallestPositiveCubicRoot = (
                     m * Math.cos(theta - (4 * Math.PI) / 3),
                 ];
             } else {
+                // |arg| > 1 implies delta > 0 mathematically, but the two
+                // expressions go through different operation sequences so
+                // computed delta can come out very slightly negative near
+                // the boundary; clamp to keep sqrt real.
                 const delta = (Q * Q) / 4 + P ** 3 / 27;
-                const sd = Math.sqrt(delta);
+                const sd = Math.sqrt(Math.max(delta, 0));
                 uRoots = [Math.cbrt(-Q / 2 + sd) + Math.cbrt(-Q / 2 - sd)];
             }
         } else {
@@ -397,7 +401,11 @@ export const computeStatProgression = (
 
             const daysUntilMilestone =
                 findSmallestPositiveCubicRoot(a, b, c, e) ?? Infinity;
-            const progressPerDay = (M - endIndex) / daysUntilMilestone;
+            // Match the quotient progression's convention: explicit 0
+            // when unreachable, so we don't surface -0 from `(neg)/Infinity`.
+            const progressPerDay = Number.isFinite(daysUntilMilestone)
+                ? (M - endIndex) / daysUntilMilestone
+                : 0;
 
             return {
                 stat,
