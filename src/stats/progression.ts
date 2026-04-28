@@ -5,7 +5,13 @@ import { getStat } from "./index.ts";
 import type { GamemodeKey, StatKey } from "./keys.ts";
 import { PRESTIGE_EXP } from "./stars.ts";
 
-const CUBIC_EPS = 1e-9;
+// Threshold below which a leading polynomial coefficient is treated as
+// zero, dropping us to a lower-degree solver path.
+const CUBIC_LEADING_COEFF_EPS = 1e-9;
+
+// Roots smaller than this are treated as non-positive (i.e. "right now"
+// or numerical noise around zero), and excluded from the result.
+const CUBIC_POSITIVE_ROOT_EPS = 1e-9;
 
 /*
  * Smallest t > 0 satisfying a*t^3 + b*t^2 + c*t + e = 0, or null if none.
@@ -24,13 +30,13 @@ export const findSmallestPositiveCubicRoot = (
 ): number | null => {
     let roots: number[];
 
-    if (Math.abs(a) < CUBIC_EPS) {
-        if (Math.abs(b) < CUBIC_EPS) {
-            if (Math.abs(c) < CUBIC_EPS) {
+    if (Math.abs(a) < CUBIC_LEADING_COEFF_EPS) {
+        if (Math.abs(b) < CUBIC_LEADING_COEFF_EPS) {
+            if (Math.abs(c) < CUBIC_LEADING_COEFF_EPS) {
                 return null;
             }
             const t = -e / c;
-            return t > CUBIC_EPS ? t : null;
+            return t > CUBIC_POSITIVE_ROOT_EPS ? t : null;
         }
         const disc = c * c - 4 * b * e;
         if (disc < 0) {
@@ -77,7 +83,7 @@ export const findSmallestPositiveCubicRoot = (
 
     let smallest: number | null = null;
     for (const t of roots) {
-        if (t > CUBIC_EPS && (smallest === null || t < smallest)) {
+        if (t > CUBIC_POSITIVE_ROOT_EPS && (smallest === null || t < smallest)) {
             smallest = t;
         }
     }
