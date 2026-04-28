@@ -1720,9 +1720,20 @@ describe("computeStatProgression - index stat", () => {
                         `Expected success but got error: ${result.reason}`,
                     );
                 }
+                if (result.stat !== "index") {
+                    expect.unreachable(`Expected stat "index", got ${result.stat}`);
+                }
 
                 // Destructure result for float comparisons
-                const { daysUntilMilestone, progressPerDay, ...rest } = result;
+                const {
+                    daysUntilMilestone,
+                    progressPerDay,
+                    starsPerDay,
+                    finalKillsPerDay,
+                    finalDeathsPerDay,
+                    sessionFkdr,
+                    ...rest
+                } = result;
 
                 // Deep strict equal on exact values
                 expect(rest).toStrictEqual({
@@ -1756,6 +1767,30 @@ describe("computeStatProgression - index stat", () => {
                     Math.abs(progressPerDay - c.expected.progressPerDay),
                     `progressPerDay ${progressPerDay.toString()} should be close to ${c.expected.progressPerDay.toString()}`,
                 ).toBeLessThan(1e-3);
+
+                // Sub-rate breakdowns: same definitions as computeCoefficients above.
+                const expectedStarsPerDay =
+                    (c.trackingStats.end.experience -
+                        c.trackingStats.start.experience) /
+                    4870 /
+                    c.trackingStats.durationDays;
+                const expectedFinalKillsPerDay =
+                    (c.trackingStats.end.finalKills -
+                        c.trackingStats.start.finalKills) /
+                    c.trackingStats.durationDays;
+                const expectedFinalDeathsPerDay =
+                    (c.trackingStats.end.finalDeaths -
+                        c.trackingStats.start.finalDeaths) /
+                    c.trackingStats.durationDays;
+                const expectedSessionFkdr =
+                    expectedFinalDeathsPerDay === 0
+                        ? expectedFinalKillsPerDay
+                        : expectedFinalKillsPerDay / expectedFinalDeathsPerDay;
+
+                expect(starsPerDay).toBeCloseTo(expectedStarsPerDay, 9);
+                expect(finalKillsPerDay).toBeCloseTo(expectedFinalKillsPerDay, 9);
+                expect(finalDeathsPerDay).toBeCloseTo(expectedFinalDeathsPerDay, 9);
+                expect(sessionFkdr).toBeCloseTo(expectedSessionFkdr, 9);
             });
         }
     });

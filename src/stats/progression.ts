@@ -116,9 +116,18 @@ type QuotientProgression = BaseStatProgression & {
     divisorPerDay: number;
 };
 
+type IndexProgression = BaseStatProgression & {
+    stat: "index";
+    starsPerDay: number;
+    finalKillsPerDay: number;
+    finalDeathsPerDay: number;
+    sessionFkdr: number;
+};
+
 export type StatProgression =
-    | (BaseStatProgression & { stat: Exclude<StatKey, "fkdr" | "kdr"> })
-    | QuotientProgression;
+    | (BaseStatProgression & { stat: Exclude<StatKey, "fkdr" | "kdr" | "index"> })
+    | QuotientProgression
+    | IndexProgression;
 
 const computeQuotientProgression = (
     trackingHistory: History,
@@ -398,6 +407,10 @@ export const computeStatProgression = (
                 daysUntilMilestone,
                 progressPerDay,
                 trendingUpward,
+                starsPerDay: s,
+                finalKillsPerDay: k,
+                finalDeathsPerDay: d,
+                sessionFkdr: d === 0 ? k : k / d,
             };
         }
         case "experience":

@@ -1030,8 +1030,11 @@ const ProgressionCaption: React.FC<ProgressionCaptionProps> = ({ progression }) 
             );
         }
         case "index": {
-            // TODO
-            return <Typography variant="caption">TODO</Typography>;
+            return (
+                <Typography variant="caption">
+                    {`${progression.progressPerDay.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${getShortStatLabel("index")}/day (${progression.sessionFkdr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} long-time ${getShortStatLabel("fkdr")}, ${progression.starsPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getShortStatLabel("stars")}/day, ${progression.finalKillsPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getShortStatLabel("finalKills")}/day, ${progression.finalDeathsPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getShortStatLabel("finalDeaths")}/day)`}
+                </Typography>
+            );
         }
         case "experience":
         case "winstreak":
