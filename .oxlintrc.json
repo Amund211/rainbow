@@ -228,6 +228,18 @@
     },
     "overrides": [
         {
+            "files": ["src/routes/**"],
+            "rules": {
+                // TODO: TanStack Router route files co-locate the route
+                // component with helpers/sub-components, which trips
+                // Fast Refresh's only-export-components rule. Either
+                // extract sub-components to sibling files (preferred),
+                // or accept that Fast Refresh swaps the whole route on
+                // edit. Re-enable once split.
+                "react/only-export-components": "off"
+            }
+        },
+        {
             "files": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/mocks/**"],
             "rules": {
                 "react/jsx-filename-extension": [
