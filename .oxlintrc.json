@@ -91,6 +91,12 @@
         "vitest/max-nested-describe": "off",
         "vitest/no-hooks": "off",
         "vitest/require-top-level-describe": "off",
+        // Forbids `style` and `className` on custom components. The intent is
+        // design-system enforcement, but for static layout values (e.g.
+        // `<TableCell style={{ width: 20 }}>`) it provides no benefit over
+        // inline style, and components like recharts and TanStack Router
+        // Link don't have an `sx` alternative.
+        "react/forbid-component-props": "off",
         "eslint/sort-imports": "off",
 
         // TODO: Decide on function style and fix or disable rule
