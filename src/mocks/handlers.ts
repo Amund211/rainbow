@@ -108,6 +108,29 @@ export const handlers = [
 
         return HttpResponse.json(history);
     }),
+    http.post(flashlightEndpoint("v1/session-at"), async ({ request }) => {
+        const body = (await request.json()) as {
+            uuid: string;
+            time: string;
+        };
+        validateUUID(body.uuid);
+
+        const timeDate = new Date(body.time);
+        const startDate = new Date(timeDate.getTime() - 60 * 60 * 1000);
+        const endDate = new Date(timeDate.getTime() + 60 * 60 * 1000);
+
+        return HttpResponse.json({
+            session: makeSession(
+                body.uuid,
+                startDate.toISOString(),
+                endDate.toISOString(),
+            ),
+            history: [
+                makePlayerDataPIT(body.uuid, startDate.toISOString(), 1),
+                makePlayerDataPIT(body.uuid, endDate.toISOString(), 2),
+            ],
+        });
+    }),
     http.post(flashlightEndpoint("v1/sessions"), async ({ request }) => {
         const body = (await request.json()) as {
             uuid: string;

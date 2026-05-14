@@ -14,6 +14,7 @@ import {
     FormControlLabel,
     Grid,
     IconButton,
+    Link as MuiLink,
     MenuItem,
     Select,
     Skeleton,
@@ -144,6 +145,7 @@ export const Route = createFileRoute("/session/$uuid")({
 
 const RouterLinkIconButton = createLink(IconButton);
 const RouterLinkToggleButton = createLink(ToggleButton);
+const RouterLink = createLink(MuiLink);
 
 interface SessionsProps {
     uuid: string;
@@ -532,21 +534,55 @@ const Sessions: React.FC<SessionsProps> = ({
                                                     </TableCell>
                                                 )}
                                                 <TableCell>
-                                                    <Typography
-                                                        variant="body1"
-                                                        color={textColor}
-                                                    >
-                                                        {session.start.queriedAt.toLocaleString(
-                                                            undefined,
-                                                            {
-                                                                day: "2-digit",
-                                                                month: "short",
-                                                                year: "numeric",
-                                                                hour: "2-digit",
-                                                                minute: "2-digit",
-                                                            },
-                                                        )}
-                                                    </Typography>
+                                                    {session.extrapolated ? (
+                                                        <Typography
+                                                            variant="body1"
+                                                            color={textColor}
+                                                        >
+                                                            {session.start.queriedAt.toLocaleString(
+                                                                undefined,
+                                                                {
+                                                                    day: "2-digit",
+                                                                    month: "short",
+                                                                    year: "numeric",
+                                                                    hour: "2-digit",
+                                                                    minute: "2-digit",
+                                                                },
+                                                            )}
+                                                        </Typography>
+                                                    ) : (
+                                                        <RouterLink
+                                                            from="/session/$uuid"
+                                                            to="/session/$uuid/detail"
+                                                            params={{ uuid }}
+                                                            search={{
+                                                                date: session.start
+                                                                    .queriedAt,
+                                                            }}
+                                                            underline="hover"
+                                                            color="inherit"
+                                                            sx={{
+                                                                cursor: "pointer",
+                                                            }}
+                                                        >
+                                                            <Typography
+                                                                variant="body1"
+                                                                color={textColor}
+                                                                component="span"
+                                                            >
+                                                                {session.start.queriedAt.toLocaleString(
+                                                                    undefined,
+                                                                    {
+                                                                        day: "2-digit",
+                                                                        month: "short",
+                                                                        year: "numeric",
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    },
+                                                                )}
+                                                            </Typography>
+                                                        </RouterLink>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell align="right">
                                                     <Typography
