@@ -63,6 +63,38 @@ describe("Session detail page", () => {
             .toBeInTheDocument();
     });
 
+    mswTest(
+        "search shows free-text option after reopening with previously selected text",
+        async () => {
+            const { screen } = await renderAppRoute(sessionUrl);
+
+            const searchInput = screen.getByRole("combobox", {
+                name: "Search players",
+            });
+
+            // Wait for the page to populate known aliases for the current player
+            await expect
+                .poll(() => localStorage.getItem("knownAliases"))
+                .toContain(USERS.player1.username);
+
+            // Type the player's name and select the auto-highlighted user
+            // option with Enter. The selection sets MUI's internal value and
+            // fills the input with the username. Since we navigate to the
+            // same route, the search component stays mounted afterwards.
+            await searchInput.fill(USERS.player1.username);
+            await userEvent.keyboard("{Enter}");
+
+            // Reopen the popup. The input still holds "PlayerOne" from the
+            // selection — the free-text "Search for ..." option must still
+            // appear instead of being suppressed by MUI's empty-string trick.
+            await userEvent.click(searchInput);
+
+            await expect
+                .element(screen.getByRole("option", { name: /Search for/ }))
+                .toBeInTheDocument();
+        },
+    );
+
     mswTest("renders player head image", async () => {
         await renderAppRoute(sessionUrl);
 
