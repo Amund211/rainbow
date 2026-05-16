@@ -46,18 +46,24 @@ import React from "react";
 import { z } from "zod";
 
 import { PlayerHead } from "#components/player.tsx";
-import type { Milestone, SessionTag } from "#helpers/sessionDetail.ts";
+import type {
+    Milestone,
+    SessionAggregate,
+    SessionTag,
+} from "#helpers/sessionDetail.ts";
 import {
     aggregate,
     bestGame,
     computeMilestones,
     computeTags,
+    DETAIL_PALETTE,
     fastestWin,
     fkdrTrajectory,
     formatClock,
     formatDate,
     formatLong,
     gamemodeLabel,
+    GAMEMODES,
     inferredGameCount,
     MODE_COLORS,
     modeBreakdown,
@@ -95,7 +101,7 @@ const MILESTONE_ICONS: Record<Milestone["key"], SvgIconComponent> = {
     fkdr: TrendingUp,
 };
 
-const Card: React.FC<{ children: React.ReactNode; sx?: object }> = ({
+const Panel: React.FC<{ children: React.ReactNode; sx?: object }> = ({
     children,
     sx,
 }) => (
@@ -156,8 +162,8 @@ const LiveBadge: React.FC = () => (
             fontSize: 11,
             fontWeight: 600,
             letterSpacing: 1,
-            color: "#4ade80",
-            bgcolor: "rgba(74,222,128,0.12)",
+            color: DETAIL_PALETTE.chip.liveText,
+            bgcolor: DETAIL_PALETTE.chip.liveBg,
             "& .MuiChip-label": {
                 pl: 1.5,
                 position: "relative",
@@ -170,7 +176,7 @@ const LiveBadge: React.FC = () => (
                     width: 6,
                     height: 6,
                     borderRadius: "50%",
-                    bgcolor: "#4ade80",
+                    bgcolor: DETAIL_PALETTE.chip.liveText,
                     animation: "rbw-pulse 1.6s ease-in-out infinite",
                 },
             },
@@ -186,7 +192,7 @@ interface PlayerBannerProps {
     uuid: string;
     username: string;
     session: NonNullable<SessionAt["session"]>;
-    agg: ReturnType<typeof aggregate>;
+    agg: SessionAggregate;
     onShare: () => void;
 }
 
@@ -219,8 +225,7 @@ const PlayerBanner: React.FC<PlayerBannerProps> = ({
                     left: 0,
                     right: 0,
                     height: 3,
-                    background:
-                        "linear-gradient(90deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #6366f1, #a855f7)",
+                    background: DETAIL_PALETTE.ribbon,
                 }}
             />
             <Stack
@@ -237,12 +242,12 @@ const PlayerBanner: React.FC<PlayerBannerProps> = ({
                         flexWrap="wrap"
                     >
                         <Chip
-                            icon={<Star sx={{ color: "#a855f7" }} />}
+                            icon={<Star sx={{ color: DETAIL_PALETTE.accent.purple }} />}
                             label={stars}
                             size="small"
                             sx={{
-                                color: "#a855f7",
-                                bgcolor: "rgba(168,85,247,0.12)",
+                                color: DETAIL_PALETTE.accent.purple,
+                                bgcolor: DETAIL_PALETTE.chip.starBg,
                                 fontFamily: "monospace",
                             }}
                             title="Bedwars star (prestige level)"
@@ -320,7 +325,7 @@ const DeltaTag: React.FC<{
 }> = ({ value, suffix = "", goodIfPositive }) => {
     const positive = value >= 0;
     const good = goodIfPositive ? positive : !positive;
-    const color = good ? "#4ade80" : "#f87171";
+    const color = good ? DETAIL_PALETTE.state.good : DETAIL_PALETTE.state.bad;
     const sign = positive ? "+" : "";
     return (
         <Stack
@@ -348,7 +353,7 @@ interface KpiCardProps {
 }
 
 const KpiCard: React.FC<KpiCardProps> = ({ label, value, sub, accentColor }) => (
-    <Card sx={{ p: 2 }}>
+    <Panel sx={{ p: 2 }}>
         <Typography
             variant="caption"
             sx={{
@@ -374,10 +379,10 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, sub, accentColor }) => 
         <Typography variant="body2" color="textSecondary" component="div">
             {sub}
         </Typography>
-    </Card>
+    </Panel>
 );
 
-const KPIRow: React.FC<{ agg: ReturnType<typeof aggregate> }> = ({ agg }) => {
+const KPIRow: React.FC<{ agg: SessionAggregate }> = ({ agg }) => {
     const fkdrDelta = agg.fkdr - agg.lifetimeFkdr;
     const wrDelta = (agg.winRate - agg.lifetimeWR) * 100;
     return (
@@ -397,19 +402,19 @@ const KPIRow: React.FC<{ agg: ReturnType<typeof aggregate> }> = ({ agg }) => {
                 label="Win rate"
                 value={`${Math.round(agg.winRate * 100).toString()}%`}
                 sub={<DeltaTag value={wrDelta} suffix="%" goodIfPositive />}
-                accentColor="#4ade80"
+                accentColor={DETAIL_PALETTE.state.good}
             />
             <KpiCard
                 label="Session FKDR"
                 value={agg.fkdr.toFixed(2)}
                 sub={<DeltaTag value={fkdrDelta} goodIfPositive />}
-                accentColor="#64b5f6"
+                accentColor={DETAIL_PALETTE.accent.blue}
             />
             <KpiCard
                 label="Stars gained"
                 value={`+${agg.stars.toFixed(2)}`}
                 sub={`${(agg.xp / 1000).toFixed(1)}k XP`}
-                accentColor="#a855f7"
+                accentColor={DETAIL_PALETTE.accent.purple}
             />
         </Box>
     );
@@ -438,12 +443,12 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
             const bb =
                 segment.end.overall.bedsBroken - segment.start.overall.bedsBroken;
             const bl = segment.end.overall.bedsLost - segment.start.overall.bedsLost;
-            const k = segment.end.overall.kills - segment.start.overall.kills;
-            const d = segment.end.overall.deaths - segment.start.overall.deaths;
+            const kills = segment.end.overall.kills - segment.start.overall.kills;
+            const deaths = segment.end.overall.deaths - segment.start.overall.deaths;
             items = [
                 ["Finals", `${fk.toString()} / ${fd.toString()}`],
                 ["Beds", `${bb.toString()} / ${bl.toString()}`],
-                ["Kills", `${k.toString()} / ${d.toString()}`],
+                ["Kills", `${kills.toString()} / ${deaths.toString()}`],
                 ["XP", `+${xp.toLocaleString()}`],
             ];
         }
@@ -484,8 +489,8 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
                     {`Segment ${index.toString()}`}
                 </Typography>
             </Box>
-            {items.map(([k, v]) => (
-                <Box key={k}>
+            {items.map(([label, value]) => (
+                <Box key={label}>
                     <Typography
                         variant="caption"
                         color="textSecondary"
@@ -495,10 +500,10 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
                             fontSize: 10,
                         }}
                     >
-                        {k}
+                        {label}
                     </Typography>
                     <Typography sx={{ fontFamily: "monospace", fontSize: 14, mt: 0.5 }}>
-                        {v}
+                        {value}
                     </Typography>
                 </Box>
             ))}
@@ -520,36 +525,36 @@ const PERFECT_GAME_THRESHOLDS: Record<
 };
 
 const isPerfectGame = (game: GameResult): boolean => {
-    const t = PERFECT_GAME_THRESHOLDS[game.gamemode];
-    return game.finalKills >= t.finalKills && game.bedsBroken >= t.bedsBroken;
+    const thresholds = PERFECT_GAME_THRESHOLDS[game.gamemode];
+    return (
+        game.finalKills >= thresholds.finalKills &&
+        game.bedsBroken >= thresholds.bedsBroken
+    );
 };
 
-// Small icon-only badge shown left of the W/L chip on a game tile.
-// Precedence: Perfect game > Carried > Clutch (mutually exclusive).
-//   Perfect game (medal, violet): got every final kill and every enemy bed.
-//   Carried (groups, cyan):       won despite taking a final death.
-//   Clutch (shield, amber):       won despite losing your bed.
+// Icon-only badge shown left of the W/L chip. Precedence (mutually
+// exclusive): Perfect game > Carried > Clutch.
 const ClutchOrCarriedBadge: React.FC<{ game: GameResult }> = ({ game }) => {
     if (!game.won) return null;
     let tone: { icon: SvgIconComponent; color: string; label: string; tooltip: string };
     if (isPerfectGame(game)) {
         tone = {
             icon: MilitaryTech,
-            color: "#a855f7",
+            color: DETAIL_PALETTE.accent.purple,
             label: "Perfect game",
             tooltip: "Got every final kill and every enemy bed in the game.",
         };
     } else if (game.finalDeath) {
         tone = {
             icon: Group,
-            color: "#06b6d4",
+            color: DETAIL_PALETTE.accent.cyan,
             label: "Carried",
             tooltip: "Won after taking a final death — teammates pulled you through.",
         };
     } else if (game.bedLost) {
         tone = {
             icon: Shield,
-            color: "#fbbf24",
+            color: DETAIL_PALETTE.accent.amber,
             label: "Clutch",
             tooltip: "Won after losing your bed.",
         };
@@ -590,7 +595,9 @@ const GameTile: React.FC<{
     if (game === null) {
         const count = inferredGameCount(segment);
         const isHeartbeat = count === 0;
-        const c = isHeartbeat ? "#6b7280" : "#9ca3af";
+        const color = isHeartbeat
+            ? DETAIL_PALETTE.state.mutedDark
+            : DETAIL_PALETTE.state.muted;
         return (
             <Button
                 onClick={onClick}
@@ -598,9 +605,9 @@ const GameTile: React.FC<{
                     px: 1.5,
                     py: 1.25,
                     borderRadius: 1.25,
-                    bgcolor: active ? `${c}22` : "action.hover",
+                    bgcolor: active ? `${color}22` : "action.hover",
                     border: 1,
-                    borderColor: active ? c : "divider",
+                    borderColor: active ? color : "divider",
                     borderStyle: "dashed",
                     color: "text.primary",
                     textTransform: "none",
@@ -610,7 +617,7 @@ const GameTile: React.FC<{
                     position: "relative",
                     overflow: "hidden",
                     minWidth: 0,
-                    ":hover": { bgcolor: `${c}11` },
+                    ":hover": { bgcolor: `${color}11` },
                 }}
                 title={
                     isHeartbeat
@@ -627,7 +634,7 @@ const GameTile: React.FC<{
                     <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
                         {`#${index.toString()}`}
                     </Typography>
-                    <Help sx={{ fontSize: 14, color: c }} />
+                    <Help sx={{ fontSize: 14, color }} />
                 </Stack>
                 <Typography sx={{ fontSize: 18, lineHeight: 1, fontWeight: 500 }}>
                     {isHeartbeat ? "—" : count.toString()}
@@ -647,7 +654,7 @@ const GameTile: React.FC<{
         );
     }
 
-    const c = game.won ? "#4ade80" : "#f87171";
+    const color = game.won ? DETAIL_PALETTE.state.good : DETAIL_PALETTE.state.bad;
     return (
         <Button
             onClick={onClick}
@@ -655,9 +662,9 @@ const GameTile: React.FC<{
                 px: 1.5,
                 py: 1.25,
                 borderRadius: 1.25,
-                bgcolor: active ? `${c}22` : "action.hover",
+                bgcolor: active ? `${color}22` : "action.hover",
                 border: 1,
-                borderColor: active ? c : "divider",
+                borderColor: active ? color : "divider",
                 color: "text.primary",
                 textTransform: "none",
                 textAlign: "left",
@@ -666,7 +673,7 @@ const GameTile: React.FC<{
                 position: "relative",
                 overflow: "hidden",
                 minWidth: 0,
-                ":hover": { bgcolor: `${c}11` },
+                ":hover": { bgcolor: `${color}11` },
             }}
         >
             <Box
@@ -676,7 +683,7 @@ const GameTile: React.FC<{
                     left: 0,
                     right: 0,
                     height: 3,
-                    bgcolor: c,
+                    bgcolor: color,
                 }}
             />
             <Stack
@@ -697,8 +704,8 @@ const GameTile: React.FC<{
                             height: 18,
                             fontSize: 10,
                             fontWeight: 600,
-                            color: c,
-                            bgcolor: `${c}1f`,
+                            color,
+                            bgcolor: `${color}1f`,
                         }}
                     />
                 </Stack>
@@ -727,7 +734,7 @@ const StreakIndicator: React.FC<{ segments: readonly GameSegment[] }> = ({
 }) => {
     const streak = trailingStreak(segments);
     if (streak === null) return null;
-    const c = streak.won ? "#4ade80" : "#f87171";
+    const color = streak.won ? DETAIL_PALETTE.state.good : DETAIL_PALETTE.state.bad;
     const Icon = streak.won ? LocalFireDepartment : Cloud;
     const label = `${streak.length.toString()} ${streak.won ? "win" : "loss"} streak`;
     return (
@@ -739,12 +746,12 @@ const StreakIndicator: React.FC<{ segments: readonly GameSegment[] }> = ({
                 px: 1.25,
                 py: 0.75,
                 borderRadius: 0.75,
-                bgcolor: `${c}14`,
-                color: c,
+                bgcolor: `${color}14`,
+                color,
             }}
         >
-            <Icon fontSize="small" sx={{ color: c }} />
-            <Typography variant="body2" sx={{ color: c, fontWeight: 600 }}>
+            <Icon fontSize="small" sx={{ color }} />
+            <Typography variant="body2" sx={{ color, fontWeight: 600 }}>
                 {label}
             </Typography>
         </Stack>
@@ -757,7 +764,7 @@ const MomentumStrip: React.FC<{ segments: readonly GameSegment[] }> = ({
     const [focused, setFocused] = React.useState<number | null>(null);
     const focusedSegment = focused === null ? undefined : segments[focused];
     return (
-        <Card>
+        <Panel>
             <Stack
                 direction="row"
                 justifyContent="space-between"
@@ -793,7 +800,7 @@ const MomentumStrip: React.FC<{ segments: readonly GameSegment[] }> = ({
                         index={i + 1}
                         active={focused === i}
                         onClick={() => {
-                            setFocused(focused === i ? null : i);
+                            setFocused((prev) => (prev === i ? null : i));
                         }}
                     />
                 ))}
@@ -801,7 +808,7 @@ const MomentumStrip: React.FC<{ segments: readonly GameSegment[] }> = ({
             {focusedSegment !== undefined && focused !== null && (
                 <GameDetail segment={focusedSegment} index={focused + 1} />
             )}
-        </Card>
+        </Panel>
     );
 };
 
@@ -816,12 +823,12 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
 
     if (points.length < 2) {
         return (
-            <Card sx={{ height: "100%" }}>
+            <Panel sx={{ height: "100%" }}>
                 <Typography variant="subtitle1">FKDR trajectory</Typography>
                 <Typography variant="caption" color="textSecondary">
                     Not enough games to draw a trajectory.
                 </Typography>
-            </Card>
+            </Panel>
         );
     }
 
@@ -859,7 +866,7 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
     const textMuted = theme.palette.text.disabled;
 
     return (
-        <Card sx={{ height: "100%" }}>
+        <Panel sx={{ height: "100%" }}>
             <Stack
                 direction="row"
                 justifyContent="space-between"
@@ -974,13 +981,13 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
                     />
                 ))}
             </svg>
-        </Card>
+        </Panel>
     );
 };
 
 interface SessionMetaCardProps {
     session: NonNullable<SessionAt["session"]>;
-    agg: ReturnType<typeof aggregate>;
+    agg: SessionAggregate;
 }
 
 const SessionMetaCard: React.FC<SessionMetaCardProps> = ({ session, agg }) => {
@@ -994,7 +1001,7 @@ const SessionMetaCard: React.FC<SessionMetaCardProps> = ({ session, agg }) => {
         ["XP", `+${agg.xp.toLocaleString()}`],
     ];
     return (
-        <Card sx={{ height: "100%" }}>
+        <Panel sx={{ height: "100%" }}>
             <Typography variant="subtitle1" sx={{ mb: 1.75 }}>
                 Totals
             </Typography>
@@ -1005,22 +1012,22 @@ const SessionMetaCard: React.FC<SessionMetaCardProps> = ({ session, agg }) => {
                     gap: 1.75,
                 }}
             >
-                {items.map(([k, v]) => (
-                    <Box key={k}>
+                {items.map(([label, value]) => (
+                    <Box key={label}>
                         <Typography
                             variant="caption"
                             color="textSecondary"
                             sx={{ textTransform: "uppercase", letterSpacing: 0.6 }}
                         >
-                            {k}
+                            {label}
                         </Typography>
                         <Typography sx={{ fontFamily: "monospace", mt: 0.5 }}>
-                            {v}
+                            {value}
                         </Typography>
                     </Box>
                 ))}
             </Box>
-        </Card>
+        </Panel>
     );
 };
 
@@ -1028,9 +1035,8 @@ const ModeBreakdown: React.FC<{
     session: NonNullable<SessionAt["session"]>;
 }> = ({ session }) => {
     const data = modeBreakdown(session);
-    const modes = ["solo", "doubles", "threes", "fours"] as const;
     return (
-        <Card>
+        <Panel>
             <Typography variant="subtitle1" sx={{ mb: 1.75 }}>
                 By gamemode
             </Typography>
@@ -1041,20 +1047,20 @@ const ModeBreakdown: React.FC<{
                     gap: 1.25,
                 }}
             >
-                {modes.map((m) => {
-                    const d = data[m];
-                    const c = MODE_COLORS[m];
-                    const winPct = d.games === 0 ? 0 : d.wins / d.games;
+                {GAMEMODES.map((mode) => {
+                    const stats = data[mode];
+                    const color = MODE_COLORS[mode];
+                    const winPct = stats.games === 0 ? 0 : stats.wins / stats.games;
                     return (
                         <Box
-                            key={m}
+                            key={mode}
                             sx={{
                                 bgcolor: "action.hover",
                                 border: 1,
                                 borderColor: "divider",
                                 borderRadius: 1.25,
                                 p: 1.75,
-                                opacity: d.games === 0 ? 0.4 : 1,
+                                opacity: stats.games === 0 ? 0.4 : 1,
                             }}
                         >
                             <Stack
@@ -1068,18 +1074,18 @@ const ModeBreakdown: React.FC<{
                                         width: 8,
                                         height: 8,
                                         borderRadius: 0.25,
-                                        bgcolor: c,
+                                        bgcolor: color,
                                     }}
                                 />
                                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                    {gamemodeLabel(m)}
+                                    {gamemodeLabel(mode)}
                                 </Typography>
                             </Stack>
                             <Typography sx={{ fontSize: 22, lineHeight: 1.1 }}>
-                                {d.games.toString()}
+                                {stats.games.toString()}
                             </Typography>
                             <Typography variant="caption" color="textSecondary">
-                                {`games · ${d.wins.toString()}W`}
+                                {`games · ${stats.wins.toString()}W`}
                             </Typography>
                             <LinearProgress
                                 variant="determinate"
@@ -1089,7 +1095,7 @@ const ModeBreakdown: React.FC<{
                                     height: 4,
                                     borderRadius: 1,
                                     bgcolor: "divider",
-                                    "& .MuiLinearProgress-bar": { bgcolor: c },
+                                    "& .MuiLinearProgress-bar": { bgcolor: color },
                                 }}
                             />
                             <Stack
@@ -1104,14 +1110,14 @@ const ModeBreakdown: React.FC<{
                                     variant="caption"
                                     sx={{ fontFamily: "monospace" }}
                                 >
-                                    {d.fkdr.toFixed(2)}
+                                    {stats.fkdr.toFixed(2)}
                                 </Typography>
                             </Stack>
                         </Box>
                     );
                 })}
             </Box>
-        </Card>
+        </Panel>
     );
 };
 
@@ -1121,7 +1127,7 @@ interface MilestonesCardProps {
 }
 
 const MilestonesCard: React.FC<MilestonesCardProps> = ({ milestones, sessionMs }) => (
-    <Card>
+    <Panel>
         <Typography variant="subtitle1">Milestones</Typography>
         <Typography variant="caption" color="textSecondary" sx={{ mb: 1.75 }}>
             At this session&apos;s pace
@@ -1268,7 +1274,7 @@ const MilestonesCard: React.FC<MilestonesCardProps> = ({ milestones, sessionMs }
                 );
             })}
         </Box>
-    </Card>
+    </Panel>
 );
 
 interface HighlightItem {
@@ -1281,7 +1287,7 @@ interface HighlightItem {
 }
 
 const HighlightsCard: React.FC<{
-    agg: ReturnType<typeof aggregate>;
+    agg: SessionAggregate;
     segments: readonly GameSegment[];
 }> = ({ agg, segments }) => {
     const best = bestGame(segments);
@@ -1296,7 +1302,7 @@ const HighlightsCard: React.FC<{
         {
             id: "signature",
             icon: WorkspacePremium,
-            color: "#fbbf24",
+            color: DETAIL_PALETTE.accent.amber,
             title: "Signature game",
             value:
                 best?.game === undefined || best.game === null
@@ -1310,7 +1316,7 @@ const HighlightsCard: React.FC<{
         {
             id: "fastest",
             icon: Bolt,
-            color: "#22c55e",
+            color: DETAIL_PALETTE.accent.green,
             title: "Fastest win",
             value:
                 fastest === undefined
@@ -1324,7 +1330,9 @@ const HighlightsCard: React.FC<{
         {
             id: "vs-lifetime",
             icon: beatLifetime ? TrendingUp : TrendingFlat,
-            color: beatLifetime ? "#06b6d4" : "#9aa3b2",
+            color: beatLifetime
+                ? DETAIL_PALETTE.accent.cyan
+                : DETAIL_PALETTE.state.neutral,
             title: beatLifetime ? "Beating lifetime" : "On par with lifetime",
             value: agg.fkdr.toFixed(2),
             sub: `vs ${agg.lifetimeFkdr.toFixed(2)} all-time`,
@@ -1332,7 +1340,7 @@ const HighlightsCard: React.FC<{
         {
             id: "pace",
             icon: Speed,
-            color: "#a855f7",
+            color: DETAIL_PALETTE.accent.purple,
             title: "Pace",
             value: hours > 0 ? `${(agg.fk / hours).toFixed(1)} fk/hr` : "—",
             sub: hours > 0 ? `${(agg.games / hours).toFixed(1)} games/hr` : "",
@@ -1340,7 +1348,7 @@ const HighlightsCard: React.FC<{
     ];
 
     return (
-        <Card>
+        <Panel>
             <Typography variant="subtitle1" sx={{ mb: 1.75 }}>
                 Highlights
             </Typography>
@@ -1397,7 +1405,7 @@ const HighlightsCard: React.FC<{
                     </Box>
                 ))}
             </Box>
-        </Card>
+        </Panel>
     );
 };
 
@@ -1474,9 +1482,9 @@ function RouteComponent() {
 
     const [snackbarOpen, setSnackbarOpen] = React.useState(false);
 
-    // After data comes back, normalize the URL date to the start of the session.
-    // Pre-populate the query cache for the canonical URL so the navigation
-    // doesn't trigger a duplicate fetch with the new query key.
+    // Normalize the URL date to the session's actual start time so the
+    // URL is canonical and shareable. Pre-seed the cache for the
+    // canonical query key to avoid a duplicate fetch after navigate.
     const sessionStart = data?.session?.start.queriedAt;
     React.useEffect(() => {
         if (sessionStart === undefined) return;
@@ -1533,11 +1541,13 @@ function RouteComponent() {
         void run();
     };
 
+    const displayName = username ?? "Player";
+
     return (
         <Stack spacing={2}>
             <meta
                 name="description"
-                content={`${username ?? "Player"}'s Bedwars session detail.`}
+                content={`${displayName}'s Bedwars session detail.`}
             />
             {isFetching && data === undefined && (
                 <Skeleton variant="rounded" height={140} />
@@ -1546,7 +1556,7 @@ function RouteComponent() {
                 <Alert severity="error">Failed to load session.</Alert>
             )}
             {!isFetching && data !== undefined && data.session === null && (
-                <NoSession username={username ?? rawUUID} />
+                <NoSession username={displayName} />
             )}
             {data !== undefined && data.session !== null && (
                 <SessionDetail

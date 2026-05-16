@@ -2,7 +2,7 @@ import type { GameSegment, Gamemode } from "#queries/sessionAt.ts";
 import type { Session } from "#queries/sessions.ts";
 import { bedwarsLevelFromExp } from "#stats/stars.ts";
 
-const GAMEMODES: readonly Gamemode[] = ["solo", "doubles", "threes", "fours"];
+export const GAMEMODES: readonly Gamemode[] = ["solo", "doubles", "threes", "fours"];
 
 const GAMEMODE_LABELS: Record<Gamemode, string> = {
     solo: "Solo",
@@ -11,14 +11,57 @@ const GAMEMODE_LABELS: Record<Gamemode, string> = {
     fours: "Fours",
 };
 
-export const gamemodeLabel = (g: Gamemode): string => GAMEMODE_LABELS[g];
+export const gamemodeLabel = (mode: Gamemode): string => GAMEMODE_LABELS[mode];
 
-export const MODE_COLORS: Record<Gamemode, string> = {
-    solo: "#a855f7",
-    doubles: "#06b6d4",
-    threes: "#22c55e",
-    fours: "#f59e0b",
-};
+/**
+ * Hand-picked palette used by the session-detail page. The values are
+ * tied to the design handoff rather than the MUI theme, so they live in
+ * one place here and are reused everywhere on the page.
+ */
+export const DETAIL_PALETTE = {
+    mode: {
+        solo: "#a855f7",
+        doubles: "#06b6d4",
+        threes: "#22c55e",
+        fours: "#f59e0b",
+    },
+    tag: {
+        flawless: "#fbbf24",
+        perfect: "#22c55e",
+        heater: "#ef4444",
+        cold: "#60a5fa",
+        marathon: "#a855f7",
+    },
+    milestone: {
+        prestige: "#a855f7",
+        wins: "#22c55e",
+        fkdr: "#06b6d4",
+    },
+    state: {
+        good: "#4ade80",
+        bad: "#f87171",
+        neutral: "#9aa3b2",
+        muted: "#9ca3af",
+        mutedDark: "#6b7280",
+    },
+    accent: {
+        purple: "#a855f7",
+        cyan: "#06b6d4",
+        green: "#22c55e",
+        amber: "#fbbf24",
+        red: "#ef4444",
+        blue: "#64b5f6",
+        teal: "#06b6d4",
+    },
+    chip: {
+        liveText: "#4ade80",
+        liveBg: "rgba(74,222,128,0.12)",
+        starBg: "rgba(168,85,247,0.12)",
+    },
+    ribbon: "linear-gradient(90deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #6366f1, #a855f7)",
+} as const;
+
+export const MODE_COLORS: Record<Gamemode, string> = DETAIL_PALETTE.mode;
 
 export interface SessionAggregate {
     readonly games: number;
@@ -39,6 +82,9 @@ export interface SessionAggregate {
     readonly elapsedMs: number;
 }
 
+const ratio = (numerator: number, denominator: number): number =>
+    denominator === 0 ? numerator : numerator / denominator;
+
 export const aggregate = (session: Session): SessionAggregate => {
     const first = session.start.overall;
     const last = session.end.overall;
@@ -55,13 +101,6 @@ export const aggregate = (session: Session): SessionAggregate => {
     const stars =
         bedwarsLevelFromExp(session.end.experience) -
         bedwarsLevelFromExp(session.start.experience);
-    const fkdr = fd === 0 ? fk : fk / fd;
-    const lifetimeFkdr =
-        first.finalDeaths === 0
-            ? first.finalKills
-            : first.finalKills / Math.max(1, first.finalDeaths);
-    const winRate = games === 0 ? 0 : wins / games;
-    const lifetimeWR = first.gamesPlayed === 0 ? 0 : first.wins / first.gamesPlayed;
     return {
         games,
         wins,
@@ -74,10 +113,10 @@ export const aggregate = (session: Session): SessionAggregate => {
         d,
         xp,
         stars,
-        fkdr,
-        lifetimeFkdr,
-        winRate,
-        lifetimeWR,
+        fkdr: ratio(fk, fd),
+        lifetimeFkdr: ratio(first.finalKills, first.finalDeaths),
+        winRate: ratio(wins, games),
+        lifetimeWR: ratio(first.wins, first.gamesPlayed),
         elapsedMs: session.end.queriedAt.getTime() - session.start.queriedAt.getTime(),
     };
 };
@@ -89,18 +128,18 @@ export const modeBreakdown = (
         Gamemode,
         { games: number; wins: number; losses: number; fkdr: number }
     >;
-    for (const m of GAMEMODES) {
-        const first = session.start[m];
-        const last = session.end[m];
+    for (const mode of GAMEMODES) {
+        const first = session.start[mode];
+        const last = session.end[mode];
         const games = last.gamesPlayed - first.gamesPlayed;
         const wins = last.wins - first.wins;
         const fk = last.finalKills - first.finalKills;
         const fd = last.finalDeaths - first.finalDeaths;
-        out[m] = {
+        out[mode] = {
             games,
             wins,
             losses: games - wins,
-            fkdr: fd === 0 ? fk : fk / fd,
+            fkdr: ratio(fk, fd),
         };
     }
     return out;
@@ -125,19 +164,14 @@ export const fkdrTrajectory = (
 ): TrajectoryPoint[] => {
     const baseFK = session.start.overall.finalKills;
     const baseFD = session.start.overall.finalDeaths;
-    return segments.map((seg, i) => {
-        const cumFK = seg.end.overall.finalKills - baseFK;
-        const cumFD = seg.end.overall.finalDeaths - baseFD;
-        return {
-            x: i + 1,
-            sessionFkdr: cumFD === 0 ? cumFK : cumFK / cumFD,
-            lifetimeFkdr:
-                seg.end.overall.finalDeaths === 0
-                    ? seg.end.overall.finalKills
-                    : seg.end.overall.finalKills /
-                      Math.max(1, seg.end.overall.finalDeaths),
-        };
-    });
+    return segments.map((seg, i) => ({
+        x: i + 1,
+        sessionFkdr: ratio(
+            seg.end.overall.finalKills - baseFK,
+            seg.end.overall.finalDeaths - baseFD,
+        ),
+        lifetimeFkdr: ratio(seg.end.overall.finalKills, seg.end.overall.finalDeaths),
+    }));
 };
 
 export const formatClock = (date: Date): string => {
@@ -181,7 +215,7 @@ export const computeTags = (agg: SessionAggregate): SessionTag[] => {
             key: "flawless",
             label: "Flawless",
             icon: "verified",
-            color: "#fbbf24",
+            color: DETAIL_PALETTE.tag.flawless,
             tooltip: "No losses and no final deaths this session",
         });
     } else if (agg.games >= 3 && agg.losses === 0) {
@@ -189,7 +223,7 @@ export const computeTags = (agg: SessionAggregate): SessionTag[] => {
             key: "perfect",
             label: "Perfect run",
             icon: "workspace_premium",
-            color: "#22c55e",
+            color: DETAIL_PALETTE.tag.perfect,
             tooltip: "Won every game this session",
         });
     }
@@ -199,7 +233,7 @@ export const computeTags = (agg: SessionAggregate): SessionTag[] => {
             key: "heater",
             label: "Heater",
             icon: "local_fire_department",
-            color: "#ef4444",
+            color: DETAIL_PALETTE.tag.heater,
             tooltip: `${agg.fkdr.toFixed(1)} session FKDR vs ${agg.lifetimeFkdr.toFixed(1)} lifetime`,
         });
     } else if (agg.fkdr < agg.lifetimeFkdr * 0.6 && agg.games >= 3) {
@@ -207,7 +241,7 @@ export const computeTags = (agg: SessionAggregate): SessionTag[] => {
             key: "slump",
             label: "Cold",
             icon: "ac_unit",
-            color: "#60a5fa",
+            color: DETAIL_PALETTE.tag.cold,
             tooltip: "Session FKDR well below lifetime",
         });
     }
@@ -218,7 +252,7 @@ export const computeTags = (agg: SessionAggregate): SessionTag[] => {
             key: "marathon",
             label: "Marathon",
             icon: "directions_run",
-            color: "#a855f7",
+            color: DETAIL_PALETTE.tag.marathon,
             tooltip: `${hours.toFixed(1)} hours played`,
         });
     }
@@ -226,18 +260,22 @@ export const computeTags = (agg: SessionAggregate): SessionTag[] => {
     return out;
 };
 
-const roundUpNice = (n: number): number => {
-    const steps = [100, 250, 500, 1000, 2500, 5000, 10_000, 25_000];
-    for (const s of steps) {
-        const next = Math.floor(n / s) * s + s;
-        if (next - n <= s * 0.6) return next;
-    }
-    return Math.ceil(n / 10_000) * 10_000 + 10_000;
-};
+const ROUND_UP_STEPS = [100, 250, 500, 1000, 2500, 5000, 10_000, 25_000];
 
-const niceStep = (n: number): number => {
-    const target = roundUpNice(n);
-    return target - Math.floor(n / 100) * 100;
+/**
+ * Round `n` up to the next "nice" milestone, and return both the
+ * milestone and the step size that produced it. The step size is what
+ * "progress towards the next milestone" should be measured against —
+ * e.g. for n=4523 we land on 5000 with step 1000, so the player is
+ * 477/1000 = 47.7% of the way from the previous milestone to the next.
+ */
+export const nextMilestone = (n: number): { target: number; step: number } => {
+    for (const step of ROUND_UP_STEPS) {
+        const next = Math.floor(n / step) * step + step;
+        if (next - n <= step * 0.6) return { target: next, step };
+    }
+    const step = 10_000;
+    return { target: Math.ceil(n / step) * step + step, step };
 };
 
 export interface Milestone {
@@ -267,24 +305,28 @@ export const computeMilestones = (
         agg.stars > 0 ? starsToGo / agg.stars : Number.POSITIVE_INFINITY;
 
     const currentWins = last.overall.wins;
-    const nextWins = roundUpNice(currentWins);
+    const { target: nextWins, step: winsStep } = nextMilestone(currentWins);
     const winsToGo = nextWins - currentWins;
     const winsSessions = agg.wins > 0 ? winsToGo / agg.wins : Number.POSITIVE_INFINITY;
 
-    const currentFKDR = last.overall.finalKills / Math.max(1, last.overall.finalDeaths);
+    const currentFKDR = ratio(last.overall.finalKills, last.overall.finalDeaths);
     const nextFKDR = Math.ceil(currentFKDR * 2 + 0.001) / 2;
-    const LFK = last.overall.finalKills;
-    const LFD = last.overall.finalDeaths;
-    const denom = agg.fk - nextFKDR * agg.fd;
+    const lifetimeFK = last.overall.finalKills;
+    const lifetimeFD = last.overall.finalDeaths;
+    // Solve: (lifetimeFK + n*agg.fk) / (lifetimeFD + n*agg.fd) = nextFKDR
+    // => n = (nextFKDR*lifetimeFD - lifetimeFK) / (agg.fk - nextFKDR*agg.fd)
+    const fkdrDenom = agg.fk - nextFKDR * agg.fd;
     const fkdrSessions =
-        denom > 0 ? (nextFKDR * LFD - LFK) / denom : Number.POSITIVE_INFINITY;
+        fkdrDenom > 0
+            ? (nextFKDR * lifetimeFD - lifetimeFK) / fkdrDenom
+            : Number.POSITIVE_INFINITY;
 
     return [
         {
             key: "prestige",
             label: "Next prestige",
             icon: "auto_awesome",
-            color: "#a855f7",
+            color: DETAIL_PALETTE.milestone.prestige,
             current: currentStars,
             target: nextPrestige,
             format: (v) => `✦${v.toFixed(0)}`,
@@ -296,26 +338,26 @@ export const computeMilestones = (
             key: "wins",
             label: "Next wins milestone",
             icon: "emoji_events",
-            color: "#22c55e",
+            color: DETAIL_PALETTE.milestone.wins,
             current: currentWins,
             target: nextWins,
             format: (v) => v.toLocaleString(),
             deltaFormat: () => `+${agg.wins.toString()}/session`,
             sessions: winsSessions,
-            progress: 1 - winsToGo / niceStep(currentWins),
+            progress: 1 - winsToGo / winsStep,
         },
         {
             key: "fkdr",
             label: "Next FKDR milestone",
             icon: "trending_up",
-            color: "#06b6d4",
+            color: DETAIL_PALETTE.milestone.fkdr,
             current: currentFKDR,
             target: nextFKDR,
             format: (v) => v.toFixed(2),
             deltaFormat: () => `session: ${agg.fkdr.toFixed(2)}`,
             sessions: fkdrSessions,
             progress: (currentFKDR - (nextFKDR - 0.5)) / 0.5,
-            blocked: denom <= 0,
+            blocked: fkdrDenom <= 0,
             blockedReason: "Session FKDR too low to reach this",
         },
     ];
@@ -338,8 +380,8 @@ export const formatLong = (ms: number): string => {
  */
 export const inferredGameCount = (seg: GameSegment): number => {
     let total = 0;
-    for (const m of GAMEMODES) {
-        const delta = seg.end[m].gamesPlayed - seg.start[m].gamesPlayed;
+    for (const mode of GAMEMODES) {
+        const delta = seg.end[mode].gamesPlayed - seg.start[mode].gamesPlayed;
         if (delta > 0) total += delta;
     }
     return total;
@@ -357,10 +399,12 @@ export const segmentXPGained = (seg: GameSegment): number =>
  */
 export const bestGame = (segments: readonly GameSegment[]): GameSegment | undefined => {
     let best: GameSegment | undefined;
+    let bestKills = -1;
     for (const seg of segments) {
         if (seg.game === null) continue;
-        if (best === undefined || seg.game.finalKills > (best.game?.finalKills ?? -1)) {
+        if (seg.game.finalKills > bestKills) {
             best = seg;
+            bestKills = seg.game.finalKills;
         }
     }
     return best;
