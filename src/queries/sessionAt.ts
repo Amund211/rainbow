@@ -19,9 +19,9 @@ interface APIGameResult {
     readonly gamemode: string;
     readonly won: boolean;
     readonly finalKills: number;
-    readonly finalDeaths: number;
+    readonly finalDeath: boolean;
     readonly bedsBroken: number;
-    readonly bedsLost: number;
+    readonly bedLost: boolean;
     readonly kills: number;
     readonly deaths: number;
     readonly xpGained: number;
@@ -42,9 +42,10 @@ export interface GameResult {
     readonly gamemode: Gamemode;
     readonly won: boolean;
     readonly finalKills: number;
-    readonly finalDeaths: number;
+    // Booleans: at most one final death and one bed lost happen per game.
+    readonly finalDeath: boolean;
     readonly bedsBroken: number;
-    readonly bedsLost: number;
+    readonly bedLost: boolean;
     readonly kills: number;
     readonly deaths: number;
     readonly xpGained: number;
@@ -77,9 +78,9 @@ const apiToGameResult = (api: APIGameResult): GameResult | null => {
         gamemode: api.gamemode,
         won: api.won,
         finalKills: api.finalKills,
-        finalDeaths: api.finalDeaths,
+        finalDeath: api.finalDeath,
         bedsBroken: api.bedsBroken,
-        bedsLost: api.bedsLost,
+        bedLost: api.bedLost,
         kills: api.kills,
         deaths: api.deaths,
         xpGained: api.xpGained,

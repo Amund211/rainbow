@@ -444,9 +444,9 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
         items = [
             [
                 "Finals",
-                `${game.finalKills.toString()} / ${game.finalDeaths.toString()}`,
+                `${game.finalKills.toString()} / ${game.finalDeath ? "1" : "0"}`,
             ],
-            ["Beds", `${game.bedsBroken.toString()} / ${game.bedsLost.toString()}`],
+            ["Beds", `${game.bedsBroken.toString()} / ${game.bedLost ? "1" : "0"}`],
             ["Kills", `${game.kills.toString()} / ${game.deaths.toString()}`],
             ["XP", `+${game.xpGained.toLocaleString()}`],
         ];
@@ -531,14 +531,14 @@ const ClutchOrCarriedBadge: React.FC<{ game: GameResult }> = ({ game }) => {
             label: "Perfect game",
             tooltip: "Got every final kill and every enemy bed in the game.",
         };
-    } else if (game.finalDeaths > 0) {
+    } else if (game.finalDeath) {
         tone = {
             icon: Group,
             color: "#06b6d4",
             label: "Carried",
             tooltip: "Won after taking a final death — teammates pulled you through.",
         };
-    } else if (game.bedsLost > 0) {
+    } else if (game.bedLost) {
         tone = {
             icon: Shield,
             color: "#fbbf24",
