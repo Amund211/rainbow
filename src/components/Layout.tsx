@@ -58,7 +58,7 @@ function useShownPlayer(): string | null {
 
     switch (currentMatch.routeId) {
         case "/session/$uuid":
-        case "/session/$uuid/detail":
+        case "/session/$uuid_/detail":
         case "/wrapped/$uuid": {
             return currentMatch.params.uuid;
         }

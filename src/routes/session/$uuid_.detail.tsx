@@ -73,7 +73,7 @@ const detailSearchSchema = z.object({
     date: z.coerce.date(),
 });
 
-export const Route = createFileRoute("/session/$uuid/detail")({
+export const Route = createFileRoute("/session/$uuid_/detail")({
     validateSearch: detailSearchSchema,
     // oxlint-disable-next-line eslint/no-use-before-define
     component: RouteComponent,

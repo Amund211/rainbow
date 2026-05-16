@@ -18,7 +18,7 @@ import { Route as SessionIndexRouteImport } from './routes/session/index.tsx'
 import { Route as WrappedUuidRouteImport } from './routes/wrapped/$uuid.tsx'
 import { Route as SessionUuidRouteImport } from './routes/session/$uuid.tsx'
 import { Route as HistoryExploreRouteImport } from './routes/history.explore.tsx'
-import { Route as SessionUuidDetailRouteImport } from './routes/session/$uuid.detail.tsx'
+import { Route as SessionUuidDetailRouteImport } from './routes/session/$uuid_.detail.tsx'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -66,9 +66,9 @@ const HistoryExploreRoute = HistoryExploreRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const SessionUuidDetailRoute = SessionUuidDetailRouteImport.update({
-  id: '/detail',
-  path: '/detail',
-  getParentRoute: () => SessionUuidRoute,
+  id: '/session/$uuid_/detail',
+  path: '/session/$uuid/detail',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -77,7 +77,7 @@ export interface FileRoutesByFullPath {
   '/downloads': typeof DownloadsRoute
   '/settings': typeof SettingsRoute
   '/history/explore': typeof HistoryExploreRoute
-  '/session/$uuid': typeof SessionUuidRouteWithChildren
+  '/session/$uuid': typeof SessionUuidRoute
   '/wrapped/$uuid': typeof WrappedUuidRoute
   '/session/': typeof SessionIndexRoute
   '/wrapped/': typeof WrappedIndexRoute
@@ -89,7 +89,7 @@ export interface FileRoutesByTo {
   '/downloads': typeof DownloadsRoute
   '/settings': typeof SettingsRoute
   '/history/explore': typeof HistoryExploreRoute
-  '/session/$uuid': typeof SessionUuidRouteWithChildren
+  '/session/$uuid': typeof SessionUuidRoute
   '/wrapped/$uuid': typeof WrappedUuidRoute
   '/session': typeof SessionIndexRoute
   '/wrapped': typeof WrappedIndexRoute
@@ -102,11 +102,11 @@ export interface FileRoutesById {
   '/downloads': typeof DownloadsRoute
   '/settings': typeof SettingsRoute
   '/history/explore': typeof HistoryExploreRoute
-  '/session/$uuid': typeof SessionUuidRouteWithChildren
+  '/session/$uuid': typeof SessionUuidRoute
   '/wrapped/$uuid': typeof WrappedUuidRoute
   '/session/': typeof SessionIndexRoute
   '/wrapped/': typeof WrappedIndexRoute
-  '/session/$uuid/detail': typeof SessionUuidDetailRoute
+  '/session/$uuid_/detail': typeof SessionUuidDetailRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -144,7 +144,7 @@ export interface FileRouteTypes {
     | '/wrapped/$uuid'
     | '/session/'
     | '/wrapped/'
-    | '/session/$uuid/detail'
+    | '/session/$uuid_/detail'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -153,10 +153,11 @@ export interface RootRouteChildren {
   DownloadsRoute: typeof DownloadsRoute
   SettingsRoute: typeof SettingsRoute
   HistoryExploreRoute: typeof HistoryExploreRoute
-  SessionUuidRoute: typeof SessionUuidRouteWithChildren
+  SessionUuidRoute: typeof SessionUuidRoute
   WrappedUuidRoute: typeof WrappedUuidRoute
   SessionIndexRoute: typeof SessionIndexRoute
   WrappedIndexRoute: typeof WrappedIndexRoute
+  SessionUuidDetailRoute: typeof SessionUuidDetailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -224,27 +225,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryExploreRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/session/$uuid/detail': {
-      id: '/session/$uuid/detail'
-      path: '/detail'
+    '/session/$uuid_/detail': {
+      id: '/session/$uuid_/detail'
+      path: '/session/$uuid/detail'
       fullPath: '/session/$uuid/detail'
       preLoaderRoute: typeof SessionUuidDetailRouteImport
-      parentRoute: typeof SessionUuidRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface SessionUuidRouteChildren {
-  SessionUuidDetailRoute: typeof SessionUuidDetailRoute
-}
-
-const SessionUuidRouteChildren: SessionUuidRouteChildren = {
-  SessionUuidDetailRoute: SessionUuidDetailRoute,
-}
-
-const SessionUuidRouteWithChildren = SessionUuidRoute._addFileChildren(
-  SessionUuidRouteChildren,
-)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -252,10 +241,11 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadsRoute: DownloadsRoute,
   SettingsRoute: SettingsRoute,
   HistoryExploreRoute: HistoryExploreRoute,
-  SessionUuidRoute: SessionUuidRouteWithChildren,
+  SessionUuidRoute: SessionUuidRoute,
   WrappedUuidRoute: WrappedUuidRoute,
   SessionIndexRoute: SessionIndexRoute,
   WrappedIndexRoute: WrappedIndexRoute,
+  SessionUuidDetailRoute: SessionUuidDetailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
