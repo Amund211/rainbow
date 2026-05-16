@@ -13,6 +13,7 @@ import {
     Info,
     IosShare,
     LocalFireDepartment,
+    MilitaryTech,
     Schedule,
     Shield,
     Speed,
@@ -497,14 +498,40 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
     );
 };
 
+// Per-mode thresholds for "Perfect game": the maximum final kills and
+// beds broken available in a game of that mode. Hitting both means the
+// player single-handedly cleared the lobby.
+const PERFECT_GAME_THRESHOLDS: Record<
+    GameResult["gamemode"],
+    { finalKills: number; bedsBroken: number }
+> = {
+    solo: { finalKills: 7, bedsBroken: 7 },
+    doubles: { finalKills: 14, bedsBroken: 7 },
+    threes: { finalKills: 12, bedsBroken: 3 },
+    fours: { finalKills: 16, bedsBroken: 3 },
+};
+
+const isPerfectGame = (game: GameResult): boolean => {
+    const t = PERFECT_GAME_THRESHOLDS[game.gamemode];
+    return game.finalKills >= t.finalKills && game.bedsBroken >= t.bedsBroken;
+};
+
 // Small icon-only badge shown left of the W/L chip on a game tile.
-// Carried (groups, cyan): won despite taking a final death.
-// Clutch (shield, amber): won despite losing your bed.
-// Mutually exclusive — Carried wins when both apply.
+// Precedence: Perfect game > Carried > Clutch (mutually exclusive).
+//   Perfect game (medal, violet): got every final kill and every enemy bed.
+//   Carried (groups, cyan):       won despite taking a final death.
+//   Clutch (shield, amber):       won despite losing your bed.
 const ClutchOrCarriedBadge: React.FC<{ game: GameResult }> = ({ game }) => {
     if (!game.won) return null;
     let tone: { icon: SvgIconComponent; color: string; label: string; tooltip: string };
-    if (game.finalDeaths > 0) {
+    if (isPerfectGame(game)) {
+        tone = {
+            icon: MilitaryTech,
+            color: "#a855f7",
+            label: "Perfect game",
+            tooltip: "Got every final kill and every enemy bed in the game.",
+        };
+    } else if (game.finalDeaths > 0) {
         tone = {
             icon: Group,
             color: "#06b6d4",
@@ -613,8 +640,6 @@ const GameTile: React.FC<{
     }
 
     const c = game.won ? "#4ade80" : "#f87171";
-    const fkdr =
-        game.finalDeaths === 0 ? game.finalKills : game.finalKills / game.finalDeaths;
     return (
         <Button
             onClick={onClick}
@@ -671,16 +696,15 @@ const GameTile: React.FC<{
                 </Stack>
             </Stack>
             <Typography sx={{ fontSize: 18, lineHeight: 1, fontWeight: 500 }}>
-                {fkdr.toFixed(1)}
+                {game.finalKills.toString()}
             </Typography>
             <Typography variant="caption" color="textSecondary">
-                FKDR
+                Finals
             </Typography>
             <Stack direction="row" gap={0.75} sx={{ mt: 1, fontSize: 10 }}>
                 <Box sx={{ color: MODE_COLORS[game.gamemode] }}>●</Box>
                 <Typography variant="caption">
-                    {/* TODO REVERT: hardcoded for overflow check */}
-                    Doubles
+                    {gamemodeLabel(game.gamemode)}
                 </Typography>
                 <Typography variant="caption" sx={{ ml: "auto" }}>
                     {`${mins.toString()}m`}
