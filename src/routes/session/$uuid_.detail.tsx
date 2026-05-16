@@ -691,8 +691,14 @@ const MomentumStrip: React.FC<{ segments: readonly GameSegment[] }> = ({
             <Box
                 sx={{
                     display: "grid",
-                    gridTemplateColumns: `repeat(${segments.length.toString()}, minmax(0, 1fr))`,
+                    // Tiles share the row when there's room (1fr each), but
+                    // never shrink below 100px — past that the container
+                    // scrolls horizontally so long sessions stay legible
+                    // instead of squishing every tile.
+                    gridTemplateColumns: `repeat(${segments.length.toString()}, minmax(100px, 1fr))`,
                     gap: 1,
+                    overflowX: "auto",
+                    pb: 1,
                 }}
             >
                 {segments.map((seg, i) => (
