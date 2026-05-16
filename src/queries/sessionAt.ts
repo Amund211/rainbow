@@ -10,15 +10,81 @@ import type { APIPlayerDataPIT, PlayerDataPIT } from "./playerdata.ts";
 import type { APISession, Session } from "./sessions.ts";
 import { apiToSession } from "./sessions.ts";
 
+export type Gamemode = "solo" | "doubles" | "threes" | "fours";
+
+const isGamemode = (value: unknown): value is Gamemode =>
+    value === "solo" || value === "doubles" || value === "threes" || value === "fours";
+
+interface APIGameResult {
+    readonly gamemode: string;
+    readonly won: boolean;
+    readonly finalKills: number;
+    readonly finalDeaths: number;
+    readonly bedsBroken: number;
+    readonly bedsLost: number;
+    readonly kills: number;
+    readonly deaths: number;
+    readonly xpGained: number;
+}
+
+interface APIGameSegment {
+    readonly start: APIPlayerDataPIT;
+    readonly end: APIPlayerDataPIT;
+    readonly game: APIGameResult | null;
+}
+
 interface APISessionAtResponse {
     readonly session: APISession | null;
-    readonly history: readonly APIPlayerDataPIT[];
+    readonly games: readonly APIGameSegment[];
+}
+
+export interface GameResult {
+    readonly gamemode: Gamemode;
+    readonly won: boolean;
+    readonly finalKills: number;
+    readonly finalDeaths: number;
+    readonly bedsBroken: number;
+    readonly bedsLost: number;
+    readonly kills: number;
+    readonly deaths: number;
+    readonly xpGained: number;
+}
+
+export interface GameSegment {
+    readonly start: PlayerDataPIT;
+    readonly end: PlayerDataPIT;
+    // null when the snapshot pair represents zero games (a heartbeat) or
+    // more than one game (gamesPlayed jumped by 2+, or multiple modes
+    // advanced). Callers should render these specially — e.g. "(no games)"
+    // for heartbeats or "(N games played)" for ambiguous stretches.
+    readonly game: GameResult | null;
 }
 
 export interface SessionAt {
     readonly session: Session | null;
-    readonly history: readonly PlayerDataPIT[];
+    readonly games: readonly GameSegment[];
 }
+
+const apiToGameResult = (api: APIGameResult): GameResult | null => {
+    if (!isGamemode(api.gamemode)) {
+        captureMessage("Unknown gamemode in session-at response", {
+            level: "error",
+            extra: { gamemode: api.gamemode },
+        });
+        return null;
+    }
+    return {
+        gamemode: api.gamemode,
+        won: api.won,
+        finalKills: api.finalKills,
+        finalDeaths: api.finalDeaths,
+        bedsBroken: api.bedsBroken,
+        bedsLost: api.bedsLost,
+        kills: api.kills,
+        deaths: api.deaths,
+        xpGained: api.xpGained,
+    };
+};
 
 interface SessionAtQueryOptions {
     readonly uuid: string;
@@ -93,7 +159,13 @@ export const getSessionAtQueryOptions = ({ uuid, time }: SessionAtQueryOptions) 
             return {
                 session:
                     data.session === null ? null : apiToSession(data.session, false),
-                history: data.history.map((pit) => apiToPlayerDataPIT(pit)),
+                games: data.games.map(
+                    (seg): GameSegment => ({
+                        start: apiToPlayerDataPIT(seg.start),
+                        end: apiToPlayerDataPIT(seg.end),
+                        game: seg.game === null ? null : apiToGameResult(seg.game),
+                    }),
+                ),
             };
         },
     });

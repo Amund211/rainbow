@@ -1,8 +1,6 @@
-import type { PlayerDataPIT, StatsPIT } from "#queries/playerdata.ts";
+import type { GameSegment, Gamemode } from "#queries/sessionAt.ts";
 import type { Session } from "#queries/sessions.ts";
 import { bedwarsLevelFromExp } from "#stats/stars.ts";
-
-export type Gamemode = "solo" | "doubles" | "threes" | "fours";
 
 const GAMEMODES: readonly Gamemode[] = ["solo", "doubles", "threes", "fours"];
 
@@ -20,89 +18,6 @@ export const MODE_COLORS: Record<Gamemode, string> = {
     doubles: "#06b6d4",
     threes: "#22c55e",
     fours: "#f59e0b",
-};
-
-const statKeys = [
-    "gamesPlayed",
-    "wins",
-    "losses",
-    "bedsBroken",
-    "bedsLost",
-    "finalKills",
-    "finalDeaths",
-    "kills",
-    "deaths",
-] as const;
-type StatKey = (typeof statKeys)[number];
-
-const diffStats = (a: StatsPIT, b: StatsPIT): Record<StatKey, number> => {
-    const out = {} as Record<StatKey, number>;
-    for (const k of statKeys) {
-        out[k] = b[k] - a[k];
-    }
-    return out;
-};
-
-export interface Game {
-    readonly index: number;
-    readonly mode: Gamemode;
-    readonly won: boolean;
-    readonly fk: number;
-    readonly fd: number;
-    readonly bb: number;
-    readonly bl: number;
-    readonly k: number;
-    readonly d: number;
-    readonly xp: number;
-    readonly endedAt: Date;
-    readonly startedAt: Date;
-    readonly durationMs: number;
-}
-
-/**
- * Derive per-game info by walking pairs of PIT snapshots and observing which
- * gamemode's `gamesPlayed` increased. Snapshots are assumed to be sorted by
- * `queriedAt` ascending.
- */
-export const derivedGames = (history: readonly PlayerDataPIT[]): Game[] => {
-    if (history.length < 2) return [];
-
-    const games: Game[] = [];
-    let index = 1;
-    for (let i = 1; i < history.length; i++) {
-        const prev = history[i - 1];
-        const curr = history[i];
-
-        let mode: Gamemode | null = null;
-        for (const g of GAMEMODES) {
-            if (curr[g].gamesPlayed > prev[g].gamesPlayed) {
-                mode = g;
-                break;
-            }
-        }
-        if (mode === null) continue;
-
-        const delta = diffStats(prev[mode], curr[mode]);
-        if (delta.gamesPlayed <= 0) continue;
-
-        games.push({
-            index,
-            mode,
-            won: delta.wins > 0,
-            fk: delta.finalKills,
-            fd: delta.finalDeaths,
-            bb: delta.bedsBroken,
-            bl: delta.bedsLost,
-            k: delta.kills,
-            d: delta.deaths,
-            xp: curr.experience - prev.experience,
-            endedAt: curr.queriedAt,
-            startedAt: prev.queriedAt,
-            durationMs: curr.queriedAt.getTime() - prev.queriedAt.getTime(),
-        });
-        index++;
-    }
-    return games;
 };
 
 export interface SessionAggregate {
@@ -198,25 +113,29 @@ export interface TrajectoryPoint {
 }
 
 /**
- * Compute cumulative session FKDR vs lifetime FKDR after each game.
+ * Compute the per-segment FKDR trajectory: the cumulative session FKDR
+ * and the live lifetime FKDR after each segment. Segments without a
+ * derivable game (heartbeats / ambiguous jumps) still anchor a
+ * trajectory point — using the segment's end-of-window stats — so the
+ * line stays continuous.
  */
 export const fkdrTrajectory = (
     session: Session,
-    games: readonly Game[],
+    segments: readonly GameSegment[],
 ): TrajectoryPoint[] => {
     const baseFK = session.start.overall.finalKills;
     const baseFD = session.start.overall.finalDeaths;
-    let cumFK = 0;
-    let cumFD = 0;
-    return games.map((g, i) => {
-        cumFK += g.fk;
-        cumFD += g.fd;
-        const liveFK = baseFK + cumFK;
-        const liveFD = baseFD + cumFD;
+    return segments.map((seg, i) => {
+        const cumFK = seg.end.overall.finalKills - baseFK;
+        const cumFD = seg.end.overall.finalDeaths - baseFD;
         return {
             x: i + 1,
             sessionFkdr: cumFD === 0 ? cumFK : cumFK / cumFD,
-            lifetimeFkdr: liveFK / Math.max(1, liveFD),
+            lifetimeFkdr:
+                seg.end.overall.finalDeaths === 0
+                    ? seg.end.overall.finalKills
+                    : seg.end.overall.finalKills /
+                      Math.max(1, seg.end.overall.finalDeaths),
         };
     });
 };
@@ -419,8 +338,85 @@ export const formatLong = (ms: number): string => {
     const hours = Math.floor((totalMin % (60 * 24)) / 60);
     const mins = totalMin % 60;
     if (days > 0) return `${days.toString()}d ${hours.toString()}h`;
-    if (hours > 0) {
-        return `${hours.toString()}h ${String(mins).padStart(2, "0")}m`;
-    }
+    if (hours > 0) return `${hours.toString()}h ${String(mins).padStart(2, "0")}m`;
     return `${mins.toString()}m`;
+};
+
+/**
+ * Count how many games happened in a segment with no derivable per-game
+ * stats. Returns 0 for a heartbeat (no stats moved), N>=1 for a segment
+ * that covers N games we couldn't split (e.g. gamesPlayed jumped by 2).
+ */
+export const inferredGameCount = (seg: GameSegment): number => {
+    let total = 0;
+    for (const m of GAMEMODES) {
+        const delta = seg.end[m].gamesPlayed - seg.start[m].gamesPlayed;
+        if (delta > 0) total += delta;
+    }
+    return total;
+};
+
+export const segmentDurationMs = (seg: GameSegment): number =>
+    seg.end.queriedAt.getTime() - seg.start.queriedAt.getTime();
+
+export const segmentXPGained = (seg: GameSegment): number =>
+    seg.end.experience - seg.start.experience;
+
+/**
+ * Best game = the (single-game) segment with the highest final kills.
+ * Skips ambiguous segments entirely.
+ */
+export const bestGame = (segments: readonly GameSegment[]): GameSegment | undefined => {
+    let best: GameSegment | undefined;
+    for (const seg of segments) {
+        if (seg.game === null) continue;
+        if (best === undefined || seg.game.finalKills > (best.game?.finalKills ?? -1)) {
+            best = seg;
+        }
+    }
+    return best;
+};
+
+export const fastestWin = (
+    segments: readonly GameSegment[],
+): GameSegment | undefined => {
+    let fastest: GameSegment | undefined;
+    let fastestMs = Number.POSITIVE_INFINITY;
+    for (const seg of segments) {
+        if (seg.game === null || !seg.game.won) continue;
+        const ms = segmentDurationMs(seg);
+        if (ms < fastestMs) {
+            fastest = seg;
+            fastestMs = ms;
+        }
+    }
+    return fastest;
+};
+
+/**
+ * Trailing streak across single-game segments (ambiguous segments break
+ * the streak — we don't know individual W/L). Returns null when no
+ * meaningful streak exists.
+ */
+export const trailingStreak = (
+    segments: readonly GameSegment[],
+): { length: number; won: boolean } | null => {
+    let length = 0;
+    let won: boolean | undefined;
+    for (let i = segments.length - 1; i >= 0; i--) {
+        const { game } = segments[i];
+        if (game === null) break;
+        if (won === undefined) {
+            ({ won } = game);
+            length = 1;
+            continue;
+        }
+        if (game.won === won) {
+            length++;
+        } else {
+            break;
+        }
+    }
+    if (length < 2 || won === undefined) return null;
+    return { length, won };
 };

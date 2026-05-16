@@ -117,7 +117,12 @@ export const handlers = [
 
         const timeDate = new Date(body.time);
         const startDate = new Date(timeDate.getTime() - 60 * 60 * 1000);
+        const midDate = new Date(timeDate);
         const endDate = new Date(timeDate.getTime() + 60 * 60 * 1000);
+
+        const startPIT = makePlayerDataPIT(body.uuid, startDate.toISOString(), 1);
+        const midPIT = makePlayerDataPIT(body.uuid, midDate.toISOString(), 2);
+        const endPIT = makePlayerDataPIT(body.uuid, endDate.toISOString(), 3);
 
         return HttpResponse.json({
             session: makeSession(
@@ -125,9 +130,37 @@ export const handlers = [
                 startDate.toISOString(),
                 endDate.toISOString(),
             ),
-            history: [
-                makePlayerDataPIT(body.uuid, startDate.toISOString(), 1),
-                makePlayerDataPIT(body.uuid, endDate.toISOString(), 2),
+            games: [
+                {
+                    start: startPIT,
+                    end: midPIT,
+                    game: {
+                        gamemode: "doubles",
+                        won: true,
+                        finalKills: 5,
+                        finalDeaths: 1,
+                        bedsBroken: 1,
+                        bedsLost: 0,
+                        kills: 12,
+                        deaths: 4,
+                        xpGained: 2400,
+                    },
+                },
+                {
+                    start: midPIT,
+                    end: endPIT,
+                    game: {
+                        gamemode: "fours",
+                        won: false,
+                        finalKills: 2,
+                        finalDeaths: 2,
+                        bedsBroken: 0,
+                        bedsLost: 1,
+                        kills: 6,
+                        deaths: 5,
+                        xpGained: 700,
+                    },
+                },
             ],
         });
     }),

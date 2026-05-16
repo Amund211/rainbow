@@ -8,6 +8,7 @@ import {
     ContentCopy,
     DirectionsRun,
     EmojiEvents,
+    Help,
     Info,
     IosShare,
     LocalFireDepartment,
@@ -42,23 +43,28 @@ import React from "react";
 import { z } from "zod";
 
 import { PlayerHead } from "#components/player.tsx";
-import type { Game, Milestone, SessionTag } from "#helpers/sessionDetail.ts";
+import type { Milestone, SessionTag } from "#helpers/sessionDetail.ts";
 import {
     aggregate,
+    bestGame,
     computeMilestones,
     computeTags,
-    derivedGames,
+    fastestWin,
     fkdrTrajectory,
     formatClock,
     formatDate,
     formatDuration,
     formatLong,
     gamemodeLabel,
+    inferredGameCount,
     MODE_COLORS,
     modeBreakdown,
+    segmentDurationMs,
+    segmentXPGained,
+    trailingStreak,
 } from "#helpers/sessionDetail.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
-import type { SessionAt } from "#queries/sessionAt.ts";
+import type { GameSegment, SessionAt } from "#queries/sessionAt.ts";
 import { getSessionAtQueryOptions } from "#queries/sessionAt.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
 import { bedwarsLevelFromExp } from "#stats/stars.ts";
@@ -396,13 +402,52 @@ const KPIRow: React.FC<{ agg: ReturnType<typeof aggregate> }> = ({ agg }) => {
     );
 };
 
-const GameDetail: React.FC<{ game: Game }> = ({ game }) => {
-    const items: [string, string][] = [
-        ["Finals", `${game.fk.toString()} / ${game.fd.toString()}`],
-        ["Beds", `${game.bb.toString()} / ${game.bl.toString()}`],
-        ["Kills", `${game.k.toString()} / ${game.d.toString()}`],
-        ["XP", `+${game.xp.toLocaleString()}`],
-    ];
+const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
+    segment,
+    index,
+}) => {
+    const xp = segmentXPGained(segment);
+    let items: [string, string][];
+    if (segment.game === null) {
+        const count = inferredGameCount(segment);
+        items =
+            count === 0
+                ? [
+                      ["Status", "Heartbeat"],
+                      ["Games", "0"],
+                      ["XP", `+${xp.toLocaleString()}`],
+                      [
+                          "Span",
+                          formatDuration(segmentDurationMs(segment)).replace(
+                              / \d{2}s$/,
+                              "",
+                          ),
+                      ],
+                  ]
+                : [
+                      ["Status", "Multi-game"],
+                      ["Games", count.toString()],
+                      ["XP", `+${xp.toLocaleString()}`],
+                      [
+                          "Span",
+                          formatDuration(segmentDurationMs(segment)).replace(
+                              / \d{2}s$/,
+                              "",
+                          ),
+                      ],
+                  ];
+    } else {
+        const { game } = segment;
+        items = [
+            [
+                "Finals",
+                `${game.finalKills.toString()} / ${game.finalDeaths.toString()}`,
+            ],
+            ["Beds", `${game.bedsBroken.toString()} / ${game.bedsLost.toString()}`],
+            ["Kills", `${game.kills.toString()} / ${game.deaths.toString()}`],
+            ["XP", `+${game.xpGained.toLocaleString()}`],
+        ];
+    }
     return (
         <Box
             sx={{
@@ -415,6 +460,19 @@ const GameDetail: React.FC<{ game: Game }> = ({ game }) => {
                 borderColor: "divider",
             }}
         >
+            <Box sx={{ gridColumn: "1 / -1", mb: 0.5 }}>
+                <Typography
+                    variant="caption"
+                    color="textSecondary"
+                    sx={{
+                        textTransform: "uppercase",
+                        letterSpacing: 0.6,
+                        fontSize: 10,
+                    }}
+                >
+                    {`Segment ${index.toString()}`}
+                </Typography>
+            </Box>
             {items.map(([k, v]) => (
                 <Box key={k}>
                     <Typography
@@ -438,13 +496,77 @@ const GameDetail: React.FC<{ game: Game }> = ({ game }) => {
 };
 
 const GameTile: React.FC<{
-    game: Game;
+    segment: GameSegment;
+    index: number;
     active: boolean;
     onClick: () => void;
-}> = ({ game, active, onClick }) => {
+}> = ({ segment, index, active, onClick }) => {
+    const { game } = segment;
+    const durationMs = segmentDurationMs(segment);
+    const mins = Math.max(1, Math.round(durationMs / 60_000));
+
+    if (game === null) {
+        const count = inferredGameCount(segment);
+        const isHeartbeat = count === 0;
+        const c = isHeartbeat ? "#6b7280" : "#9ca3af";
+        return (
+            <Button
+                onClick={onClick}
+                sx={{
+                    p: 1,
+                    borderRadius: 1.25,
+                    bgcolor: active ? `${c}22` : "action.hover",
+                    border: 1,
+                    borderColor: active ? c : "divider",
+                    borderStyle: "dashed",
+                    color: "text.primary",
+                    textTransform: "none",
+                    textAlign: "left",
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                    position: "relative",
+                    overflow: "hidden",
+                    minWidth: 0,
+                    ":hover": { bgcolor: `${c}11` },
+                }}
+                title={
+                    isHeartbeat
+                        ? "Heartbeat snapshot — no game played in this window"
+                        : `${count.toString()} games — couldn't be split out individually`
+                }
+            >
+                <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{ mb: 0.5 }}
+                >
+                    <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
+                        {`#${index.toString()}`}
+                    </Typography>
+                    <Help sx={{ fontSize: 14, color: c }} />
+                </Stack>
+                <Typography sx={{ fontSize: 18, lineHeight: 1, fontWeight: 500 }}>
+                    {isHeartbeat ? "—" : count.toString()}
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                    {isHeartbeat ? "no game" : "games"}
+                </Typography>
+                <Stack direction="row" gap={0.75} sx={{ mt: 1, fontSize: 10 }}>
+                    <Typography variant="caption" color="textSecondary">
+                        ?
+                    </Typography>
+                    <Typography variant="caption" sx={{ ml: "auto" }}>
+                        {`${mins.toString()}m`}
+                    </Typography>
+                </Stack>
+            </Button>
+        );
+    }
+
     const c = game.won ? "#4ade80" : "#f87171";
-    const fkdr = game.fd === 0 ? game.fk : game.fk / game.fd;
-    const mins = Math.max(1, Math.round(game.durationMs / 60_000));
+    const fkdr =
+        game.finalDeaths === 0 ? game.finalKills : game.finalKills / game.finalDeaths;
     return (
         <Button
             onClick={onClick}
@@ -482,7 +604,7 @@ const GameTile: React.FC<{
                 sx={{ mb: 0.5 }}
             >
                 <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
-                    {`G${game.index.toString()}`}
+                    {`G${index.toString()}`}
                 </Typography>
                 <Chip
                     size="small"
@@ -503,9 +625,9 @@ const GameTile: React.FC<{
                 FKDR
             </Typography>
             <Stack direction="row" gap={0.75} sx={{ mt: 1, fontSize: 10 }}>
-                <Box sx={{ color: MODE_COLORS[game.mode] }}>●</Box>
+                <Box sx={{ color: MODE_COLORS[game.gamemode] }}>●</Box>
                 <Typography variant="caption">
-                    {gamemodeLabel(game.mode).slice(0, 3)}
+                    {gamemodeLabel(game.gamemode).slice(0, 3)}
                 </Typography>
                 <Typography variant="caption" sx={{ ml: "auto" }}>
                     {`${mins.toString()}m`}
@@ -515,33 +637,26 @@ const GameTile: React.FC<{
     );
 };
 
-const StreakIndicator: React.FC<{ games: readonly Game[] }> = ({ games }) => {
-    if (games.length === 0) return null;
-    let streak = 0;
-    let streakIsWin: boolean | undefined;
-    for (let i = games.length - 1; i >= 0; i--) {
-        if (streakIsWin === undefined) {
-            streakIsWin = games[i].won;
-            streak = 1;
-            continue;
-        }
-        if (games[i].won === streakIsWin) {
-            streak++;
-        } else {
-            break;
-        }
-    }
-    if (streak < 2 || streakIsWin === undefined) return null;
-    const isWin = streakIsWin;
-    const c = isWin ? "#4ade80" : "#f87171";
-    const Icon = isWin ? LocalFireDepartment : Cloud;
-    const label = `${streak.toString()} ${isWin ? "win" : "loss"} streak`;
+const StreakIndicator: React.FC<{ segments: readonly GameSegment[] }> = ({
+    segments,
+}) => {
+    const streak = trailingStreak(segments);
+    if (streak === null) return null;
+    const c = streak.won ? "#4ade80" : "#f87171";
+    const Icon = streak.won ? LocalFireDepartment : Cloud;
+    const label = `${streak.length.toString()} ${streak.won ? "win" : "loss"} streak`;
     return (
         <Stack
             direction="row"
             alignItems="center"
             gap={0.75}
-            sx={{ px: 1.25, py: 0.75, borderRadius: 0.75, bgcolor: `${c}14`, color: c }}
+            sx={{
+                px: 1.25,
+                py: 0.75,
+                borderRadius: 0.75,
+                bgcolor: `${c}14`,
+                color: c,
+            }}
         >
             <Icon fontSize="small" sx={{ color: c }} />
             <Typography variant="body2" sx={{ color: c, fontWeight: 600 }}>
@@ -551,9 +666,11 @@ const StreakIndicator: React.FC<{ games: readonly Game[] }> = ({ games }) => {
     );
 };
 
-const MomentumStrip: React.FC<{ games: readonly Game[] }> = ({ games }) => {
+const MomentumStrip: React.FC<{ segments: readonly GameSegment[] }> = ({
+    segments,
+}) => {
     const [focused, setFocused] = React.useState<number | null>(null);
-    const focusedGame = focused === null ? undefined : games[focused];
+    const focusedSegment = focused === null ? undefined : segments[focused];
     return (
         <Card>
             <Stack
@@ -565,22 +682,24 @@ const MomentumStrip: React.FC<{ games: readonly Game[] }> = ({ games }) => {
                 <Box>
                     <Typography variant="subtitle1">Game-by-game</Typography>
                     <Typography variant="caption" color="textSecondary">
-                        Click a tile to inspect
+                        Click a tile to inspect. Dashed tiles are heartbeats or
+                        multi-game gaps where individual games can&apos;t be attributed.
                     </Typography>
                 </Box>
-                <StreakIndicator games={games} />
+                <StreakIndicator segments={segments} />
             </Stack>
             <Box
                 sx={{
                     display: "grid",
-                    gridTemplateColumns: `repeat(${games.length.toString()}, minmax(0, 1fr))`,
+                    gridTemplateColumns: `repeat(${segments.length.toString()}, minmax(0, 1fr))`,
                     gap: 1,
                 }}
             >
-                {games.map((g, i) => (
+                {segments.map((seg, i) => (
                     <GameTile
-                        key={g.endedAt.toISOString()}
-                        game={g}
+                        key={seg.end.queriedAt.toISOString()}
+                        segment={seg}
+                        index={i + 1}
                         active={focused === i}
                         onClick={() => {
                             setFocused(focused === i ? null : i);
@@ -588,19 +707,21 @@ const MomentumStrip: React.FC<{ games: readonly Game[] }> = ({ games }) => {
                     />
                 ))}
             </Box>
-            {focusedGame !== undefined && <GameDetail game={focusedGame} />}
+            {focusedSegment !== undefined && focused !== null && (
+                <GameDetail segment={focusedSegment} index={focused + 1} />
+            )}
         </Card>
     );
 };
 
 interface TrajectoryChartProps {
     session: NonNullable<SessionAt["session"]>;
-    games: readonly Game[];
+    segments: readonly GameSegment[];
 }
 
-const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, games }) => {
+const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) => {
     const theme = useTheme();
-    const points = fkdrTrajectory(session, games);
+    const points = fkdrTrajectory(session, segments);
 
     if (points.length < 2) {
         return (
@@ -1073,25 +1194,15 @@ interface HighlightItem {
 
 const HighlightsCard: React.FC<{
     agg: ReturnType<typeof aggregate>;
-    games: readonly Game[];
-}> = ({ agg, games }) => {
-    if (games.length === 0) return null;
-    const [firstGame] = games;
-    let best = firstGame;
-    for (const g of games) {
-        if (g.fk > best.fk) best = g;
-    }
-
-    let fastestWin: Game | undefined;
-    for (const g of games) {
-        if (!g.won) continue;
-        if (fastestWin === undefined || g.durationMs < fastestWin.durationMs) {
-            fastestWin = g;
-        }
-    }
-
+    segments: readonly GameSegment[];
+}> = ({ agg, segments }) => {
+    const best = bestGame(segments);
+    const fastest = fastestWin(segments);
     const beatLifetime = agg.fkdr > agg.lifetimeFkdr;
     const hours = agg.elapsedMs / 3_600_000;
+
+    const bestIndex = best === undefined ? -1 : segments.indexOf(best);
+    const fastestIndex = fastest === undefined ? -1 : segments.indexOf(fastest);
 
     const items: readonly HighlightItem[] = [
         {
@@ -1099,8 +1210,14 @@ const HighlightsCard: React.FC<{
             icon: WorkspacePremium,
             color: "#fbbf24",
             title: "Signature game",
-            value: `G${best.index.toString()} · ${best.fk.toString()} finals`,
-            sub: `${best.k.toString()} kills · ${gamemodeLabel(best.mode)}`,
+            value:
+                best?.game === undefined || best.game === null
+                    ? "—"
+                    : `G${(bestIndex + 1).toString()} · ${best.game.finalKills.toString()} finals`,
+            sub:
+                best?.game === undefined || best.game === null
+                    ? "No single-game segments"
+                    : `${best.game.kills.toString()} kills · ${gamemodeLabel(best.game.gamemode)}`,
         },
         {
             id: "fastest",
@@ -1108,13 +1225,13 @@ const HighlightsCard: React.FC<{
             color: "#22c55e",
             title: "Fastest win",
             value:
-                fastestWin === undefined
+                fastest === undefined
                     ? "—"
-                    : `${Math.max(1, Math.round(fastestWin.durationMs / 60_000)).toString()}m`,
+                    : `${Math.max(1, Math.round(segmentDurationMs(fastest) / 60_000)).toString()}m`,
             sub:
-                fastestWin === undefined
+                fastest === undefined || fastest.game === null
                     ? "No wins yet"
-                    : `Game ${fastestWin.index.toString()} · ${gamemodeLabel(fastestWin.mode)}`,
+                    : `Game ${(fastestIndex + 1).toString()} · ${gamemodeLabel(fastest.game.gamemode)}`,
         },
         {
             id: "vs-lifetime",
@@ -1210,9 +1327,8 @@ const SessionDetail: React.FC<SessionDetailProps> = ({
     onShare,
 }) => {
     if (data.session === null) return null;
-    const { session } = data;
+    const { session, games } = data;
     const agg = aggregate(session);
-    const games = derivedGames(data.history);
     const tags = computeTags(agg);
     const milestones = computeMilestones(session, agg);
 
@@ -1229,14 +1345,14 @@ const SessionDetail: React.FC<SessionDetailProps> = ({
             />
             {tags.length > 0 && <TagsRow tags={tags} />}
             <KPIRow agg={agg} />
-            {games.length > 0 && <MomentumStrip games={games} />}
+            {games.length > 0 && <MomentumStrip segments={games} />}
             <Stack
                 direction={{ xs: "column", md: "row" }}
                 gap={1.5}
                 alignItems="stretch"
             >
                 <Box sx={{ flex: 2, minWidth: 0 }}>
-                    <TrajectoryChart session={session} games={games} />
+                    <TrajectoryChart session={session} segments={games} />
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                     <SessionMetaCard session={session} agg={agg} />
@@ -1244,7 +1360,7 @@ const SessionDetail: React.FC<SessionDetailProps> = ({
             </Stack>
             <ModeBreakdown session={session} />
             <MilestonesCard milestones={milestones} sessionMs={agg.elapsedMs} />
-            <HighlightsCard agg={agg} games={games} />
+            <HighlightsCard agg={agg} segments={games} />
         </Stack>
     );
 };
