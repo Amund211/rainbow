@@ -298,9 +298,10 @@ export const UserSearch: React.FC<UserSearchProps> = ({
     const { uuids, filterOptions, renderOption, getOptionLabel, isOptionEqualToValue } =
         useUserSearchOptions();
     const [loading, setLoading] = React.useState(false);
+    const [inputValue, setInputValue] = React.useState("");
 
     return (
-        <Autocomplete
+        <Autocomplete<SearchOption, false, true>
             options={uuids.map((uuid) => ({ type: "uuid" as const, uuid }))}
             fullWidth
             size={size}
@@ -308,7 +309,18 @@ export const UserSearch: React.FC<UserSearchProps> = ({
             blurOnSelect
             selectOnFocus
             autoHighlight
-            filterOptions={filterOptions}
+            inputValue={inputValue}
+            onInputChange={(_, newInputValue) => {
+                setInputValue(newInputValue);
+            }}
+            // Always pass our controlled inputValue to filterOptions so the
+            // "Search for X" option appears when reopening with text still in
+            // the input. MUI otherwise passes inputValue: '' when the popup
+            // reopens and the input matches the previously selected option's
+            // label, which suppresses the free-text option.
+            filterOptions={(options, params) =>
+                filterOptions?.(options, { ...params, inputValue }) ?? options
+            }
             renderOption={renderOption}
             getOptionLabel={getOptionLabel}
             isOptionEqualToValue={isOptionEqualToValue}
