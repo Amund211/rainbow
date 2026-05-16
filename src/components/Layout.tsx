@@ -447,7 +447,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 }}
                 padding={1}
             >
-                {children}
+                {/*
+                  Padding-bottom belongs INSIDE the children's wrapper, not on
+                  <main>. `<main>` has height: 100% with overflow: visible, so
+                  any padding we put on it ends up inside the viewport box —
+                  long pages overflow past `<main>`'s bottom edge and the
+                  padding sits flush with the viewport instead of trailing the
+                  content. Wrapping the children gives the page a real
+                  bottom-of-content spacer that scrolls with the content.
+                */}
+                <Box sx={{ paddingBottom: 6 }}>{children}</Box>
             </Stack>
         </Box>
     );
