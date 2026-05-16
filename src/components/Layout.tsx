@@ -58,6 +58,7 @@ function useShownPlayer(): string | null {
 
     switch (currentMatch.routeId) {
         case "/session/$uuid":
+        case "/session/$uuid_/detail":
         case "/wrapped/$uuid": {
             return currentMatch.params.uuid;
         }
@@ -446,7 +447,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 }}
                 padding={1}
             >
-                {children}
+                {/* Padding wraps the children so it scrolls with the content;
+                  `<main>` is overflow:visible and would let it sit flush with
+                  the viewport instead. */}
+                <Box sx={{ paddingBottom: 6 }}>{children}</Box>
             </Stack>
         </Box>
     );
