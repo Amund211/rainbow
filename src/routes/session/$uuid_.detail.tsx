@@ -8,11 +8,13 @@ import {
     ContentCopy,
     DirectionsRun,
     EmojiEvents,
+    Group,
     Help,
     Info,
     IosShare,
     LocalFireDepartment,
     Schedule,
+    Shield,
     Speed,
     SportsEsports,
     Star,
@@ -64,7 +66,7 @@ import {
     trailingStreak,
 } from "#helpers/sessionDetail.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
-import type { GameSegment, SessionAt } from "#queries/sessionAt.ts";
+import type { GameResult, GameSegment, SessionAt } from "#queries/sessionAt.ts";
 import { getSessionAtQueryOptions } from "#queries/sessionAt.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
 import { bedwarsLevelFromExp } from "#stats/stars.ts";
@@ -495,6 +497,51 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
     );
 };
 
+// Small icon-only badge shown left of the W/L chip on a game tile.
+// Carried (groups, cyan): won despite taking a final death.
+// Clutch (shield, amber): won despite losing your bed.
+// Mutually exclusive — Carried wins when both apply.
+const ClutchOrCarriedBadge: React.FC<{ game: GameResult }> = ({ game }) => {
+    if (!game.won) return null;
+    let tone: { icon: SvgIconComponent; color: string; label: string; tooltip: string };
+    if (game.finalDeaths > 0) {
+        tone = {
+            icon: Group,
+            color: "#06b6d4",
+            label: "Carried",
+            tooltip: "Won after taking a final death — teammates pulled you through.",
+        };
+    } else if (game.bedsLost > 0) {
+        tone = {
+            icon: Shield,
+            color: "#fbbf24",
+            label: "Clutch",
+            tooltip: "Won after losing your bed.",
+        };
+    } else {
+        return null;
+    }
+    const Icon = tone.icon;
+    return (
+        <Tooltip title={`${tone.label} — ${tone.tooltip}`}>
+            <Box
+                aria-label={tone.label}
+                sx={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 0.75,
+                    bgcolor: `${tone.color}1f`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
+                <Icon sx={{ fontSize: 12, color: tone.color }} />
+            </Box>
+        </Tooltip>
+    );
+};
+
 const GameTile: React.FC<{
     segment: GameSegment;
     index: number;
@@ -513,7 +560,8 @@ const GameTile: React.FC<{
             <Button
                 onClick={onClick}
                 sx={{
-                    p: 1,
+                    px: 1.5,
+                    py: 1.25,
                     borderRadius: 1.25,
                     bgcolor: active ? `${c}22` : "action.hover",
                     border: 1,
@@ -571,7 +619,8 @@ const GameTile: React.FC<{
         <Button
             onClick={onClick}
             sx={{
-                p: 1,
+                px: 1.5,
+                py: 1.25,
                 borderRadius: 1.25,
                 bgcolor: active ? `${c}22` : "action.hover",
                 border: 1,
@@ -606,17 +655,20 @@ const GameTile: React.FC<{
                 <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
                     {`G${index.toString()}`}
                 </Typography>
-                <Chip
-                    size="small"
-                    label={game.won ? "W" : "L"}
-                    sx={{
-                        height: 18,
-                        fontSize: 10,
-                        fontWeight: 600,
-                        color: c,
-                        bgcolor: `${c}1f`,
-                    }}
-                />
+                <Stack direction="row" alignItems="center" gap={0.5}>
+                    <ClutchOrCarriedBadge game={game} />
+                    <Chip
+                        size="small"
+                        label={game.won ? "W" : "L"}
+                        sx={{
+                            height: 18,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: c,
+                            bgcolor: `${c}1f`,
+                        }}
+                    />
+                </Stack>
             </Stack>
             <Typography sx={{ fontSize: 18, lineHeight: 1, fontWeight: 500 }}>
                 {fkdr.toFixed(1)}
@@ -627,7 +679,8 @@ const GameTile: React.FC<{
             <Stack direction="row" gap={0.75} sx={{ mt: 1, fontSize: 10 }}>
                 <Box sx={{ color: MODE_COLORS[game.gamemode] }}>●</Box>
                 <Typography variant="caption">
-                    {gamemodeLabel(game.gamemode).slice(0, 3)}
+                    {/* TODO REVERT: hardcoded for overflow check */}
+                    Doubles
                 </Typography>
                 <Typography variant="caption" sx={{ ml: "auto" }}>
                     {`${mins.toString()}m`}
@@ -692,10 +745,10 @@ const MomentumStrip: React.FC<{ segments: readonly GameSegment[] }> = ({
                 sx={{
                     display: "grid",
                     // Tiles share the row when there's room (1fr each), but
-                    // never shrink below 100px — past that the container
+                    // never shrink below 120px — past that the container
                     // scrolls horizontally so long sessions stay legible
                     // instead of squishing every tile.
-                    gridTemplateColumns: `repeat(${segments.length.toString()}, minmax(100px, 1fr))`,
+                    gridTemplateColumns: `repeat(${segments.length.toString()}, minmax(120px, 1fr))`,
                     gap: 1,
                     overflowX: "auto",
                     pb: 1,
