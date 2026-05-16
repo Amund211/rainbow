@@ -5,6 +5,7 @@ import {
     TrendingUp,
     InfoOutlined,
     QueryStats,
+    Search,
     Warning,
 } from "@mui/icons-material";
 import {
@@ -14,7 +15,6 @@ import {
     FormControlLabel,
     Grid,
     IconButton,
-    Link as MuiLink,
     MenuItem,
     Select,
     Skeleton,
@@ -145,7 +145,6 @@ export const Route = createFileRoute("/session/$uuid")({
 
 const RouterLinkIconButton = createLink(IconButton);
 const RouterLinkToggleButton = createLink(ToggleButton);
-const RouterLink = createLink(MuiLink);
 
 interface SessionsProps {
     uuid: string;
@@ -393,6 +392,8 @@ const Sessions: React.FC<SessionsProps> = ({
                                             }}
                                         />
                                     )}
+                                    {/* Cell for the detail-page magnifying-glass icon */}
+                                    <TableCell padding="none" style={{ width: 1 }} />
                                     <TableCell>
                                         <Typography variant="subtitle2">
                                             Start
@@ -533,56 +534,46 @@ const Sessions: React.FC<SessionsProps> = ({
                                                             )}
                                                     </TableCell>
                                                 )}
-                                                <TableCell>
-                                                    {session.extrapolated ? (
-                                                        <Typography
-                                                            variant="body1"
-                                                            color={textColor}
-                                                        >
-                                                            {session.start.queriedAt.toLocaleString(
-                                                                undefined,
-                                                                {
-                                                                    day: "2-digit",
-                                                                    month: "short",
-                                                                    year: "numeric",
-                                                                    hour: "2-digit",
-                                                                    minute: "2-digit",
-                                                                },
-                                                            )}
-                                                        </Typography>
-                                                    ) : (
-                                                        <RouterLink
-                                                            from="/session/$uuid"
-                                                            to="/session/$uuid/detail"
-                                                            params={{ uuid }}
-                                                            search={{
-                                                                date: session.start
-                                                                    .queriedAt,
-                                                            }}
-                                                            underline="hover"
-                                                            color="inherit"
-                                                            sx={{
-                                                                cursor: "pointer",
-                                                            }}
-                                                        >
-                                                            <Typography
-                                                                variant="body1"
-                                                                color={textColor}
-                                                                component="span"
+                                                <TableCell
+                                                    padding="none"
+                                                    style={{ width: 1 }}
+                                                    align="center"
+                                                >
+                                                    {!session.extrapolated && (
+                                                        <Tooltip title="Open session detail">
+                                                            <RouterLinkIconButton
+                                                                size="small"
+                                                                color="primary"
+                                                                sx={{ p: 0.25 }}
+                                                                from="/session/$uuid"
+                                                                to="/session/$uuid/detail"
+                                                                params={{ uuid }}
+                                                                search={{
+                                                                    date: session.start
+                                                                        .queriedAt,
+                                                                }}
                                                             >
-                                                                {session.start.queriedAt.toLocaleString(
-                                                                    undefined,
-                                                                    {
-                                                                        day: "2-digit",
-                                                                        month: "short",
-                                                                        year: "numeric",
-                                                                        hour: "2-digit",
-                                                                        minute: "2-digit",
-                                                                    },
-                                                                )}
-                                                            </Typography>
-                                                        </RouterLink>
+                                                                <Search fontSize="small" />
+                                                            </RouterLinkIconButton>
+                                                        </Tooltip>
                                                     )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography
+                                                        variant="body1"
+                                                        color={textColor}
+                                                    >
+                                                        {session.start.queriedAt.toLocaleString(
+                                                            undefined,
+                                                            {
+                                                                day: "2-digit",
+                                                                month: "short",
+                                                                year: "numeric",
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                            },
+                                                        )}
+                                                    </Typography>
                                                 </TableCell>
                                                 <TableCell align="right">
                                                     <Typography

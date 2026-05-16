@@ -56,7 +56,6 @@ import {
     fkdrTrajectory,
     formatClock,
     formatDate,
-    formatDuration,
     formatLong,
     gamemodeLabel,
     inferredGameCount,
@@ -113,29 +112,6 @@ const Card: React.FC<{ children: React.ReactNode; sx?: object }> = ({
         {children}
     </Box>
 );
-
-const Breadcrumbs: React.FC<{ username: string }> = ({ username }) => {
-    const theme = useTheme();
-    return (
-        <Stack direction="row" alignItems="center" gap={1}>
-            <Typography variant="body2" color="textSecondary">
-                {username}
-            </Typography>
-            <Typography variant="body2" color="textDisabled">
-                ›
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-                Sessions
-            </Typography>
-            <Typography variant="body2" color="textDisabled">
-                ›
-            </Typography>
-            <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
-                Session detail
-            </Typography>
-        </Stack>
-    );
-};
 
 const NoSession: React.FC<{ username: string }> = ({ username }) => (
     <Box
@@ -284,7 +260,7 @@ const PlayerBanner: React.FC<PlayerBannerProps> = ({
                         <Stack direction="row" alignItems="center" gap={0.5}>
                             <Schedule fontSize="small" />
                             <Typography variant="body2">
-                                {`${formatDate(startedAt)} · ${formatClock(startedAt)}–${formatClock(endedAt)} · ${formatDuration(agg.elapsedMs)}`}
+                                {`${formatDate(startedAt)} · ${formatClock(startedAt)}–${formatClock(endedAt)} · ${formatLong(agg.elapsedMs)}`}
                             </Typography>
                         </Stack>
                         <Stack direction="row" alignItems="center" gap={0.5}>
@@ -447,32 +423,30 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
     let items: [string, string][];
     if (segment.game === null) {
         const count = inferredGameCount(segment);
-        items =
-            count === 0
-                ? [
-                      ["Status", "Heartbeat"],
-                      ["Games", "0"],
-                      ["XP", `+${xp.toLocaleString()}`],
-                      [
-                          "Span",
-                          formatDuration(segmentDurationMs(segment)).replace(
-                              / \d{2}s$/,
-                              "",
-                          ),
-                      ],
-                  ]
-                : [
-                      ["Status", "Multi-game"],
-                      ["Games", count.toString()],
-                      ["XP", `+${xp.toLocaleString()}`],
-                      [
-                          "Span",
-                          formatDuration(segmentDurationMs(segment)).replace(
-                              / \d{2}s$/,
-                              "",
-                          ),
-                      ],
-                  ];
+        if (count === 0) {
+            items = [
+                ["Status", "Heartbeat"],
+                ["Games", "0"],
+                ["XP", `+${xp.toLocaleString()}`],
+                ["Span", formatLong(segmentDurationMs(segment))],
+            ];
+        } else {
+            const fk =
+                segment.end.overall.finalKills - segment.start.overall.finalKills;
+            const fd =
+                segment.end.overall.finalDeaths - segment.start.overall.finalDeaths;
+            const bb =
+                segment.end.overall.bedsBroken - segment.start.overall.bedsBroken;
+            const bl = segment.end.overall.bedsLost - segment.start.overall.bedsLost;
+            const k = segment.end.overall.kills - segment.start.overall.kills;
+            const d = segment.end.overall.deaths - segment.start.overall.deaths;
+            items = [
+                ["Finals", `${fk.toString()} / ${fd.toString()}`],
+                ["Beds", `${bb.toString()} / ${bl.toString()}`],
+                ["Kills", `${k.toString()} / ${d.toString()}`],
+                ["XP", `+${xp.toLocaleString()}`],
+            ];
+        }
     } else {
         const { game } = segment;
         items = [
@@ -733,7 +707,7 @@ const GameTile: React.FC<{
                 {game.finalKills.toString()}
             </Typography>
             <Typography variant="caption" color="textSecondary">
-                Finals
+                {game.finalKills === 1 ? "Final" : "Finals"}
             </Typography>
             <Stack direction="row" gap={0.75} sx={{ mt: 1, fontSize: 10 }}>
                 <Box sx={{ color: MODE_COLORS[game.gamemode] }}>●</Box>
@@ -1014,10 +988,7 @@ const SessionMetaCard: React.FC<SessionMetaCardProps> = ({ session, agg }) => {
     const items: [string, string][] = [
         ["Started", formatClock(session.start.queriedAt)],
         ["Ended", formatClock(session.end.queriedAt)],
-        [
-            "Avg game",
-            agg.games > 0 ? formatDuration(avgGameMs).replace(/ \d{2}s$/, "") : "—",
-        ],
+        ["Avg game", agg.games > 0 ? formatLong(avgGameMs) : "—"],
         ["Finals", `${agg.fk.toString()} / ${agg.fd.toString()}`],
         ["Beds", `${agg.bb.toString()} / ${agg.bl.toString()}`],
         ["XP", `+${agg.xp.toLocaleString()}`],
@@ -1568,7 +1539,6 @@ function RouteComponent() {
                 name="description"
                 content={`${username ?? "Player"}'s Bedwars session detail.`}
             />
-            <Breadcrumbs username={username ?? rawUUID} />
             {isFetching && data === undefined && (
                 <Skeleton variant="rounded" height={140} />
             )}

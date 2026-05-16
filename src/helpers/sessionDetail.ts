@@ -140,17 +140,6 @@ export const fkdrTrajectory = (
     });
 };
 
-export const formatDuration = (ms: number): string => {
-    const total = Math.max(0, Math.floor(ms / 1000));
-    const h = Math.floor(total / 3600);
-    const m = Math.floor((total % 3600) / 60);
-    const s = total % 60;
-    if (h > 0) {
-        return `${h.toString()}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
-    }
-    return `${m.toString()}m ${String(s).padStart(2, "0")}s`;
-};
-
 export const formatClock = (date: Date): string => {
     const h = String(date.getHours()).padStart(2, "0");
     const m = String(date.getMinutes()).padStart(2, "0");
