@@ -37,7 +37,7 @@ import {
     useTheme,
 } from "@mui/material";
 import { captureException } from "@sentry/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import React from "react";
 import { z } from "zod";
@@ -1369,6 +1369,7 @@ function RouteComponent() {
     const { uuid: rawUUID } = Route.useParams();
     const { date } = Route.useSearch();
     const navigate = Route.useNavigate();
+    const queryClient = useQueryClient();
 
     const uuid = normalizeUUID(rawUUID);
 
@@ -1386,12 +1387,19 @@ function RouteComponent() {
     const [snackbarOpen, setSnackbarOpen] = React.useState(false);
 
     // After data comes back, normalize the URL date to the start of the session.
+    // Pre-populate the query cache for the canonical URL so the navigation
+    // doesn't trigger a duplicate fetch with the new query key.
     const sessionStart = data?.session?.start.queriedAt;
     React.useEffect(() => {
         if (sessionStart === undefined) return;
+        if (uuid === null) return;
         if (sessionStart.getTime() === date.getTime()) return;
         const run = async () => {
             try {
+                queryClient.setQueryData(
+                    getSessionAtQueryOptions({ uuid, time: sessionStart }).queryKey,
+                    data,
+                );
                 await navigate({
                     replace: true,
                     search: (old) => ({ ...old, date: sessionStart }),
@@ -1404,7 +1412,7 @@ function RouteComponent() {
             }
         };
         void run();
-    }, [sessionStart, date, navigate]);
+    }, [sessionStart, date, navigate, queryClient, uuid, data]);
 
     if (uuid === null) {
         return <Navigate to="/session" replace />;
