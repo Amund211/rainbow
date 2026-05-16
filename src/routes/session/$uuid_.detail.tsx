@@ -172,6 +172,40 @@ const EndedBadge: React.FC = () => (
     />
 );
 
+const LiveBadge: React.FC = () => (
+    <Chip
+        label="LIVE"
+        size="small"
+        sx={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: 1,
+            color: "#4ade80",
+            bgcolor: "rgba(74,222,128,0.12)",
+            "& .MuiChip-label": {
+                pl: 1.5,
+                position: "relative",
+                "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    left: 4,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    bgcolor: "#4ade80",
+                    animation: "rbw-pulse 1.6s ease-in-out infinite",
+                },
+            },
+            "@keyframes rbw-pulse": {
+                "0%, 100%": { opacity: 1, transform: "translateY(-50%) scale(1)" },
+                "50%": { opacity: 0.4, transform: "translateY(-50%) scale(1.3)" },
+            },
+        }}
+    />
+);
+
 interface PlayerBannerProps {
     uuid: string;
     username: string;
@@ -238,7 +272,7 @@ const PlayerBanner: React.FC<PlayerBannerProps> = ({
                             title="Bedwars star (prestige level)"
                         />
                         <Typography variant="h5">{username}</Typography>
-                        <EndedBadge />
+                        {session.ongoing ? <LiveBadge /> : <EndedBadge />}
                     </Stack>
                     <Stack
                         direction="row"
