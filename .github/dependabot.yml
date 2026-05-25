@@ -44,3 +44,6 @@ updates:
               update-types:
                   - "patch"
                   - "minor"
+              exclude-patterns:
+                  - "oxlint"
+                  - "oxfmt"
