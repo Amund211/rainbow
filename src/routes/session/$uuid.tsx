@@ -5,6 +5,7 @@ import {
     TrendingUp,
     InfoOutlined,
     QueryStats,
+    Search,
     Warning,
 } from "@mui/icons-material";
 import {
@@ -366,6 +367,8 @@ const Sessions: React.FC<SessionsProps> = ({
                                             }}
                                         />
                                     )}
+                                    {/* Cell for the detail-page magnifying-glass icon */}
+                                    <TableCell padding="none" style={{ width: 1 }} />
                                     <TableCell>
                                         <Typography variant="subtitle2">
                                             Start
@@ -506,6 +509,30 @@ const Sessions: React.FC<SessionsProps> = ({
                                                             )}
                                                     </TableCell>
                                                 )}
+                                                <TableCell
+                                                    padding="none"
+                                                    style={{ width: 1 }}
+                                                    align="center"
+                                                >
+                                                    {!session.extrapolated && (
+                                                        <Tooltip title="Open session detail">
+                                                            <RouterLinkIconButton
+                                                                size="small"
+                                                                color="primary"
+                                                                sx={{ p: 0.25 }}
+                                                                from="/session/$uuid"
+                                                                to="/session/$uuid/detail"
+                                                                params={{ uuid }}
+                                                                search={{
+                                                                    date: session.start
+                                                                        .queriedAt,
+                                                                }}
+                                                            >
+                                                                <Search fontSize="small" />
+                                                            </RouterLinkIconButton>
+                                                        </Tooltip>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell>
                                                     <Typography
                                                         variant="body1"

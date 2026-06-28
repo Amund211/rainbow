@@ -108,6 +108,62 @@ export const handlers = [
 
         return HttpResponse.json(history);
     }),
+    http.post(flashlightEndpoint("v1/session-at"), async ({ request }) => {
+        const body = (await request.json()) as {
+            uuid: string;
+            time: string;
+        };
+        validateUUID(body.uuid);
+
+        const timeDate = new Date(body.time);
+        const startDate = new Date(timeDate.getTime() - 60 * 60 * 1000);
+        const midDate = new Date(timeDate);
+        const endDate = new Date(timeDate.getTime() + 60 * 60 * 1000);
+
+        const startPIT = makePlayerDataPIT(body.uuid, startDate.toISOString(), 1);
+        const midPIT = makePlayerDataPIT(body.uuid, midDate.toISOString(), 2);
+        const endPIT = makePlayerDataPIT(body.uuid, endDate.toISOString(), 3);
+
+        return HttpResponse.json({
+            session: makeSession(
+                body.uuid,
+                startDate.toISOString(),
+                endDate.toISOString(),
+            ),
+            games: [
+                {
+                    start: startPIT,
+                    end: midPIT,
+                    game: {
+                        gamemode: "doubles",
+                        outcome: "win",
+                        finalKills: 5,
+                        finalDeath: true,
+                        bedsBroken: 1,
+                        bedLost: false,
+                        kills: 12,
+                        deaths: 4,
+                        experience: 2400,
+                    },
+                },
+                {
+                    start: midPIT,
+                    end: endPIT,
+                    game: {
+                        gamemode: "fours",
+                        outcome: "loss",
+                        finalKills: 2,
+                        finalDeath: true,
+                        bedsBroken: 0,
+                        bedLost: true,
+                        kills: 6,
+                        deaths: 5,
+                        experience: 700,
+                    },
+                },
+            ],
+        });
+    }),
     http.post(flashlightEndpoint("v1/sessions"), async ({ request }) => {
         const body = (await request.json()) as {
             uuid: string;
