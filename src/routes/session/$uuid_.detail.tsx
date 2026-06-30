@@ -1011,7 +1011,7 @@ const StreakIndicator: React.FC<{ segments: readonly GameSegment[] }> = ({
     const won = streak.outcome === "win";
     const color = won ? theme.palette.success.main : theme.palette.error.main;
     const Icon = won ? LocalFireDepartment : Cloud;
-    const label = `${streak.length.toString()} ${won ? "win" : "loss"} streak`;
+    const label = `${streak.length.toString()} ${won ? "winstreak" : "loss streak"}`;
     return (
         <Stack
             direction="row"
@@ -1023,10 +1023,14 @@ const StreakIndicator: React.FC<{ segments: readonly GameSegment[] }> = ({
                 borderRadius: 0.75,
                 bgcolor: alpha(color, 0.08),
                 color,
+                flexShrink: 0,
             }}
         >
             <Icon fontSize="small" sx={{ color }} />
-            <Typography variant="body2" sx={{ color, fontWeight: 600 }}>
+            <Typography
+                variant="body2"
+                sx={{ color, fontWeight: 600, whiteSpace: "nowrap" }}
+            >
                 {label}
             </Typography>
         </Stack>
@@ -1040,22 +1044,23 @@ const MomentumStrip: React.FC<{ segments: readonly GameSegment[] }> = ({
     const focusedSegment = focused === null ? undefined : segments[focused];
     return (
         <Panel>
-            <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="baseline"
-                sx={{ mb: 1.5 }}
-            >
-                <Box>
+            <Box sx={{ mb: 1.5 }}>
+                <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    gap={2}
+                    sx={{ mb: 0.5 }}
+                >
                     <Typography variant="subtitle1">Game-by-game</Typography>
-                    <Typography variant="caption" color="textSecondary">
-                        Click a tile to inspect. Dashed tiles are gaps where individual
-                        games can&apos;t be attributed — either no game was played, or
-                        several couldn&apos;t be split apart.
-                    </Typography>
-                </Box>
-                <StreakIndicator segments={segments} />
-            </Stack>
+                    <StreakIndicator segments={segments} />
+                </Stack>
+                <Typography variant="caption" color="textSecondary">
+                    Click a tile to inspect. Dashed tiles are gaps where individual
+                    games can&apos;t be attributed — either no game was played, or
+                    several couldn&apos;t be split apart.
+                </Typography>
+            </Box>
             <Box
                 sx={{
                     display: "grid",
@@ -1372,17 +1377,12 @@ const ModeBreakdown: React.FC<{
     const expandedStats = expanded === null ? null : data[expanded];
     return (
         <Panel>
-            <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="baseline"
-                sx={{ mb: 1.75 }}
-            >
+            <Box sx={{ mb: 1.75 }}>
                 <Typography variant="subtitle1">By gamemode</Typography>
                 <Typography variant="caption" color="textSecondary">
                     Click a mode for the full breakdown
                 </Typography>
-            </Stack>
+            </Box>
             <Box
                 sx={{
                     display: "grid",
