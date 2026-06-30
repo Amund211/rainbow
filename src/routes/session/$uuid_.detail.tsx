@@ -59,7 +59,12 @@ import {
 import { z } from "zod";
 
 import { PlayerHead } from "#components/player.tsx";
-import type { Milestone, ModeStats, SessionAggregate } from "#helpers/sessionDetail.ts";
+import type {
+    Milestone,
+    ModeBreakdownKey,
+    ModeStats,
+    SessionAggregate,
+} from "#helpers/sessionDetail.ts";
 import {
     aggregate,
     bestGame,
@@ -76,7 +81,6 @@ import {
 } from "#helpers/sessionDetail.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
 import type {
-    Gamemode,
     GameOutcome,
     GameResult,
     GameSegment,
@@ -208,6 +212,10 @@ const OUTCOME_FULL_LABEL: Record<GameOutcome, string> = {
     loss: "LOSS",
     draw: "DRAW",
 };
+
+// Why a window can have unattributable games — mirrors the session-list copy.
+const TRACKING_NOTE =
+    'The Prism Overlay only records games when the player is using it with "Online Game Stats" enabled in their Hypixel settings.';
 
 // win → success green, loss → error red, draw → neutral (rare, neither good nor bad).
 const outcomeColor = (
@@ -867,6 +875,9 @@ const GameTile: React.FC<{
         const count = inferredGameCount(segment);
         const noGame = count === 0;
         const color = noGame ? theme.palette.textMuted : theme.palette.text.secondary;
+        const helpTooltip = noGame
+            ? `No game was attributed to this window. ${TRACKING_NOTE}`
+            : `These ${count.toString()} games couldn't be attributed individually. ${TRACKING_NOTE}`;
         return (
             <Button
                 onClick={onClick}
@@ -891,11 +902,6 @@ const GameTile: React.FC<{
                     minWidth: 0,
                     ":hover": { bgcolor: alpha(color, 0.07) },
                 }}
-                title={
-                    noGame
-                        ? "No game played in this window"
-                        : `${count.toString()} games — couldn't be split out individually`
-                }
             >
                 <Stack
                     direction="row"
@@ -906,7 +912,9 @@ const GameTile: React.FC<{
                     <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
                         {`#${index.toString()}`}
                     </Typography>
-                    <Help sx={{ fontSize: 14, color }} />
+                    <Tooltip title={helpTooltip}>
+                        <Help sx={{ fontSize: 14, color }} />
+                    </Tooltip>
                 </Stack>
                 <Typography sx={{ fontSize: 18, lineHeight: 1, fontWeight: 500 }}>
                     {noGame ? "—" : count.toString()}
@@ -1301,10 +1309,10 @@ const SessionMetaCard: React.FC<SessionMetaCardProps> = ({ session, agg }) => {
 };
 
 const ModeDetail: React.FC<{
-    mode: Gamemode;
+    label: string;
     stats: ModeStats;
     color: string;
-}> = ({ mode, stats, color }) => {
+}> = ({ label, stats, color }) => {
     const items: [string, string][] = [
         ["Games", stats.games.toString()],
         ["Record", `${stats.wins.toString()}W · ${stats.losses.toString()}L`],
@@ -1343,11 +1351,11 @@ const ModeDetail: React.FC<{
                         fontSize: 10,
                     }}
                 >
-                    {getGamemodeLabel(mode, true)}
+                    {label}
                 </Typography>
             </Stack>
-            {items.map(([label, value]) => (
-                <Box key={label}>
+            {items.map(([itemLabel, value]) => (
+                <Box key={itemLabel}>
                     <Typography
                         variant="caption"
                         color="textSecondary"
@@ -1357,7 +1365,7 @@ const ModeDetail: React.FC<{
                             fontSize: 10,
                         }}
                     >
-                        {label}
+                        {itemLabel}
                     </Typography>
                     <Typography sx={{ fontFamily: "monospace", fontSize: 14, mt: 0.5 }}>
                         {value}
@@ -1373,8 +1381,31 @@ const ModeBreakdown: React.FC<{
 }> = ({ session }) => {
     const theme = useTheme();
     const data = modeBreakdown(session);
-    const [expanded, setExpanded] = React.useState<Gamemode | null>(null);
-    const expandedStats = expanded === null ? null : data[expanded];
+    const [expanded, setExpanded] = React.useState<ModeBreakdownKey | null>(null);
+
+    // The four core modes, plus an "Other" tile for games played outside them
+    // (4v4 / Dreams modes) — only when there were any.
+    const entries: {
+        key: ModeBreakdownKey;
+        label: string;
+        color: string;
+        stats: ModeStats;
+    }[] = GAMEMODES.map((mode) => ({
+        key: mode,
+        label: getGamemodeLabel(mode, true),
+        color: theme.palette.gamemode[mode],
+        stats: data[mode],
+    }));
+    if (data.other.games > 0) {
+        entries.push({
+            key: "other",
+            label: "Other",
+            color: theme.palette.textMuted,
+            stats: data.other,
+        });
+    }
+    const expandedEntry = entries.find((entry) => entry.key === expanded);
+
     return (
         <Panel>
             <Box sx={{ mb: 1.75 }}>
@@ -1390,17 +1421,15 @@ const ModeBreakdown: React.FC<{
                     gap: 1.25,
                 }}
             >
-                {GAMEMODES.map((mode) => {
-                    const stats = data[mode];
-                    const color = theme.palette.gamemode[mode];
+                {entries.map(({ key, label, color, stats }) => {
                     const empty = stats.games === 0;
-                    const active = expanded === mode;
+                    const active = expanded === key;
                     return (
                         <Button
-                            key={mode}
+                            key={key}
                             disabled={empty}
                             onClick={() => {
-                                setExpanded((prev) => (prev === mode ? null : mode));
+                                setExpanded((prev) => (prev === key ? null : key));
                             }}
                             aria-expanded={active}
                             sx={{
@@ -1434,8 +1463,19 @@ const ModeBreakdown: React.FC<{
                                     }}
                                 />
                                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                    {getGamemodeLabel(mode, true)}
+                                    {label}
                                 </Typography>
+                                {key === "other" && (
+                                    <Tooltip title="Games played in modes that aren't broken out individually, such as 4v4 or a Dreams mode.">
+                                        <Help
+                                            sx={{
+                                                fontSize: 14,
+                                                color: "text.disabled",
+                                                ml: "auto",
+                                            }}
+                                        />
+                                    </Tooltip>
+                                )}
                             </Stack>
                             <Typography sx={{ fontSize: 22, lineHeight: 1.1 }}>
                                 {stats.games.toString()}
@@ -1473,11 +1513,11 @@ const ModeBreakdown: React.FC<{
                     );
                 })}
             </Box>
-            {expanded !== null && expandedStats !== null && (
+            {expandedEntry !== undefined && (
                 <ModeDetail
-                    mode={expanded}
-                    stats={expandedStats}
-                    color={theme.palette.gamemode[expanded]}
+                    label={expandedEntry.label}
+                    stats={expandedEntry.stats}
+                    color={expandedEntry.color}
                 />
             )}
         </Panel>

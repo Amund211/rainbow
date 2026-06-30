@@ -441,6 +441,18 @@ describe(modeBreakdown, () => {
 
     test("computes per-mode deltas and ratios, leaving unplayed modes at zero", () => {
         const start = makePIT({
+            // overall must cover the core modes (here: just doubles' 10 games).
+            overall: makeStats({
+                gamesPlayed: 10,
+                wins: 6,
+                losses: 4,
+                finalKills: 20,
+                finalDeaths: 10,
+                bedsBroken: 8,
+                bedsLost: 3,
+                kills: 50,
+                deaths: 30,
+            }),
             doubles: makeStats({
                 gamesPlayed: 10,
                 wins: 6,
@@ -454,6 +466,18 @@ describe(modeBreakdown, () => {
             }),
         });
         const end = makePIT({
+            // overall delta = doubles delta + threes delta exactly -> no "other".
+            overall: makeStats({
+                gamesPlayed: 13,
+                wins: 8,
+                losses: 5,
+                finalKills: 31,
+                finalDeaths: 12,
+                bedsBroken: 10,
+                bedsLost: 4,
+                kills: 60,
+                deaths: 33,
+            }),
             doubles: makeStats({
                 gamesPlayed: 12,
                 wins: 7,
@@ -506,6 +530,38 @@ describe(modeBreakdown, () => {
         });
         expect(data.solo).toStrictEqual(ZERO_MODE);
         expect(data.fours).toStrictEqual(ZERO_MODE);
+        // overall delta exactly equals the core modes -> nothing left over.
+        expect(data.other).toStrictEqual(ZERO_MODE);
+    });
+
+    test("attributes overall games not in the four modes to the other bucket", () => {
+        const start = makePIT({ overall: ZERO_STATS });
+        const end = makePIT({
+            // 2 wins / +715 xp worth of games, none of them in a core mode —
+            // the four modes stay flat, overall moves. Mirrors the prod session.
+            overall: makeStats({ gamesPlayed: 2, wins: 2, losses: 0 }),
+        });
+
+        const data = modeBreakdown(makeSession(start, end));
+
+        expect(data.solo).toStrictEqual(ZERO_MODE);
+        expect(data.doubles).toStrictEqual(ZERO_MODE);
+        expect(data.threes).toStrictEqual(ZERO_MODE);
+        expect(data.fours).toStrictEqual(ZERO_MODE);
+        expect(data.other).toStrictEqual({
+            games: 2,
+            wins: 2,
+            losses: 0,
+            winRate: 1,
+            fk: 0,
+            fd: 0,
+            fkdr: 0,
+            bb: 0,
+            bl: 0,
+            k: 0,
+            d: 0,
+            kdr: 0,
+        });
     });
 });
 

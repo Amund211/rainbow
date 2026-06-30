@@ -1,4 +1,5 @@
 import type { History } from "#queries/history.ts";
+import type { StatsPIT } from "#queries/playerdata.ts";
 import type {
     GameOutcome,
     GameResult,
@@ -84,35 +85,102 @@ export interface ModeStats {
     readonly kdr: number;
 }
 
-export const modeBreakdown = (session: Session): Record<Gamemode, ModeStats> => {
-    const out = {} as Record<Gamemode, ModeStats>;
+interface StatDelta {
+    readonly games: number;
+    readonly wins: number;
+    readonly losses: number;
+    readonly fk: number;
+    readonly fd: number;
+    readonly bb: number;
+    readonly bl: number;
+    readonly k: number;
+    readonly d: number;
+}
+
+const ZERO_DELTA: StatDelta = {
+    games: 0,
+    wins: 0,
+    losses: 0,
+    fk: 0,
+    fd: 0,
+    bb: 0,
+    bl: 0,
+    k: 0,
+    d: 0,
+};
+
+const statDelta = (first: StatsPIT, last: StatsPIT): StatDelta => ({
+    games: last.gamesPlayed - first.gamesPlayed,
+    wins: last.wins - first.wins,
+    losses: last.losses - first.losses,
+    fk: last.finalKills - first.finalKills,
+    fd: last.finalDeaths - first.finalDeaths,
+    bb: last.bedsBroken - first.bedsBroken,
+    bl: last.bedsLost - first.bedsLost,
+    k: last.kills - first.kills,
+    d: last.deaths - first.deaths,
+});
+
+const addDelta = (a: StatDelta, b: StatDelta): StatDelta => ({
+    games: a.games + b.games,
+    wins: a.wins + b.wins,
+    losses: a.losses + b.losses,
+    fk: a.fk + b.fk,
+    fd: a.fd + b.fd,
+    bb: a.bb + b.bb,
+    bl: a.bl + b.bl,
+    k: a.k + b.k,
+    d: a.d + b.d,
+});
+
+const subtractDelta = (a: StatDelta, b: StatDelta): StatDelta => ({
+    games: a.games - b.games,
+    wins: a.wins - b.wins,
+    losses: a.losses - b.losses,
+    fk: a.fk - b.fk,
+    fd: a.fd - b.fd,
+    bb: a.bb - b.bb,
+    bl: a.bl - b.bl,
+    k: a.k - b.k,
+    d: a.d - b.d,
+});
+
+const toModeStats = (de: StatDelta): ModeStats => ({
+    games: de.games,
+    wins: de.wins,
+    losses: de.losses,
+    winRate: ratio(de.wins, de.games),
+    fk: de.fk,
+    fd: de.fd,
+    fkdr: ratio(de.fk, de.fd),
+    bb: de.bb,
+    bl: de.bl,
+    k: de.k,
+    d: de.d,
+    kdr: ratio(de.k, de.d),
+});
+
+// The four core modes plus an "other" bucket for everything else (4v4 / Dreams
+// modes) that the wire contract folds into `overall` but doesn't break out.
+export type ModeBreakdownKey = Gamemode | "other";
+
+export const modeBreakdown = (
+    session: Session,
+): Record<ModeBreakdownKey, ModeStats> => {
+    const out = {} as Record<ModeBreakdownKey, ModeStats>;
+    let core = ZERO_DELTA;
     for (const mode of GAMEMODES) {
-        const first = session.start[mode];
-        const last = session.end[mode];
-        const games = last.gamesPlayed - first.gamesPlayed;
-        const wins = last.wins - first.wins;
-        const losses = last.losses - first.losses;
-        const fk = last.finalKills - first.finalKills;
-        const fd = last.finalDeaths - first.finalDeaths;
-        const bb = last.bedsBroken - first.bedsBroken;
-        const bl = last.bedsLost - first.bedsLost;
-        const k = last.kills - first.kills;
-        const d = last.deaths - first.deaths;
-        out[mode] = {
-            games,
-            wins,
-            losses,
-            winRate: ratio(wins, games),
-            fk,
-            fd,
-            fkdr: ratio(fk, fd),
-            bb,
-            bl,
-            k,
-            d,
-            kdr: ratio(k, d),
-        };
+        const delta = statDelta(session.start[mode], session.end[mode]);
+        out[mode] = toModeStats(delta);
+        core = addDelta(core, delta);
     }
+    // "Other" = the whole-session (overall) delta minus the four core modes, so
+    // games played outside solo/doubles/threes/fours still surface somewhere.
+    // TODO: Attribute these to real modes instead of a catch-all bucket — needs
+    // flashlight to expose per-mode stats beyond solo/doubles/threes/fours
+    // (e.g. 4v4 / Dreams), then the frontend to render them as named tiles.
+    const overall = statDelta(session.start.overall, session.end.overall);
+    out.other = toModeStats(subtractDelta(overall, core));
     return out;
 };
 
