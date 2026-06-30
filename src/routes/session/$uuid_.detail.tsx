@@ -32,7 +32,6 @@ import {
     Alert,
     Box,
     Button,
-    ButtonBase,
     Chip,
     LinearProgress,
     Skeleton,
@@ -1360,7 +1359,7 @@ const ModeBreakdown: React.FC<{
                     const empty = stats.games === 0;
                     const active = expanded === mode;
                     return (
-                        <ButtonBase
+                        <Button
                             key={mode}
                             disabled={empty}
                             onClick={() => {
@@ -1368,18 +1367,19 @@ const ModeBreakdown: React.FC<{
                             }}
                             aria-expanded={active}
                             sx={{
-                                display: "block",
-                                width: "100%",
-                                textAlign: "left",
-                                bgcolor: active ? alpha(color, 0.12) : "action.hover",
+                                p: 1.75,
+                                borderRadius: 1.25,
+                                bgcolor: active ? alpha(color, 0.13) : "action.hover",
                                 border: 1,
                                 borderColor: active ? color : "divider",
-                                borderRadius: 1.25,
-                                p: 1.75,
+                                color: "text.primary",
+                                textTransform: "none",
+                                textAlign: "left",
+                                flexDirection: "column",
+                                alignItems: "stretch",
+                                minWidth: 0,
                                 opacity: empty ? 0.4 : 1,
-                                transition:
-                                    "border-color 120ms, background-color 120ms",
-                                ":hover": { borderColor: alpha(color, 0.5) },
+                                ":hover": { bgcolor: alpha(color, 0.07) },
                             }}
                         >
                             <Stack
@@ -1432,7 +1432,7 @@ const ModeBreakdown: React.FC<{
                                     {stats.fkdr.toFixed(2)}
                                 </Typography>
                             </Stack>
-                        </ButtonBase>
+                        </Button>
                     );
                 })}
             </Box>
