@@ -1,5 +1,10 @@
 import type { History } from "#queries/history.ts";
-import type { GameOutcome, GameSegment, Gamemode } from "#queries/sessionAt.ts";
+import type {
+    GameOutcome,
+    GameResult,
+    GameSegment,
+    Gamemode,
+} from "#queries/sessionAt.ts";
 import type { Session } from "#queries/sessions.ts";
 import { computeStatProgression } from "#stats/progression.ts";
 import { bedwarsLevelFromExp } from "#stats/stars.ts";
@@ -285,19 +290,20 @@ export const segmentExperience = (seg: GameSegment): number =>
     seg.end.experience - seg.start.experience;
 
 /**
- * Best game = the (single-game) segment with the highest final kills.
- * Skips ambiguous segments entirely.
+ * Best game = the single-game segment with the most final kills, breaking ties
+ * first toward no final death, then toward no bed lost. Ambiguous segments
+ * (no-game windows / multi-game gaps) are excluded.
  */
 export const bestGame = (segments: readonly GameSegment[]): GameSegment | undefined => {
-    let best: GameSegment | undefined;
-    let bestKills = -1;
-    for (const seg of segments) {
-        if (seg.game === null) continue;
-        if (seg.game.finalKills > bestKills) {
-            best = seg;
-            bestKills = seg.game.finalKills;
-        }
-    }
+    const games = segments.filter(
+        (seg): seg is GameSegment & { game: GameResult } => seg.game !== null,
+    );
+    const [best] = games.toSorted(
+        (a, b) =>
+            b.game.finalKills - a.game.finalKills ||
+            Number(a.game.finalDeath) - Number(b.game.finalDeath) ||
+            Number(a.game.bedLost) - Number(b.game.bedLost),
+    );
     return best;
 };
 
