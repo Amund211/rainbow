@@ -1669,19 +1669,19 @@ const HighlightsCard: React.FC<{
         vsLifetime = {
             icon: TrendingUp,
             color: theme.palette.success.main,
-            title: "Beating lifetime",
+            title: "FKDR beating lifetime",
         };
     } else if (fkdrRatio <= 0.9) {
         vsLifetime = {
             icon: TrendingDown,
             color: theme.palette.error.main,
-            title: "Below lifetime",
+            title: "FKDR below lifetime",
         };
     } else {
         vsLifetime = {
             icon: TrendingFlat,
             color: theme.palette.text.secondary,
-            title: "On par with lifetime",
+            title: "FKDR on par with lifetime",
         };
     }
 
@@ -1693,7 +1693,7 @@ const HighlightsCard: React.FC<{
             id: "signature",
             icon: WorkspacePremium,
             color: theme.palette.warning.main,
-            title: "Signature game",
+            title: "Best game",
             value:
                 best?.game === undefined || best.game === null
                     ? "—"
