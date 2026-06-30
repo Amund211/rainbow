@@ -555,33 +555,102 @@ const KPIRow: React.FC<{ agg: SessionAggregate }> = ({ agg }) => {
     );
 };
 
-// Rounded outline pill used in the game-detail header to flag what happened in
-// the game (final death vs survived, bed lost vs kept).
+// Per-mode thresholds for "Perfect game": the maximum final kills and
+// beds broken available in a game of that mode. Hitting both means the
+// player single-handedly cleared the lobby.
+const PERFECT_GAME_THRESHOLDS: Record<
+    GameResult["gamemode"],
+    { finalKills: number; bedsBroken: number }
+> = {
+    solo: { finalKills: 7, bedsBroken: 7 },
+    doubles: { finalKills: 14, bedsBroken: 7 },
+    threes: { finalKills: 12, bedsBroken: 3 },
+    fours: { finalKills: 16, bedsBroken: 3 },
+};
+
+const isPerfectGame = (game: GameResult): boolean => {
+    const thresholds = PERFECT_GAME_THRESHOLDS[game.gamemode];
+    return (
+        game.finalKills >= thresholds.finalKills &&
+        game.bedsBroken >= thresholds.bedsBroken
+    );
+};
+
+interface GameAccolade {
+    readonly icon: SvgIconComponent;
+    readonly color: string;
+    readonly label: string;
+    readonly tooltip: string;
+}
+
+// The notable thing about a won game, if any. Precedence (mutually exclusive):
+// Perfect game > Carried > Clutch. Shown icon-only on the tile and repeated as
+// a labelled chip in the expanded detail.
+const gameAccolade = (
+    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types
+    theme: Theme,
+    game: GameResult,
+): GameAccolade | null => {
+    if (game.outcome !== "win") return null;
+    if (isPerfectGame(game)) {
+        return {
+            icon: MilitaryTech,
+            color: theme.palette.secondary.main,
+            label: "Perfect game",
+            tooltip: "Got every final kill and every enemy bed in the game.",
+        };
+    }
+    if (game.finalDeath) {
+        return {
+            icon: Group,
+            color: theme.palette.info.main,
+            label: "Carried",
+            tooltip: "Won after taking a final death.",
+        };
+    }
+    if (game.bedLost) {
+        return {
+            icon: Shield,
+            color: theme.palette.warning.main,
+            label: "Clutch",
+            tooltip: "Won after losing their bed.",
+        };
+    }
+    return null;
+};
+
+// Rounded outline pill flagging what happened in the game (final death vs
+// survived, bed lost vs kept, or the won-game accolade). An optional tooltip
+// wraps the pill — the Stack forwards refs so MUI Tooltip anchors to it.
 const StatusPill: React.FC<{
     icon: SvgIconComponent;
     label: string;
     color: string;
-}> = ({ icon: Icon, label, color }) => (
-    <Stack
-        direction="row"
-        alignItems="center"
-        gap={0.5}
-        sx={{
-            px: 1,
-            py: 0.25,
-            borderRadius: 5,
-            border: 1,
-            borderColor: alpha(color, 0.4),
-            bgcolor: alpha(color, 0.08),
-            color,
-        }}
-    >
-        <Icon sx={{ fontSize: 14 }} />
-        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            {label}
-        </Typography>
-    </Stack>
-);
+    tooltip?: string;
+}> = ({ icon: Icon, label, color, tooltip }) => {
+    const pill = (
+        <Stack
+            direction="row"
+            alignItems="center"
+            gap={0.5}
+            sx={{
+                px: 1,
+                py: 0.25,
+                borderRadius: 5,
+                border: 1,
+                borderColor: alpha(color, 0.4),
+                bgcolor: alpha(color, 0.08),
+                color,
+            }}
+        >
+            <Icon sx={{ fontSize: 14 }} />
+            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                {label}
+            </Typography>
+        </Stack>
+    );
+    return tooltip === undefined ? pill : <Tooltip title={tooltip}>{pill}</Tooltip>;
+};
 
 const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
     segment,
@@ -632,19 +701,30 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
             label: OUTCOME_FULL_LABEL[game.outcome],
             color: outcomeColor(theme, game.outcome),
         };
+        const accolade = gameAccolade(theme, game);
         pills = (
             <>
+                {accolade !== null && (
+                    <StatusPill
+                        icon={accolade.icon}
+                        label={accolade.label}
+                        color={accolade.color}
+                        tooltip={accolade.tooltip}
+                    />
+                )}
                 {game.finalDeath ? (
                     <StatusPill
                         icon={HeartBroken}
                         label="Final death"
                         color={theme.palette.error.main}
+                        tooltip="Player took a final death this game."
                     />
                 ) : (
                     <StatusPill
                         icon={Shield}
                         label="Survived"
                         color={theme.palette.success.main}
+                        tooltip="Player did not take a final death this game."
                     />
                 )}
                 {game.bedLost ? (
@@ -652,12 +732,14 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
                         icon={Bed}
                         label="Bed lost"
                         color={theme.palette.error.main}
+                        tooltip="Player's bed was broken this game."
                     />
                 ) : (
                     <StatusPill
                         icon={Bed}
                         label="Bed kept"
                         color={theme.palette.success.main}
+                        tooltip="Player's bed was not broken this game."
                     />
                 )}
             </>
@@ -743,73 +825,28 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
     );
 };
 
-// Per-mode thresholds for "Perfect game": the maximum final kills and
-// beds broken available in a game of that mode. Hitting both means the
-// player single-handedly cleared the lobby.
-const PERFECT_GAME_THRESHOLDS: Record<
-    GameResult["gamemode"],
-    { finalKills: number; bedsBroken: number }
-> = {
-    solo: { finalKills: 7, bedsBroken: 7 },
-    doubles: { finalKills: 14, bedsBroken: 7 },
-    threes: { finalKills: 12, bedsBroken: 3 },
-    fours: { finalKills: 16, bedsBroken: 3 },
-};
-
-const isPerfectGame = (game: GameResult): boolean => {
-    const thresholds = PERFECT_GAME_THRESHOLDS[game.gamemode];
-    return (
-        game.finalKills >= thresholds.finalKills &&
-        game.bedsBroken >= thresholds.bedsBroken
-    );
-};
-
-// Icon-only badge shown left of the W/L chip. Precedence (mutually
-// exclusive): Perfect game > Carried > Clutch.
+// Icon-only badge shown left of the W/L chip on a game tile — the same
+// accolade that the expanded detail repeats as a labelled chip.
 const ClutchOrCarriedBadge: React.FC<{ game: GameResult }> = ({ game }) => {
     const theme = useTheme();
-    if (game.outcome !== "win") return null;
-    let tone: { icon: SvgIconComponent; color: string; label: string; tooltip: string };
-    if (isPerfectGame(game)) {
-        tone = {
-            icon: MilitaryTech,
-            color: theme.palette.secondary.main,
-            label: "Perfect game",
-            tooltip: "Got every final kill and every enemy bed in the game.",
-        };
-    } else if (game.finalDeath) {
-        tone = {
-            icon: Group,
-            color: theme.palette.info.main,
-            label: "Carried",
-            tooltip: "Won after taking a final death.",
-        };
-    } else if (game.bedLost) {
-        tone = {
-            icon: Shield,
-            color: theme.palette.warning.main,
-            label: "Clutch",
-            tooltip: "Won after losing your bed.",
-        };
-    } else {
-        return null;
-    }
-    const Icon = tone.icon;
+    const accolade = gameAccolade(theme, game);
+    if (accolade === null) return null;
+    const Icon = accolade.icon;
     return (
-        <Tooltip title={`${tone.label} — ${tone.tooltip}`}>
+        <Tooltip title={`${accolade.label} — ${accolade.tooltip}`}>
             <Box
-                aria-label={tone.label}
+                aria-label={accolade.label}
                 sx={{
                     width: 18,
                     height: 18,
                     borderRadius: 0.75,
-                    bgcolor: alpha(tone.color, 0.12),
+                    bgcolor: alpha(accolade.color, 0.12),
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                 }}
             >
-                <Icon sx={{ fontSize: 12, color: tone.color }} />
+                <Icon sx={{ fontSize: 12, color: accolade.color }} />
             </Box>
         </Tooltip>
     );
