@@ -68,10 +68,10 @@ export interface GameResult {
 export interface GameSegment {
     readonly start: PlayerDataPIT;
     readonly end: PlayerDataPIT;
-    // null when the snapshot pair represents zero games (a heartbeat) or
+    // null when the snapshot pair represents zero games (no game played) or
     // more than one game (gamesPlayed jumped by 2+, or multiple modes
     // advanced). Callers should render these specially — e.g. "(no games)"
-    // for heartbeats or "(N games played)" for ambiguous stretches.
+    // for no-game windows or "(N games played)" for ambiguous stretches.
     readonly game: GameResult | null;
 }
 

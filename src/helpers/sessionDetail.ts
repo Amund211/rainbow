@@ -64,21 +64,48 @@ export const aggregate = (session: Session): SessionAggregate => {
     };
 };
 
-export const modeBreakdown = (
-    session: Session,
-): Record<Gamemode, { games: number; wins: number; fkdr: number }> => {
-    const out = {} as Record<Gamemode, { games: number; wins: number; fkdr: number }>;
+export interface ModeStats {
+    readonly games: number;
+    readonly wins: number;
+    readonly losses: number;
+    readonly winRate: number;
+    readonly fk: number;
+    readonly fd: number;
+    readonly fkdr: number;
+    readonly bb: number;
+    readonly bl: number;
+    readonly k: number;
+    readonly d: number;
+    readonly kdr: number;
+}
+
+export const modeBreakdown = (session: Session): Record<Gamemode, ModeStats> => {
+    const out = {} as Record<Gamemode, ModeStats>;
     for (const mode of GAMEMODES) {
         const first = session.start[mode];
         const last = session.end[mode];
         const games = last.gamesPlayed - first.gamesPlayed;
         const wins = last.wins - first.wins;
+        const losses = last.losses - first.losses;
         const fk = last.finalKills - first.finalKills;
         const fd = last.finalDeaths - first.finalDeaths;
+        const bb = last.bedsBroken - first.bedsBroken;
+        const bl = last.bedsLost - first.bedsLost;
+        const k = last.kills - first.kills;
+        const d = last.deaths - first.deaths;
         out[mode] = {
             games,
             wins,
+            losses,
+            winRate: ratio(wins, games),
+            fk,
+            fd,
             fkdr: ratio(fk, fd),
+            bb,
+            bl,
+            k,
+            d,
+            kdr: ratio(k, d),
         };
     }
     return out;
@@ -93,7 +120,7 @@ export interface TrajectoryPoint {
 /**
  * Compute the per-segment FKDR trajectory: the cumulative session FKDR
  * and the live lifetime FKDR after each segment. Segments without a
- * derivable game (heartbeats / ambiguous jumps) still anchor a
+ * derivable game (no-game windows / ambiguous jumps) still anchor a
  * trajectory point — using the segment's end-of-window stats — so the
  * line stays continuous.
  */
@@ -111,63 +138,6 @@ export const fkdrTrajectory = (
         ),
         lifetimeFkdr: ratio(seg.end.overall.finalKills, seg.end.overall.finalDeaths),
     }));
-};
-
-export type SessionTagKey = "flawless" | "perfect" | "heater" | "slump" | "marathon";
-
-export interface SessionTag {
-    readonly key: SessionTagKey;
-    readonly label: string;
-    readonly icon: string;
-    readonly tooltip: string;
-}
-
-export const computeTags = (agg: SessionAggregate): SessionTag[] => {
-    const out: SessionTag[] = [];
-
-    if (agg.games >= 2 && agg.losses === 0 && agg.fd === 0) {
-        out.push({
-            key: "flawless",
-            label: "Flawless",
-            icon: "verified",
-            tooltip: "No losses and no final deaths this session",
-        });
-    } else if (agg.games >= 3 && agg.losses === 0) {
-        out.push({
-            key: "perfect",
-            label: "Perfect run",
-            icon: "workspace_premium",
-            tooltip: "Won every game this session",
-        });
-    }
-
-    if (agg.fkdr > agg.lifetimeFkdr * 1.4 && agg.fk >= 6) {
-        out.push({
-            key: "heater",
-            label: "Heater",
-            icon: "local_fire_department",
-            tooltip: `${agg.fkdr.toFixed(1)} session FKDR vs ${agg.lifetimeFkdr.toFixed(1)} lifetime`,
-        });
-    } else if (agg.fkdr < agg.lifetimeFkdr * 0.6 && agg.games >= 3) {
-        out.push({
-            key: "slump",
-            label: "Cold",
-            icon: "ac_unit",
-            tooltip: "Session FKDR well below lifetime",
-        });
-    }
-
-    const hours = agg.elapsedMs / 3_600_000;
-    if (hours >= 3) {
-        out.push({
-            key: "marathon",
-            label: "Marathon",
-            icon: "directions_run",
-            tooltip: `${hours.toFixed(1)} hours played`,
-        });
-    }
-
-    return out;
 };
 
 export interface Milestone {
@@ -296,7 +266,7 @@ export const formatLong = (ms: number): string => {
 
 /**
  * Count how many games happened in a segment with no derivable per-game
- * stats. Returns 0 for a heartbeat (no stats moved), N>=1 for a segment
+ * stats. Returns 0 for a no-game window (no stats moved), N>=1 for a segment
  * that covers N games we couldn't split (e.g. gamesPlayed jumped by 2).
  */
 export const inferredGameCount = (seg: GameSegment): number => {

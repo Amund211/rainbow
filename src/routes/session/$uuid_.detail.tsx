@@ -1,5 +1,4 @@
 import {
-    AcUnit,
     ArrowRightAlt,
     AutoAwesome,
     Block,
@@ -31,6 +30,7 @@ import {
     Alert,
     Box,
     Button,
+    ButtonBase,
     Chip,
     LinearProgress,
     Skeleton,
@@ -49,17 +49,11 @@ import React from "react";
 import { z } from "zod";
 
 import { PlayerHead } from "#components/player.tsx";
-import type {
-    Milestone,
-    SessionAggregate,
-    SessionTag,
-    SessionTagKey,
-} from "#helpers/sessionDetail.ts";
+import type { Milestone, ModeStats, SessionAggregate } from "#helpers/sessionDetail.ts";
 import {
     aggregate,
     bestGame,
     computeMilestones,
-    computeTags,
     fastestWin,
     fkdrTrajectory,
     formatLong,
@@ -72,6 +66,7 @@ import {
 } from "#helpers/sessionDetail.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
 import type {
+    Gamemode,
     GameOutcome,
     GameResult,
     GameSegment,
@@ -93,18 +88,61 @@ export const Route = createFileRoute("/session/$uuid_/detail")({
     component: RouteComponent,
 });
 
-const TAG_ICONS: Record<string, SvgIconComponent> = {
-    verified: Verified,
-    workspace_premium: WorkspacePremium,
-    local_fire_department: LocalFireDepartment,
-    ac_unit: AcUnit,
-    directions_run: DirectionsRun,
-};
-
 const MILESTONE_ICONS: Record<Milestone["key"], SvgIconComponent> = {
     prestige: AutoAwesome,
     wins: EmojiEvents,
     fkdr: TrendingUp,
+};
+
+type SessionTagKey = "flawless" | "perfect" | "on_fire" | "marathon";
+
+interface SessionTag {
+    readonly key: SessionTagKey;
+    readonly label: string;
+    readonly icon: SvgIconComponent;
+    readonly tooltip: string;
+}
+
+// Auto-derived "badges" for a session, computed from its aggregate stats.
+const computeTags = (agg: SessionAggregate): SessionTag[] => {
+    const out: SessionTag[] = [];
+
+    if (agg.games >= 2 && agg.losses === 0 && agg.fd === 0) {
+        out.push({
+            key: "flawless",
+            label: "Flawless",
+            icon: Verified,
+            tooltip: "No losses and no final deaths this session",
+        });
+    } else if (agg.games >= 3 && agg.losses === 0) {
+        out.push({
+            key: "perfect",
+            label: "Perfect run",
+            icon: WorkspacePremium,
+            tooltip: "Won every game this session",
+        });
+    }
+
+    if (agg.fkdr > agg.lifetimeFkdr * 1.4 && agg.fk >= 6) {
+        out.push({
+            key: "on_fire",
+            label: "On fire",
+            icon: LocalFireDepartment,
+            tooltip: `${agg.fkdr.toFixed(1)} session FKDR vs ${agg.lifetimeFkdr.toFixed(1)} lifetime`,
+        });
+    }
+
+    const hours = agg.elapsedMs / 3_600_000;
+    if (hours >= 3) {
+        out.push({
+            key: "marathon",
+            label: "Marathon",
+            icon: DirectionsRun,
+            tooltip: `${hours.toFixed(1)} hours played`,
+        });
+    }
+
+    return out;
 };
 
 // Accent colours for the auto-derived tags. Pulled from the theme rather than
@@ -122,11 +160,8 @@ const tagColor = (
         case "perfect": {
             return theme.palette.success.main;
         }
-        case "heater": {
+        case "on_fire": {
             return theme.palette.rainbow[0];
-        }
-        case "slump": {
-            return theme.palette.info.main;
         }
         case "marathon": {
             return theme.palette.secondary.main;
@@ -380,16 +415,12 @@ const TagsRow: React.FC<{ tags: readonly SessionTag[] }> = ({ tags }) => {
     return (
         <Stack direction="row" gap={1} flexWrap="wrap">
             {tags.map((tag) => {
-                const Icon = TAG_ICONS[tag.icon];
+                const Icon = tag.icon;
                 const color = tagColor(theme, tag.key);
                 return (
                     <Tooltip key={tag.key} title={tag.tooltip}>
                         <Chip
-                            icon={
-                                Icon === undefined ? undefined : (
-                                    <Icon sx={{ color: `${color} !important` }} />
-                                )
-                            }
+                            icon={<Icon sx={{ color: `${color} !important` }} />}
                             label={tag.label}
                             size="small"
                             sx={{
@@ -519,7 +550,7 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
         const count = inferredGameCount(segment);
         if (count === 0) {
             items = [
-                ["Status", "Heartbeat"],
+                ["Status", "No game"],
                 ["Games", "0"],
                 ["XP", `+${xp.toLocaleString()}`],
                 ["Span", formatLong(segmentDurationMs(segment))],
@@ -685,10 +716,8 @@ const GameTile: React.FC<{
 
     if (game === null) {
         const count = inferredGameCount(segment);
-        const isHeartbeat = count === 0;
-        const color = isHeartbeat
-            ? theme.palette.textMuted
-            : theme.palette.text.secondary;
+        const noGame = count === 0;
+        const color = noGame ? theme.palette.textMuted : theme.palette.text.secondary;
         return (
             <Button
                 onClick={onClick}
@@ -698,7 +727,10 @@ const GameTile: React.FC<{
                     borderRadius: 1.25,
                     bgcolor: active ? alpha(color, 0.13) : "action.hover",
                     border: 1,
-                    borderColor: active ? color : "divider",
+                    // Use a muted version of the tile colour (not the faint
+                    // `divider`) so the dashed border reads as dashed at rest —
+                    // otherwise the dashes only become visible once selected.
+                    borderColor: active ? color : alpha(color, 0.5),
                     borderStyle: "dashed",
                     color: "text.primary",
                     textTransform: "none",
@@ -711,8 +743,8 @@ const GameTile: React.FC<{
                     ":hover": { bgcolor: alpha(color, 0.07) },
                 }}
                 title={
-                    isHeartbeat
-                        ? "Heartbeat snapshot — no game played in this window"
+                    noGame
+                        ? "No game played in this window"
                         : `${count.toString()} games — couldn't be split out individually`
                 }
             >
@@ -728,10 +760,10 @@ const GameTile: React.FC<{
                     <Help sx={{ fontSize: 14, color }} />
                 </Stack>
                 <Typography sx={{ fontSize: 18, lineHeight: 1, fontWeight: 500 }}>
-                    {isHeartbeat ? "—" : count.toString()}
+                    {noGame ? "—" : count.toString()}
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
-                    {isHeartbeat ? "no game" : "games"}
+                    {noGame ? "no game" : "games"}
                 </Typography>
                 <Stack direction="row" gap={0.75} sx={{ mt: 1, fontSize: 10 }}>
                     <Typography variant="caption" color="textSecondary">
@@ -868,8 +900,9 @@ const MomentumStrip: React.FC<{ segments: readonly GameSegment[] }> = ({
                 <Box>
                     <Typography variant="subtitle1">Game-by-game</Typography>
                     <Typography variant="caption" color="textSecondary">
-                        Click a tile to inspect. Dashed tiles are heartbeats or
-                        multi-game gaps where individual games can&apos;t be attributed.
+                        Click a tile to inspect. Dashed tiles are gaps where individual
+                        games can&apos;t be attributed — either no game was played, or
+                        several couldn&apos;t be split apart.
                     </Typography>
                 </Box>
                 <StreakIndicator segments={segments} />
@@ -1134,16 +1167,94 @@ const SessionMetaCard: React.FC<SessionMetaCardProps> = ({ session, agg }) => {
     );
 };
 
+const ModeDetail: React.FC<{
+    mode: Gamemode;
+    stats: ModeStats;
+    color: string;
+}> = ({ mode, stats, color }) => {
+    const items: [string, string][] = [
+        ["Games", stats.games.toString()],
+        ["Record", `${stats.wins.toString()}W · ${stats.losses.toString()}L`],
+        ["Win rate", `${Math.round(stats.winRate * 100).toString()}%`],
+        ["FKDR", stats.fkdr.toFixed(2)],
+        ["Finals", `${stats.fk.toString()} / ${stats.fd.toString()}`],
+        ["Beds", `${stats.bb.toString()} / ${stats.bl.toString()}`],
+        ["Kills", `${stats.k.toString()} / ${stats.d.toString()}`],
+        ["KDR", stats.kdr.toFixed(2)],
+    ];
+    return (
+        <Box
+            sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 1,
+                mt: 1.75,
+                pt: 1.75,
+                borderTop: 1,
+                borderColor: "divider",
+            }}
+        >
+            <Stack
+                direction="row"
+                alignItems="center"
+                gap={0.75}
+                sx={{ gridColumn: "1 / -1", mb: 0.5 }}
+            >
+                <Box sx={{ width: 8, height: 8, borderRadius: 0.25, bgcolor: color }} />
+                <Typography
+                    variant="caption"
+                    color="textSecondary"
+                    sx={{
+                        textTransform: "uppercase",
+                        letterSpacing: 0.6,
+                        fontSize: 10,
+                    }}
+                >
+                    {getGamemodeLabel(mode, true)}
+                </Typography>
+            </Stack>
+            {items.map(([label, value]) => (
+                <Box key={label}>
+                    <Typography
+                        variant="caption"
+                        color="textSecondary"
+                        sx={{
+                            textTransform: "uppercase",
+                            letterSpacing: 0.6,
+                            fontSize: 10,
+                        }}
+                    >
+                        {label}
+                    </Typography>
+                    <Typography sx={{ fontFamily: "monospace", fontSize: 14, mt: 0.5 }}>
+                        {value}
+                    </Typography>
+                </Box>
+            ))}
+        </Box>
+    );
+};
+
 const ModeBreakdown: React.FC<{
     session: NonNullable<SessionAt["session"]>;
 }> = ({ session }) => {
     const theme = useTheme();
     const data = modeBreakdown(session);
+    const [expanded, setExpanded] = React.useState<Gamemode | null>(null);
+    const expandedStats = expanded === null ? null : data[expanded];
     return (
         <Panel>
-            <Typography variant="subtitle1" sx={{ mb: 1.75 }}>
-                By gamemode
-            </Typography>
+            <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="baseline"
+                sx={{ mb: 1.75 }}
+            >
+                <Typography variant="subtitle1">By gamemode</Typography>
+                <Typography variant="caption" color="textSecondary">
+                    Click a mode for the full breakdown
+                </Typography>
+            </Stack>
             <Box
                 sx={{
                     display: "grid",
@@ -1154,17 +1265,29 @@ const ModeBreakdown: React.FC<{
                 {GAMEMODES.map((mode) => {
                     const stats = data[mode];
                     const color = theme.palette.gamemode[mode];
-                    const winPct = stats.games === 0 ? 0 : stats.wins / stats.games;
+                    const empty = stats.games === 0;
+                    const active = expanded === mode;
                     return (
-                        <Box
+                        <ButtonBase
                             key={mode}
+                            disabled={empty}
+                            onClick={() => {
+                                setExpanded((prev) => (prev === mode ? null : mode));
+                            }}
+                            aria-expanded={active}
                             sx={{
-                                bgcolor: "action.hover",
+                                display: "block",
+                                width: "100%",
+                                textAlign: "left",
+                                bgcolor: active ? alpha(color, 0.12) : "action.hover",
                                 border: 1,
-                                borderColor: "divider",
+                                borderColor: active ? color : "divider",
                                 borderRadius: 1.25,
                                 p: 1.75,
-                                opacity: stats.games === 0 ? 0.4 : 1,
+                                opacity: empty ? 0.4 : 1,
+                                transition:
+                                    "border-color 120ms, background-color 120ms",
+                                ":hover": { borderColor: alpha(color, 0.5) },
                             }}
                         >
                             <Stack
@@ -1193,7 +1316,7 @@ const ModeBreakdown: React.FC<{
                             </Typography>
                             <LinearProgress
                                 variant="determinate"
-                                value={winPct * 100}
+                                value={stats.winRate * 100}
                                 sx={{
                                     mt: 1.5,
                                     height: 4,
@@ -1217,10 +1340,17 @@ const ModeBreakdown: React.FC<{
                                     {stats.fkdr.toFixed(2)}
                                 </Typography>
                             </Stack>
-                        </Box>
+                        </ButtonBase>
                     );
                 })}
             </Box>
+            {expanded !== null && expandedStats !== null && (
+                <ModeDetail
+                    mode={expanded}
+                    stats={expandedStats}
+                    color={theme.palette.gamemode[expanded]}
+                />
+            )}
         </Panel>
     );
 };
@@ -1392,8 +1522,39 @@ const HighlightsCard: React.FC<{
     const theme = useTheme();
     const best = bestGame(segments);
     const fastest = fastestWin(segments);
-    const beatLifetime = agg.fkdr > agg.lifetimeFkdr;
     const hours = agg.elapsedMs / 3_600_000;
+
+    // Classify session FKDR against lifetime three ways. The old binary check
+    // labelled anything not strictly above lifetime as "on par", so a session
+    // far below lifetime (e.g. 1.25 vs 13.35) wrongly read as on par. "On par"
+    // now only applies within ±10%; clearly above is "beating", clearly below
+    // is "below".
+    let fkdrRatio: number;
+    if (agg.lifetimeFkdr > 0) {
+        fkdrRatio = agg.fkdr / agg.lifetimeFkdr;
+    } else {
+        fkdrRatio = agg.fkdr > 0 ? Infinity : 1;
+    }
+    let vsLifetime: { icon: SvgIconComponent; color: string; title: string };
+    if (fkdrRatio >= 1.1) {
+        vsLifetime = {
+            icon: TrendingUp,
+            color: theme.palette.success.main,
+            title: "Beating lifetime",
+        };
+    } else if (fkdrRatio <= 0.9) {
+        vsLifetime = {
+            icon: TrendingDown,
+            color: theme.palette.error.main,
+            title: "Below lifetime",
+        };
+    } else {
+        vsLifetime = {
+            icon: TrendingFlat,
+            color: theme.palette.text.secondary,
+            title: "On par with lifetime",
+        };
+    }
 
     const bestIndex = best === undefined ? -1 : segments.indexOf(best);
     const fastestIndex = fastest === undefined ? -1 : segments.indexOf(fastest);
@@ -1429,11 +1590,9 @@ const HighlightsCard: React.FC<{
         },
         {
             id: "vs-lifetime",
-            icon: beatLifetime ? TrendingUp : TrendingFlat,
-            color: beatLifetime
-                ? theme.palette.info.main
-                : theme.palette.text.secondary,
-            title: beatLifetime ? "Beating lifetime" : "On par with lifetime",
+            icon: vsLifetime.icon,
+            color: vsLifetime.color,
+            title: vsLifetime.title,
             value: agg.fkdr.toFixed(2),
             sub: `vs ${agg.lifetimeFkdr.toFixed(2)} all-time`,
         },
