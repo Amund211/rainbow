@@ -273,15 +273,13 @@ export const formatLong = (ms: number): string => {
  * Count how many games happened in a segment with no derivable per-game
  * stats. Returns 0 for a no-game window (no stats moved), N>=1 for a segment
  * that covers N games we couldn't split (e.g. gamesPlayed jumped by 2).
+ *
+ * Uses `overall.gamesPlayed`, not the four core modes — games played in a
+ * non-core mode (4v4 / a Dreams mode) move overall but leave solo/doubles/
+ * threes/fours flat, so summing the four would miss them entirely.
  */
-export const inferredGameCount = (seg: GameSegment): number => {
-    let total = 0;
-    for (const mode of GAMEMODES) {
-        const delta = seg.end[mode].gamesPlayed - seg.start[mode].gamesPlayed;
-        if (delta > 0) total += delta;
-    }
-    return total;
-};
+export const inferredGameCount = (seg: GameSegment): number =>
+    Math.max(0, seg.end.overall.gamesPlayed - seg.start.overall.gamesPlayed);
 
 export const segmentDurationMs = (seg: GameSegment): number =>
     seg.end.queriedAt.getTime() - seg.start.queriedAt.getTime();

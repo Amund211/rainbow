@@ -271,44 +271,64 @@ describe(trailingStreak, () => {
 });
 
 describe(inferredGameCount, () => {
-    const pitWithGames = (perMode: Partial<Record<Gamemode, number>>): PlayerDataPIT =>
+    // The count must come from `overall`, not the four core modes — games in a
+    // non-core mode (4v4 / a Dreams mode) move overall but leave the four flat.
+    const pit = (
+        overall: number,
+        core: Partial<Record<Gamemode, number>> = {},
+    ): PlayerDataPIT =>
         makePIT({
-            solo: makeStats({ gamesPlayed: perMode.solo ?? 0 }),
-            doubles: makeStats({ gamesPlayed: perMode.doubles ?? 0 }),
-            threes: makeStats({ gamesPlayed: perMode.threes ?? 0 }),
-            fours: makeStats({ gamesPlayed: perMode.fours ?? 0 }),
+            overall: makeStats({ gamesPlayed: overall }),
+            solo: makeStats({ gamesPlayed: core.solo ?? 0 }),
+            doubles: makeStats({ gamesPlayed: core.doubles ?? 0 }),
+            threes: makeStats({ gamesPlayed: core.threes ?? 0 }),
+            fours: makeStats({ gamesPlayed: core.fours ?? 0 }),
         });
 
     const cases: {
         name: string;
-        start: Partial<Record<Gamemode, number>>;
-        end: Partial<Record<Gamemode, number>>;
+        start: { overall: number; core?: Partial<Record<Gamemode, number>> };
+        end: { overall: number; core?: Partial<Record<Gamemode, number>> };
         expected: number;
     }[] = [
-        { name: "no movement", start: {}, end: {}, expected: 0 },
-        { name: "single mode +1", start: {}, end: { fours: 1 }, expected: 1 },
         {
-            name: "sums positive deltas across modes",
-            start: {},
-            end: { solo: 2, fours: 1 },
-            expected: 3,
+            name: "no games played",
+            start: { overall: 0 },
+            end: { overall: 0 },
+            expected: 0,
         },
         {
-            name: "a +2 jump in one mode",
-            start: {},
-            end: { threes: 2 },
+            name: "a single game",
+            start: { overall: 10 },
+            end: { overall: 11 },
+            expected: 1,
+        },
+        {
+            name: "a multi-game jump",
+            start: { overall: 10 },
+            end: { overall: 12 },
             expected: 2,
         },
         {
-            name: "ignores negative deltas",
-            start: { solo: 5 },
-            end: { solo: 3, fours: 1 },
-            expected: 1,
+            name: "counts non-core games where the four modes stay flat",
+            start: { overall: 25_234, core: {} },
+            end: { overall: 25_236, core: {} },
+            expected: 2,
+        },
+        {
+            name: "ignores a decrease",
+            start: { overall: 5 },
+            end: { overall: 3 },
+            expected: 0,
         },
     ];
 
     test.each(cases)("$name", ({ start, end, expected }) => {
-        const segment = makeSegment(null, pitWithGames(start), pitWithGames(end));
+        const segment = makeSegment(
+            null,
+            pit(start.overall, start.core),
+            pit(end.overall, end.core),
+        );
         expect(inferredGameCount(segment)).toBe(expected);
     });
 });
