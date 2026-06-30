@@ -679,7 +679,7 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
                 alignItems="center"
                 flexWrap="wrap"
                 gap={1}
-                sx={{ mb: 1.75 }}
+                sx={{ mb: 1.75, maxWidth: 720, mx: "auto" }}
             >
                 <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
                     <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
@@ -715,6 +715,8 @@ const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
                     display: "grid",
                     gridTemplateColumns: "repeat(4, 1fr)",
                     gap: 1,
+                    maxWidth: 720,
+                    mx: "auto",
                 }}
             >
                 {items.map(([label, value]) => (
