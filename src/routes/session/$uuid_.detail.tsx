@@ -1,6 +1,7 @@
 import {
     ArrowRightAlt,
     AutoAwesome,
+    Bed,
     Block,
     Bolt,
     Cloud,
@@ -8,6 +9,7 @@ import {
     DirectionsRun,
     EmojiEvents,
     Group,
+    HeartBroken,
     Help,
     Info,
     IosShare,
@@ -200,6 +202,12 @@ const OUTCOME_LABEL: Record<GameOutcome, string> = {
     win: "W",
     loss: "L",
     draw: "D",
+};
+
+const OUTCOME_FULL_LABEL: Record<GameOutcome, string> = {
+    win: "WIN",
+    loss: "LOSS",
+    draw: "DRAW",
 };
 
 // win → success green, loss → error red, draw → neutral (rare, neither good nor bad).
@@ -548,93 +556,188 @@ const KPIRow: React.FC<{ agg: SessionAggregate }> = ({ agg }) => {
     );
 };
 
+// Rounded outline pill used in the game-detail header to flag what happened in
+// the game (final death vs survived, bed lost vs kept).
+const StatusPill: React.FC<{
+    icon: SvgIconComponent;
+    label: string;
+    color: string;
+}> = ({ icon: Icon, label, color }) => (
+    <Stack
+        direction="row"
+        alignItems="center"
+        gap={0.5}
+        sx={{
+            px: 1,
+            py: 0.25,
+            borderRadius: 5,
+            border: 1,
+            borderColor: alpha(color, 0.4),
+            bgcolor: alpha(color, 0.08),
+            color,
+        }}
+    >
+        <Icon sx={{ fontSize: 14 }} />
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+            {label}
+        </Typography>
+    </Stack>
+);
+
 const GameDetail: React.FC<{ segment: GameSegment; index: number }> = ({
     segment,
     index,
 }) => {
+    const theme = useTheme();
     const xp = segmentExperience(segment);
+    const durationLabel = formatLong(segmentDurationMs(segment));
+
+    // Header context line + optional outcome badge + status pills + stat grid,
+    // derived per segment kind (real game / no-game window / multi-game gap).
+    let title: string;
+    let context: string;
+    let badge: { label: string; color: string } | null = null;
+    let pills: React.ReactNode = null;
     let items: [string, string][];
+
     if (segment.game === null) {
+        title = `Segment #${index.toString()}`;
         const count = inferredGameCount(segment);
         if (count === 0) {
+            context = "No game";
             items = [
-                ["Status", "No game"],
-                ["Games", "0"],
+                ["GAMES", "0"],
                 ["XP", `+${xp.toLocaleString()}`],
-                ["Span", formatLong(segmentDurationMs(segment))],
+                ["SPAN", durationLabel],
             ];
         } else {
             const fk =
                 segment.end.overall.finalKills - segment.start.overall.finalKills;
-            const fd =
-                segment.end.overall.finalDeaths - segment.start.overall.finalDeaths;
             const bb =
                 segment.end.overall.bedsBroken - segment.start.overall.bedsBroken;
-            const bl = segment.end.overall.bedsLost - segment.start.overall.bedsLost;
             const kills = segment.end.overall.kills - segment.start.overall.kills;
             const deaths = segment.end.overall.deaths - segment.start.overall.deaths;
+            context = `${count.toString()} games`;
             items = [
-                ["Finals", `${fk.toString()} / ${fd.toString()}`],
-                ["Beds", `${bb.toString()} / ${bl.toString()}`],
-                ["Kills", `${kills.toString()} / ${deaths.toString()}`],
+                ["FINAL KILLS", fk.toString()],
+                ["BEDS BROKEN", bb.toString()],
+                ["KILLS / DEATHS", `${kills.toString()} / ${deaths.toString()}`],
                 ["XP", `+${xp.toLocaleString()}`],
             ];
         }
     } else {
         const { game } = segment;
+        title = `Game #${index.toString()}`;
+        context = getGamemodeLabel(game.gamemode, true);
+        badge = {
+            label: OUTCOME_FULL_LABEL[game.outcome],
+            color: outcomeColor(theme, game.outcome),
+        };
+        pills = (
+            <>
+                {game.finalDeath ? (
+                    <StatusPill
+                        icon={HeartBroken}
+                        label="Final death"
+                        color={theme.palette.error.main}
+                    />
+                ) : (
+                    <StatusPill
+                        icon={Shield}
+                        label="Survived"
+                        color={theme.palette.success.main}
+                    />
+                )}
+                {game.bedLost ? (
+                    <StatusPill
+                        icon={Bed}
+                        label="Bed lost"
+                        color={theme.palette.error.main}
+                    />
+                ) : (
+                    <StatusPill
+                        icon={Bed}
+                        label="Bed kept"
+                        color={theme.palette.success.main}
+                    />
+                )}
+            </>
+        );
         items = [
-            [
-                "Finals",
-                `${game.finalKills.toString()} / ${game.finalDeath ? "1" : "0"}`,
-            ],
-            ["Beds", `${game.bedsBroken.toString()} / ${game.bedLost ? "1" : "0"}`],
-            ["Kills", `${game.kills.toString()} / ${game.deaths.toString()}`],
+            ["FINAL KILLS", game.finalKills.toString()],
+            ["BEDS BROKEN", game.bedsBroken.toString()],
+            ["KILLS / DEATHS", `${game.kills.toString()} / ${game.deaths.toString()}`],
             ["XP", `+${game.experience.toLocaleString()}`],
         ];
     }
+
     return (
-        <Box
-            sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 1,
-                mt: 1.75,
-                pt: 1.75,
-                borderTop: 1,
-                borderColor: "divider",
-            }}
-        >
-            <Box sx={{ gridColumn: "1 / -1", mb: 0.5 }}>
-                <Typography
-                    variant="caption"
-                    color="textSecondary"
-                    sx={{
-                        textTransform: "uppercase",
-                        letterSpacing: 0.6,
-                        fontSize: 10,
-                    }}
-                >
-                    {`Segment ${index.toString()}`}
-                </Typography>
+        <Box sx={{ mt: 1.75, pt: 1.75, borderTop: 1, borderColor: "divider" }}>
+            <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                flexWrap="wrap"
+                gap={1}
+                sx={{ mb: 1.75 }}
+            >
+                <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+                    <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                        {`· ${context} · ${durationLabel}`}
+                    </Typography>
+                    {badge !== null && (
+                        <Typography
+                            component="span"
+                            sx={{
+                                px: 0.875,
+                                py: 0.25,
+                                borderRadius: 0.75,
+                                bgcolor: alpha(badge.color, 0.15),
+                                color: badge.color,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                letterSpacing: 0.5,
+                            }}
+                        >
+                            {badge.label}
+                        </Typography>
+                    )}
+                </Stack>
+                {pills !== null && (
+                    <Stack direction="row" gap={1} flexWrap="wrap">
+                        {pills}
+                    </Stack>
+                )}
+            </Stack>
+            <Box
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 1,
+                }}
+            >
+                {items.map(([label, value]) => (
+                    <Box key={label}>
+                        <Typography
+                            variant="caption"
+                            color="textSecondary"
+                            sx={{
+                                textTransform: "uppercase",
+                                letterSpacing: 0.6,
+                                fontSize: 10,
+                            }}
+                        >
+                            {label}
+                        </Typography>
+                        <Typography
+                            sx={{ fontFamily: "monospace", fontSize: 16, mt: 0.5 }}
+                        >
+                            {value}
+                        </Typography>
+                    </Box>
+                ))}
             </Box>
-            {items.map(([label, value]) => (
-                <Box key={label}>
-                    <Typography
-                        variant="caption"
-                        color="textSecondary"
-                        sx={{
-                            textTransform: "uppercase",
-                            letterSpacing: 0.6,
-                            fontSize: 10,
-                        }}
-                    >
-                        {label}
-                    </Typography>
-                    <Typography sx={{ fontFamily: "monospace", fontSize: 14, mt: 0.5 }}>
-                        {value}
-                    </Typography>
-                </Box>
-            ))}
         </Box>
     );
 };
