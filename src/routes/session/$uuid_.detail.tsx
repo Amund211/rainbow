@@ -380,7 +380,6 @@ const PlayerBanner: React.FC<PlayerBannerProps> = ({
                                     alpha(theme.palette.secondary.main, 0.12),
                                 fontFamily: "monospace",
                             }}
-                            title="Bedwars star (prestige level)"
                         />
                         <Typography variant="h5">{username}</Typography>
                         {session.ongoing ? <LiveBadge /> : <EndedBadge />}
@@ -679,7 +678,7 @@ const ClutchOrCarriedBadge: React.FC<{ game: GameResult }> = ({ game }) => {
             icon: Group,
             color: theme.palette.info.main,
             label: "Carried",
-            tooltip: "Won after taking a final death — teammates pulled you through.",
+            tooltip: "Won after taking a final death.",
         };
     } else if (game.bedLost) {
         tone = {
