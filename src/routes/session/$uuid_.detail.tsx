@@ -46,6 +46,15 @@ import { captureException } from "@sentry/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import React from "react";
+import {
+    Area,
+    CartesianGrid,
+    ComposedChart,
+    Line,
+    Tooltip as ChartTooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 import { z } from "zod";
 
 import { PlayerHead } from "#components/player.tsx";
@@ -946,6 +955,8 @@ interface TrajectoryChartProps {
 
 const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) => {
     const theme = useTheme();
+    // NOTE: Assume the id format is CSS-selector-safe
+    const gradientId = `fkdr-fill-${React.useId()}`;
     const points = fkdrTrajectory(session, segments);
 
     if (points.length < 2) {
@@ -959,37 +970,10 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
         );
     }
 
-    const W = 800;
-    const H = 220;
-    const padL = 44;
-    const padR = 16;
-    const padT = 16;
-    const padB = 28;
-    const innerW = W - padL - padR;
-    const innerH = H - padT - padB;
-    const allY = points.flatMap((p) => [p.sessionFkdr, p.lifetimeFkdr]);
-    const yMax = Math.max(...allY, 0) * 1.15 || 1;
-    const xScale = (x: number) =>
-        padL + ((x - 1) / Math.max(1, points.length - 1)) * innerW;
-    const yScale = (y: number) => padT + innerH - (y / yMax) * innerH;
-
-    const sessionPath = points
-        .map((p, i) => `${i === 0 ? "M" : "L"} ${xScale(p.x)} ${yScale(p.sessionFkdr)}`)
-        .join(" ");
-    const lifetimePath = points
-        .map(
-            (p, i) => `${i === 0 ? "M" : "L"} ${xScale(p.x)} ${yScale(p.lifetimeFkdr)}`,
-        )
-        .join(" ");
-    const [first] = points;
-    const last = points.at(-1) ?? first;
-    const areaPath = `${sessionPath} L ${xScale(last.x)} ${yScale(0)} L ${xScale(first.x)} ${yScale(0)} Z`;
-
-    const yTicks = 4;
-    const ticks = Array.from({ length: yTicks + 1 }, (_, i) => yMax * (i / yTicks));
-
+    // Recharts wants a mutable array.
+    const data = [...points];
     const primary = theme.palette.primary.main;
-    const { divider, textMuted } = theme.palette;
+    const lifetimeColor = theme.palette.text.secondary;
 
     return (
         <Panel sx={{ height: "100%" }}>
@@ -1025,7 +1009,7 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
                         <Box
                             sx={{
                                 width: 18,
-                                borderTop: `2px dashed ${theme.palette.text.secondary}`,
+                                borderTop: `2px dashed ${lifetimeColor}`,
                             }}
                         />
                         <Typography variant="caption" color="textSecondary">
@@ -1034,79 +1018,83 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
                     </Stack>
                 </Stack>
             </Stack>
-            <svg
-                viewBox={`0 0 ${W.toString()} ${H.toString()}`}
-                style={{ width: "100%", height: "auto", display: "block" }}
-            >
-                <defs>
-                    <linearGradient id="fkdrFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={primary} stopOpacity="0.32" />
-                        <stop offset="100%" stopColor={primary} stopOpacity="0" />
-                    </linearGradient>
-                </defs>
-                {ticks.map((v) => (
-                    <g key={v}>
-                        <line
-                            x1={padL}
-                            x2={W - padR}
-                            y1={yScale(v)}
-                            y2={yScale(v)}
-                            stroke={divider}
-                            strokeDasharray="2 4"
-                        />
-                        <text
-                            x={padL - 8}
-                            y={yScale(v) + 4}
-                            textAnchor="end"
-                            fill={textMuted}
-                            fontSize="11"
-                            fontFamily="monospace"
-                        >
-                            {v.toFixed(1)}
-                        </text>
-                    </g>
-                ))}
-                {points.map((p) => (
-                    <text
-                        key={p.x}
-                        x={xScale(p.x)}
-                        y={H - 8}
-                        textAnchor="middle"
-                        fill={textMuted}
-                        fontSize="11"
-                        fontFamily="monospace"
-                    >
-                        {`G${p.x.toString()}`}
-                    </text>
-                ))}
-                <path d={areaPath} fill="url(#fkdrFill)" />
-                <path
-                    d={lifetimePath}
-                    fill="none"
-                    stroke={theme.palette.text.secondary}
-                    strokeWidth="1.5"
-                    strokeDasharray="4 4"
-                />
-                <path
-                    d={sessionPath}
-                    fill="none"
-                    stroke={primary}
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                />
-                {points.map((p) => (
-                    <circle
-                        key={p.x}
-                        cx={xScale(p.x)}
-                        cy={yScale(p.sessionFkdr)}
-                        r="4"
-                        fill={theme.palette.background.paper}
-                        stroke={primary}
-                        strokeWidth="2"
+            <Box sx={{ width: "100%", height: 240 }}>
+                <ComposedChart
+                    data={data}
+                    responsive
+                    width="100%"
+                    height="100%"
+                    style={{ minWidth: 100 }}
+                    margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+                >
+                    <defs>
+                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={primary} stopOpacity={0.32} />
+                            <stop offset="100%" stopColor={primary} stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                        stroke={theme.palette.divider}
+                        strokeDasharray="2 4"
                     />
-                ))}
-            </svg>
+                    <XAxis
+                        dataKey="x"
+                        stroke={theme.palette.divider}
+                        tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+                        tickFormatter={(x: number) => `G${x.toString()}`}
+                    />
+                    <YAxis
+                        domain={[0, "auto"]}
+                        stroke={theme.palette.divider}
+                        tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+                        tickFormatter={(v: number) => v.toFixed(1)}
+                        width={40}
+                    />
+                    {/* Lifetime first so the session line + dots render on top. */}
+                    <Line
+                        name="Lifetime"
+                        type="monotone"
+                        dataKey="lifetimeFkdr"
+                        stroke={lifetimeColor}
+                        strokeWidth={1.5}
+                        strokeDasharray="4 4"
+                        dot={false}
+                        activeDot={false}
+                        isAnimationActive={false}
+                    />
+                    <Area
+                        name="Session"
+                        type="monotone"
+                        dataKey="sessionFkdr"
+                        stroke={primary}
+                        strokeWidth={2.5}
+                        fill={`url(#${gradientId})`}
+                        dot={{
+                            r: 4,
+                            fill: theme.palette.background.paper,
+                            stroke: primary,
+                            strokeWidth: 2,
+                        }}
+                        activeDot={{ r: 5 }}
+                        isAnimationActive={false}
+                    />
+                    <ChartTooltip
+                        labelFormatter={(label) =>
+                            typeof label === "number" ? `Game ${label.toString()}` : ""
+                        }
+                        formatter={(value) =>
+                            typeof value === "number" ? value.toFixed(2) : String(value)
+                        }
+                        contentStyle={{
+                            backgroundColor: theme.palette.background.paper,
+                            border: `1px solid ${theme.palette.divider}`,
+                            borderRadius: 8,
+                        }}
+                        itemStyle={{ color: theme.palette.text.primary }}
+                        labelStyle={{ color: theme.palette.text.secondary }}
+                    />
+                </ComposedChart>
+            </Box>
         </Panel>
     );
 };
