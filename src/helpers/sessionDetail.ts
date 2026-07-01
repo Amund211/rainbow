@@ -7,6 +7,7 @@ import type {
     Gamemode,
 } from "#queries/sessionAt.ts";
 import type { Session } from "#queries/sessions.ts";
+import { computeStat } from "#stats/index.ts";
 import { computeStatProgression, nextCloseMilestone } from "#stats/progression.ts";
 import { bedwarsLevelFromExp } from "#stats/stars.ts";
 
@@ -200,18 +201,18 @@ export interface TrajectoryPoint {
 export const fkdrTrajectory = (
     session: Session,
     segments: readonly GameSegment[],
-): TrajectoryPoint[] => {
-    const baseFK = session.start.overall.finalKills;
-    const baseFD = session.start.overall.finalDeaths;
-    return segments.map((seg, i) => ({
+): TrajectoryPoint[] =>
+    segments.map((seg, i) => ({
         x: i + 1,
-        sessionFkdr: ratio(
-            seg.end.overall.finalKills - baseFK,
-            seg.end.overall.finalDeaths - baseFD,
-        ),
-        lifetimeFkdr: ratio(seg.end.overall.finalKills, seg.end.overall.finalDeaths),
+        sessionFkdr: computeStat(seg.end, "overall", "fkdr", "session", [
+            session.start,
+            seg.end,
+        ]),
+        lifetimeFkdr: computeStat(seg.end, "overall", "fkdr", "overall", [
+            session.start,
+            seg.end,
+        ]),
     }));
-};
 
 export interface Milestone {
     readonly key: "prestige" | "wins" | "fkdr";
