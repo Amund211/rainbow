@@ -1324,38 +1324,25 @@ const ModeDetail: React.FC<{
         ["KDR", stats.kdr.toFixed(2)],
     ];
     return (
-        <Box
-            sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 1,
-                mt: 1.75,
-                pt: 1.75,
-                borderTop: 1,
-                borderColor: "divider",
-            }}
-        >
-            <Stack
-                direction="row"
-                alignItems="center"
-                gap={0.75}
-                sx={{ gridColumn: "1 / -1", mb: 0.5 }}
+        <Box sx={{ mt: 1.75, pt: 1.75, borderTop: 1, borderColor: "divider" }}>
+            <Box
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 1,
+                    maxWidth: 720,
+                    mx: "auto",
+                }}
             >
-                <Box sx={{ width: 8, height: 8, borderRadius: 0.25, bgcolor: color }} />
-                <Typography
-                    variant="caption"
-                    color="textSecondary"
-                    sx={{
-                        textTransform: "uppercase",
-                        letterSpacing: 0.6,
-                        fontSize: 10,
-                    }}
+                <Stack
+                    direction="row"
+                    alignItems="center"
+                    gap={0.75}
+                    sx={{ gridColumn: "1 / -1", mb: 0.5 }}
                 >
-                    {label}
-                </Typography>
-            </Stack>
-            {items.map(([itemLabel, value]) => (
-                <Box key={itemLabel}>
+                    <Box
+                        sx={{ width: 8, height: 8, borderRadius: 0.25, bgcolor: color }}
+                    />
                     <Typography
                         variant="caption"
                         color="textSecondary"
@@ -1365,13 +1352,30 @@ const ModeDetail: React.FC<{
                             fontSize: 10,
                         }}
                     >
-                        {itemLabel}
+                        {label}
                     </Typography>
-                    <Typography sx={{ fontFamily: "monospace", fontSize: 14, mt: 0.5 }}>
-                        {value}
-                    </Typography>
-                </Box>
-            ))}
+                </Stack>
+                {items.map(([itemLabel, value]) => (
+                    <Box key={itemLabel}>
+                        <Typography
+                            variant="caption"
+                            color="textSecondary"
+                            sx={{
+                                textTransform: "uppercase",
+                                letterSpacing: 0.6,
+                                fontSize: 10,
+                            }}
+                        >
+                            {itemLabel}
+                        </Typography>
+                        <Typography
+                            sx={{ fontFamily: "monospace", fontSize: 14, mt: 0.5 }}
+                        >
+                            {value}
+                        </Typography>
+                    </Box>
+                ))}
+            </Box>
         </Box>
     );
 };
