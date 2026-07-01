@@ -262,7 +262,7 @@ export const computeMilestones = (
     const specs: readonly MilestoneSpec[] = [
         {
             key: "prestige",
-            label: "Next prestige",
+            label: "Next stars milestone",
             stat: "stars",
             format: (v) => `✦${v.toFixed(0)}`,
             deltaFormat: () => `+${agg.stars.toFixed(2)}/session`,
