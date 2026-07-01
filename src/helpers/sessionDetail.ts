@@ -7,7 +7,7 @@ import type {
     Gamemode,
 } from "#queries/sessionAt.ts";
 import type { Session } from "#queries/sessions.ts";
-import { computeStatProgression } from "#stats/progression.ts";
+import { computeStatProgression, nextCloseMilestone } from "#stats/progression.ts";
 import { bedwarsLevelFromExp } from "#stats/stars.ts";
 
 export const GAMEMODES: readonly Gamemode[] = ["solo", "doubles", "threes", "fours"];
@@ -292,6 +292,9 @@ export const computeMilestones = (
             trackingEnd,
             spec.stat,
             "overall",
+            // Closer, more reachable targets than the default — the session
+            // detail page wants goals that are only a session or two out.
+            nextCloseMilestone,
         );
         if (progression.error) {
             return {
