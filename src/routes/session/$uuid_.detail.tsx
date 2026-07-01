@@ -1,5 +1,4 @@
 import {
-    ArrowRightAlt,
     AutoAwesome,
     Bed,
     Block,
@@ -1524,6 +1523,29 @@ const ModeBreakdown: React.FC<{
     );
 };
 
+type MilestoneTrend = "up" | "down" | "flat";
+
+// Direction of a milestone's target vs its current value. Stars and wins only
+// ever climb (green, up); FKDR is session-dependent, so an underperforming
+// session projects a lower target — surfaced as a red down-trend rather than a
+// neutral goal arrow, matching the regular session page.
+const milestoneTrend = (current: number, target: number | null): MilestoneTrend => {
+    if (target === null || target === current) return "flat";
+    return target > current ? "up" : "down";
+};
+
+const TREND_ICON: Record<MilestoneTrend, SvgIconComponent> = {
+    up: TrendingUp,
+    down: TrendingDown,
+    flat: TrendingFlat,
+};
+
+const TREND_COLOR: Record<MilestoneTrend, string> = {
+    up: "success.main",
+    down: "error.main",
+    flat: "text.disabled",
+};
+
 const MilestonesCard: React.FC<{ milestones: readonly Milestone[] }> = ({
     milestones,
 }) => {
@@ -1546,6 +1568,8 @@ const MilestonesCard: React.FC<{ milestones: readonly Milestone[] }> = ({
                     const Icon = MILESTONE_ICONS[m.key];
                     const color = milestoneColor(theme, m.key);
                     const reachable = m.target !== null && Number.isFinite(m.sessions);
+                    const trend = milestoneTrend(m.current, m.target);
+                    const TrendIcon = TREND_ICON[trend];
                     return (
                         <Box
                             key={m.key}
@@ -1594,8 +1618,8 @@ const MilestonesCard: React.FC<{ milestones: readonly Milestone[] }> = ({
                                 <Typography sx={{ fontSize: 18 }}>
                                     {m.format(m.current)}
                                 </Typography>
-                                <ArrowRightAlt
-                                    sx={{ fontSize: 16, color: "text.disabled" }}
+                                <TrendIcon
+                                    sx={{ fontSize: 16, color: TREND_COLOR[trend] }}
                                 />
                                 <Typography sx={{ fontSize: 18, color }}>
                                     {m.target === null ? "—" : m.format(m.target)}
