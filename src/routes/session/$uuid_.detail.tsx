@@ -56,7 +56,6 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
-import { z } from "zod";
 
 import { PlayerHead } from "#components/player.tsx";
 import type {
@@ -88,13 +87,10 @@ import type {
 } from "#queries/sessionAt.ts";
 import { getSessionAtQueryOptions } from "#queries/sessionAt.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
+import { detailSearchSchema } from "#schemas/detailSearch.ts";
 import { getGamemodeLabel } from "#stats/labels.ts";
 import { bedwarsLevelFromExp } from "#stats/stars.ts";
 import { rainbowGradient } from "#theme/tokens.ts";
-
-const detailSearchSchema = z.object({
-    date: z.coerce.date(),
-});
 
 export const Route = createFileRoute("/session/$uuid_/detail")({
     validateSearch: detailSearchSchema,
