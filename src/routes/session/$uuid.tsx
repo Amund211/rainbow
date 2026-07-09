@@ -148,7 +148,9 @@ const renderDuration = (end: Date, start: Date) => {
 const BAD_STATS: readonly StatKey[] = ["deaths", "finalDeaths", "bedsLost", "losses"];
 
 const isLinearStat = (stat: StatKey) => {
-    return !["fkdr", "kdr", "bblr", "wlr", "index", "winrate"].includes(stat);
+    return !["fkdr", "kdr", "bblr", "wlr", "index", "winrate", "clutchRate"].includes(
+        stat,
+    );
 };
 
 const getRelatedStats = (stat: StatKey): StatKey[] => {
@@ -167,6 +169,9 @@ const getRelatedStats = (stat: StatKey): StatKey[] => {
         }
         case "winrate": {
             return ["wins", "gamesPlayed"];
+        }
+        case "clutchRate": {
+            return ["bedsLost", "losses"];
         }
         case "index": {
             return ["finalKills", "finalDeaths", "stars"];
@@ -969,6 +974,16 @@ const ProgressionCaption: React.FC<ProgressionCaptionProps> = ({ progression }) 
                 </Typography>
             );
         }
+        case "clutchRate": {
+            // progressPerDay and sessionQuotient are fractions -> render as %.
+            // dividendPerDay (clutch wins/day) and divisorPerDay (beds lost/day)
+            // are plain counts, not clutch rates -> keep the plain 2dp format.
+            return (
+                <Typography variant="caption">
+                    {`${formatStatValue("clutchRate", progression.progressPerDay)}/day (${formatStatValue("clutchRate", progression.sessionQuotient)} long-time ${getShortStatLabel("clutchRate")}, ${progression.dividendPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} clutch ${getShortStatLabel("wins")}/day, ${progression.divisorPerDay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getShortStatLabel("bedsLost")}/day)`}
+                </Typography>
+            );
+        }
         case "index": {
             return (
                 <Typography variant="caption">
@@ -1258,6 +1273,7 @@ function RouteComponent() {
         "bblr",
         "wlr",
         "winrate",
+        "clutchRate",
     ];
 
     return (

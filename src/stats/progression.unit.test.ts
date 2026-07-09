@@ -47,6 +47,7 @@ class StatsBuilder {
             | "bblr"
             | "wlr"
             | "winrate"
+            | "clutchRate"
             | "index"
             | "stars"
             | "experience"
@@ -61,6 +62,7 @@ class StatsBuilder {
             | "bblr"
             | "wlr"
             | "winrate"
+            | "clutchRate"
             | "index"
             | "stars"
             | "experience"
@@ -1164,6 +1166,221 @@ describe("computeStatProgression - winrate stat", () => {
                         end: endDate,
                     },
                 });
+            });
+        });
+    }
+});
+
+describe("computeStatProgression - clutch rate stat", () => {
+    // Clutch rate = win rate in games where you lost your bed. Every loss loses
+    // your bed, so bed-loss games = bedsLost and clutch wins = bedsLost - losses;
+    // hence clutchRate = (bedsLost - losses) / bedsLost, a fraction in [0, 1]
+    // whose milestones step by 5% (same family as winrate). The dividend is
+    // synthetic (bedsLost - losses), so it is NOT a settable stat and is built
+    // from `bedsLost` + `losses`.
+    const gamemodes = ALL_GAMEMODE_KEYS;
+
+    const clutchHistory = (
+        gamemode: GamemodeKey,
+        start: { readonly bedsLost: number; readonly losses: number },
+        end: { readonly bedsLost: number; readonly losses: number },
+        startDate: Date,
+        endDate: Date,
+    ): History => [
+        new PlayerDataBuilder(TEST_UUID, startDate)
+            .withGamemodeStats(
+                gamemode,
+                new StatsBuilder()
+                    .withStat("bedsLost", start.bedsLost)
+                    .withStat("losses", start.losses)
+                    .build(),
+            )
+            .build(),
+        new PlayerDataBuilder(TEST_UUID, endDate)
+            .withGamemodeStats(
+                gamemode,
+                new StatsBuilder()
+                    .withStat("bedsLost", end.bedsLost)
+                    .withStat("losses", end.losses)
+                    .build(),
+            )
+            .build(),
+    ];
+
+    for (const gamemode of gamemodes) {
+        describe(`gamemode: ${gamemode}`, () => {
+            test("improving clutch rate steps up by 5%", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
+
+                // Clutch wins = bedsLost - losses.
+                // Start (100-50)/100 = 0.5, end (200-60)/200 = 0.7,
+                // session (100-10)/100 = 0.9.
+                const result = computeStatProgression(
+                    clutchHistory(
+                        gamemode,
+                        { bedsLost: 100, losses: 50 },
+                        { bedsLost: 200, losses: 60 },
+                        startDate,
+                        endDate,
+                    ),
+                    endDate,
+                    "clutchRate",
+                    gamemode,
+                );
+
+                if (result.error) {
+                    expect.unreachable(
+                        `Expected success but got error: ${result.reason}`,
+                    );
+                }
+
+                const {
+                    nextMilestoneValue,
+                    daysUntilMilestone,
+                    progressPerDay,
+                    ...rest
+                } = result;
+
+                expect(rest).toStrictEqual({
+                    stat: "clutchRate",
+                    endValue: 140 / 200,
+                    sessionQuotient: 90 / 100,
+                    dividendPerDay: 90 / 10,
+                    divisorPerDay: 100 / 10,
+                    trendingUpward: true,
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                });
+
+                // 0.70 -> 0.75 (next 5% step up).
+                expect(nextMilestoneValue).toBeCloseTo(0.75, 9);
+                // t = (M*d0 - k0) / (k - M*d) = (0.75*200 - 140) / (9 - 0.75*10)
+                expect(daysUntilMilestone).toBeCloseTo(20 / 3, 9);
+                expect(progressPerDay).toBeCloseTo((0.75 - 140 / 200) / (20 / 3), 9);
+            });
+
+            test("declining clutch rate steps down by 5%", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
+
+                // Clutch wins = bedsLost - losses.
+                // Start (200-40)/200 = 0.8, end (250-75)/250 = 0.7,
+                // session (50-35)/50 = 0.3.
+                const result = computeStatProgression(
+                    clutchHistory(
+                        gamemode,
+                        { bedsLost: 200, losses: 40 },
+                        { bedsLost: 250, losses: 75 },
+                        startDate,
+                        endDate,
+                    ),
+                    endDate,
+                    "clutchRate",
+                    gamemode,
+                );
+
+                if (result.error) {
+                    expect.unreachable(
+                        `Expected success but got error: ${result.reason}`,
+                    );
+                }
+
+                const {
+                    nextMilestoneValue,
+                    daysUntilMilestone,
+                    progressPerDay,
+                    ...rest
+                } = result;
+
+                expect(rest).toStrictEqual({
+                    stat: "clutchRate",
+                    endValue: 175 / 250,
+                    sessionQuotient: 15 / 50,
+                    dividendPerDay: 15 / 10,
+                    divisorPerDay: 50 / 10,
+                    trendingUpward: false,
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                });
+
+                // 0.70 -> 0.65 (next 5% step down).
+                expect(nextMilestoneValue).toBeCloseTo(0.65, 9);
+                // t = (M*d0 - k0) / (k - M*d) = (0.65*250 - 175) / (1.5 - 0.65*5)
+                expect(daysUntilMilestone).toBeCloseTo(50 / 7, 9);
+                expect(progressPerDay).toBeCloseTo((0.65 - 175 / 250) / (50 / 7), 9);
+            });
+
+            test("clutching every bed loss clamps the milestone to 100% and reports it reached", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
+
+                // Won every game after losing the bed (losses stay 0): clutch wins
+                // == bedsLost, so 50/50 -> 100/100 = 100%. The 5% step would be
+                // 105%, but it clamps to 100% (== the current value), so there is
+                // no further milestone: reached now (0 days), no NaN.
+                const result = computeStatProgression(
+                    clutchHistory(
+                        gamemode,
+                        { bedsLost: 50, losses: 0 },
+                        { bedsLost: 100, losses: 0 },
+                        startDate,
+                        endDate,
+                    ),
+                    endDate,
+                    "clutchRate",
+                    gamemode,
+                );
+
+                if (result.error) {
+                    expect.unreachable(
+                        `Expected success but got error: ${result.reason}`,
+                    );
+                }
+
+                expect(result).toStrictEqual({
+                    stat: "clutchRate",
+                    endValue: 1,
+                    nextMilestoneValue: 1,
+                    daysUntilMilestone: 0,
+                    progressPerDay: 0,
+                    sessionQuotient: 1,
+                    dividendPerDay: 50 / 10,
+                    divisorPerDay: 50 / 10,
+                    trendingUpward: true,
+                    trackingDataTimeInterval: {
+                        start: startDate,
+                        end: endDate,
+                    },
+                });
+            });
+
+            test("never losing a bed has no clutch data to project", () => {
+                const startDate = new Date("2024-01-01T00:00:00Z");
+                const endDate = new Date("2024-01-11T00:00:00Z"); // 10 days
+
+                // bedsLost stays 0 (divisor 0 at end and across the session): no
+                // bed-loss games means no clutch data. The synthetic dividend has
+                // no counter to fall back to, so this reports an error rather than
+                // dividing by zero (mirrors winrate with zero games played).
+                const result = computeStatProgression(
+                    clutchHistory(
+                        gamemode,
+                        { bedsLost: 0, losses: 0 },
+                        { bedsLost: 0, losses: 0 },
+                        startDate,
+                        endDate,
+                    ),
+                    endDate,
+                    "clutchRate",
+                    gamemode,
+                );
+
+                expect(result.error).toBe(true);
             });
         });
     }
@@ -2446,6 +2663,36 @@ describe(nextNaturalMilestone, () => {
             expected: 0,
         },
 
+        // Clutch rate shares winrate's 5%-step, [0, 1]-clamped milestone family.
+        {
+            name: "clutchRate: up from mid-step",
+            value: 0.72,
+            trendingUpward: true,
+            stat: "clutchRate",
+            expected: 0.75,
+        },
+        {
+            name: "clutchRate: down from mid-step",
+            value: 0.68,
+            trendingUpward: false,
+            stat: "clutchRate",
+            expected: 0.65,
+        },
+        {
+            name: "clutchRate: clamps up to 100% at 100% (returns value)",
+            value: 1,
+            trendingUpward: true,
+            stat: "clutchRate",
+            expected: 1,
+        },
+        {
+            name: "clutchRate: clamps down to 0% at 0% (returns value)",
+            value: 0,
+            trendingUpward: false,
+            stat: "clutchRate",
+            expected: 0,
+        },
+
         // Everything else: round number scaled to the order of magnitude.
         {
             name: "index: up small",
@@ -2541,6 +2788,7 @@ describe(nextNaturalMilestone, () => {
             { value: 3.5, stat: "fkdr" },
             { value: 4, stat: "kdr" },
             { value: 0.5, stat: "winrate" },
+            { value: 0.5, stat: "clutchRate" },
             { value: 16, stat: "index" },
             { value: 100, stat: "wins" },
             { value: 250, stat: "experience" },
