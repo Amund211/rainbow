@@ -482,6 +482,7 @@ const Sessions: React.FC<SessionsProps> = ({
 
                                             return formatStatValue(statKey, value, {
                                                 precision: "detailed",
+                                                notation: "collapsed",
                                             });
                                         };
 
@@ -808,19 +809,23 @@ const SessionStatCard: React.FC<SessionStatCardProps> = ({
                             <Typography variant="body1">
                                 {formatStatValue(stat, sessionValue, {
                                     precision: "detailed",
+                                    notation: "collapsed",
                                 })}
                             </Typography>
                             <Tooltip
                                 title={`${formatStatValue(stat, startValue, {
                                     precision: "detailed",
+                                    notation: "collapsed",
                                 })} → ${formatStatValue(stat, endValue, {
                                     precision: "detailed",
+                                    notation: "collapsed",
                                 })}`}
                             >
                                 <Stack direction="row" gap={0.5} alignItems="center">
                                     <Typography variant="caption" color={trendColor}>
                                         {formatStatValue(stat, diff, {
                                             signDisplay: "always",
+                                            notation: "collapsed",
                                         })}
                                     </Typography>
                                     {diff > 0 && (
@@ -910,7 +915,7 @@ const ProgressionValueAndMilestone: React.FC<ProgressionValueAndMilestoneProps> 
         progression.nextMilestoneValue,
         (value) => (
             <Typography variant="body1">
-                {formatStatValue(progression.stat, value)}
+                {formatStatValue(progression.stat, value, { notation: "collapsed" })}
             </Typography>
         ),
         BAD_STATS.includes(progression.stat),
