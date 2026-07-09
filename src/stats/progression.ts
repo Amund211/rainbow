@@ -1,5 +1,6 @@
 import type { TimeInterval } from "#intervals.ts";
 import type { History } from "#queries/history.ts";
+import type { PlayerDataPIT } from "#queries/playerdata.ts";
 
 import { getStat } from "./index.ts";
 import type { GamemodeKey, StatKey } from "./keys.ts";
@@ -153,12 +154,13 @@ export const nextNaturalMilestone: MilestoneStrategy = (
         case "wlr": {
             return trendingUpward ? Math.floor(value) + 1 : Math.ceil(value) - 1;
         }
-        case "winrate": {
-            // Winrate is a fraction in [0, 1]; step by 5% in the trend direction,
-            // clamped into [0, 1] so a near-perfect record can't project past 100%
-            // (or below 0%). At the clamp boundary this returns `value` itself,
-            // which the callers must treat as "already reached" (see the CONTRACT
-            // note above and computeQuotientProgression).
+        case "winrate":
+        case "clutchRate": {
+            // Winrate and clutch rate are fractions in [0, 1]; step by 5% in the
+            // trend direction, clamped into [0, 1] so a near-perfect record can't
+            // project past 100% (or below 0%). At the clamp boundary this returns
+            // `value` itself, which the callers must treat as "already reached"
+            // (see the CONTRACT note above and computeQuotientProgression).
             const step = 0.05;
             const next = trendingUpward
                 ? (Math.floor(value / step + 1e-9) + 1) * step
@@ -183,7 +185,7 @@ interface BaseStatProgression {
 }
 
 type QuotientProgression = BaseStatProgression & {
-    stat: "fkdr" | "kdr" | "bblr" | "wlr" | "winrate";
+    stat: "fkdr" | "kdr" | "bblr" | "wlr" | "winrate" | "clutchRate";
     sessionQuotient: number;
     dividendPerDay: number;
     divisorPerDay: number;
@@ -199,7 +201,10 @@ type IndexProgression = BaseStatProgression & {
 
 export type StatProgression =
     | (BaseStatProgression & {
-          stat: Exclude<StatKey, "fkdr" | "kdr" | "bblr" | "wlr" | "winrate" | "index">;
+          stat: Exclude<
+              StatKey,
+              "fkdr" | "kdr" | "bblr" | "wlr" | "winrate" | "clutchRate" | "index"
+          >;
       })
     | QuotientProgression
     | IndexProgression;
@@ -208,12 +213,20 @@ const computeQuotientProgression = (
     trackingHistory: History,
     trackingEnd: Date,
     stat: QuotientProgression["stat"],
-    dividendStat: Exclude<StatKey, "winstreak">,
-    divisorStat: Exclude<StatKey, "winstreak">,
+    // Dividend/divisor as value accessors rather than stat keys: clutch rate's
+    // dividend is synthetic (bedsLost - losses), not a single stored stat, so it
+    // can't be looked up by key like the other quotient stats.
+    getDividend: (playerData: PlayerDataPIT) => number,
+    getDivisor: (playerData: PlayerDataPIT) => number,
     gamemode: GamemodeKey,
     // Required (no default) so the public `computeStatProgression` boundary is
     // the single place the default strategy is applied.
     milestoneStrategy: MilestoneStrategy,
+    // The stat to project as a plain counter in the degenerate case where the
+    // divisor is 0 both at the end and across the session (the ratio collapses
+    // to "just the dividend"). A synthetic dividend (clutch rate) has no such
+    // counter and passes null, which reports no progress instead.
+    dividendFallbackStat: Exclude<StatKey, "winstreak"> | null,
 ): QuotientProgression | { error: true; reason: string } => {
     const [start, end] = trackingHistory;
     const startDate = start.queriedAt;
@@ -221,10 +234,10 @@ const computeQuotientProgression = (
     const daysElapsed =
         (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000);
 
-    const startDividend = getStat(start, gamemode, dividendStat);
-    const startDivisor = getStat(start, gamemode, divisorStat);
-    const endDividend = getStat(end, gamemode, dividendStat);
-    const endDivisor = getStat(end, gamemode, divisorStat);
+    const startDividend = getDividend(start);
+    const startDivisor = getDivisor(start);
+    const endDividend = getDividend(end);
+    const endDivisor = getDivisor(end);
 
     const sessionDividend = endDividend - startDividend;
     const sessionDivisor = endDivisor - startDivisor;
@@ -238,12 +251,19 @@ const computeQuotientProgression = (
     const divisorPerDay = sessionDivisor / daysElapsed;
 
     if (endDivisor === 0 && sessionDivisor === 0) {
+        if (dividendFallbackStat === null) {
+            // Synthetic dividend (clutch rate): a zero divisor means no bed-loss
+            // games, so there is no clutch data and no counter to fall back to.
+            // Report no progress instead of dividing by zero (mirrors winrate,
+            // whose "wins" counter is likewise flat at 0 when no games are played).
+            return { error: true, reason: "No progress" };
+        }
         // Have "infinite" ratio at the end -> ratio is computed as just dividend
         // oxlint-disable-next-line eslint/no-use-before-define
         const dividendProgression = computeStatProgression(
             trackingHistory,
             trackingEnd,
-            dividendStat,
+            dividendFallbackStat,
             gamemode,
             milestoneStrategy,
         );
@@ -438,10 +458,11 @@ export const computeStatProgression = (
                 trackingHistory,
                 trackingEnd,
                 stat,
-                "finalKills",
-                "finalDeaths",
+                (playerData) => getStat(playerData, gamemode, "finalKills"),
+                (playerData) => getStat(playerData, gamemode, "finalDeaths"),
                 gamemode,
                 milestoneStrategy,
+                "finalKills",
             );
         }
         case "kdr": {
@@ -449,10 +470,11 @@ export const computeStatProgression = (
                 trackingHistory,
                 trackingEnd,
                 stat,
-                "kills",
-                "deaths",
+                (playerData) => getStat(playerData, gamemode, "kills"),
+                (playerData) => getStat(playerData, gamemode, "deaths"),
                 gamemode,
                 milestoneStrategy,
+                "kills",
             );
         }
         case "bblr": {
@@ -460,10 +482,11 @@ export const computeStatProgression = (
                 trackingHistory,
                 trackingEnd,
                 stat,
-                "bedsBroken",
-                "bedsLost",
+                (playerData) => getStat(playerData, gamemode, "bedsBroken"),
+                (playerData) => getStat(playerData, gamemode, "bedsLost"),
                 gamemode,
                 milestoneStrategy,
+                "bedsBroken",
             );
         }
         case "wlr": {
@@ -471,10 +494,11 @@ export const computeStatProgression = (
                 trackingHistory,
                 trackingEnd,
                 stat,
-                "wins",
-                "losses",
+                (playerData) => getStat(playerData, gamemode, "wins"),
+                (playerData) => getStat(playerData, gamemode, "losses"),
                 gamemode,
                 milestoneStrategy,
+                "wins",
             );
         }
         case "winrate": {
@@ -482,10 +506,29 @@ export const computeStatProgression = (
                 trackingHistory,
                 trackingEnd,
                 stat,
-                "wins",
-                "gamesPlayed",
+                (playerData) => getStat(playerData, gamemode, "wins"),
+                (playerData) => getStat(playerData, gamemode, "gamesPlayed"),
                 gamemode,
                 milestoneStrategy,
+                "wins",
+            );
+        }
+        case "clutchRate": {
+            // Clutch rate = win rate in games where you lost your bed. Every loss
+            // loses your bed, so bed-loss games = bedsLost and clutch wins =
+            // bedsLost - losses. The dividend is synthetic (no stored stat and no
+            // counter fallback), so it passes null for the zero-divisor case.
+            return computeQuotientProgression(
+                trackingHistory,
+                trackingEnd,
+                stat,
+                (playerData) =>
+                    getStat(playerData, gamemode, "bedsLost") -
+                    getStat(playerData, gamemode, "losses"),
+                (playerData) => getStat(playerData, gamemode, "bedsLost"),
+                gamemode,
+                milestoneStrategy,
+                null,
             );
         }
         case "index": {

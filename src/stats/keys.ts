@@ -18,9 +18,7 @@ export const GAMEMODE_STAT_KEYS = [
     "wlr",
     "winrate",
     "index",
-    /*
     "clutchRate",
-    */
 ] as const;
 export type GamemodeStatKey = (typeof GAMEMODE_STAT_KEYS)[number];
 

@@ -22,6 +22,7 @@ export const STAT_FORMAT_KIND: Record<StatKey, StatFormatKind> = {
     bblr: "decimal",
     wlr: "decimal",
     winrate: "percentage",
+    clutchRate: "percentage",
     index: "integer",
 };
 

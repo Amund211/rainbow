@@ -64,6 +64,13 @@ export function getStat(
             // A win always increments gamesPlayed, so gamesPlayed === 0 ⇒ wins === 0.
             return gamesPlayed === 0 ? 0 : wins / gamesPlayed;
         }
+        case "clutchRate": {
+            const { bedsLost, losses } = selectedGamemode;
+            // Clutch rate = win rate in games where you lost your bed. Every loss
+            // loses your bed, so bed-loss games = bedsLost and clutch wins =
+            // bedsLost - losses. bedsLost === 0 ⇒ losses === 0 ⇒ no bed-loss games.
+            return bedsLost === 0 ? 0 : (bedsLost - losses) / bedsLost;
+        }
         case "index": {
             const fkdr = getStat(playerData, gamemode, "fkdr");
             const stars = getStat(playerData, gamemode, "stars");
@@ -200,6 +207,26 @@ export function computeStat(
             );
             // A win always increments gamesPlayed, so gamesPlayed === 0 ⇒ wins === 0.
             return gamesPlayed === 0 ? 0 : wins / gamesPlayed;
+        }
+        case "clutchRate": {
+            const bedsLost = computeStat(
+                playerData,
+                gamemode,
+                "bedsLost",
+                variant,
+                history,
+            );
+            const losses = computeStat(
+                playerData,
+                gamemode,
+                "losses",
+                variant,
+                history,
+            );
+            // Clutch rate = win rate in games where you lost your bed. Every loss
+            // loses your bed, so bed-loss games = bedsLost and clutch wins =
+            // bedsLost - losses. bedsLost === 0 ⇒ losses === 0 ⇒ no bed-loss games.
+            return bedsLost === 0 ? 0 : (bedsLost - losses) / bedsLost;
         }
         case "index": {
             const fkdr = computeStat(playerData, gamemode, "fkdr", variant, history);
