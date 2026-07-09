@@ -342,7 +342,10 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
                 formatter={(value, _name, item) => {
                     const stat = statByDataKey.get(String(item.dataKey));
                     return typeof value === "number" && stat !== undefined
-                        ? formatStatValue(stat, value, { precision: "detailed" })
+                        ? formatStatValue(stat, value, {
+                              precision: "detailed",
+                              notation: "collapsed",
+                          })
                         : value;
                 }}
                 contentStyle={{
@@ -504,7 +507,10 @@ export const SimpleHistoryChart: React.FC<SimpleHistoryChartProps> = ({
                         return null;
                     }
 
-                    return formatStatValue(stat, value, { precision: "detailed" });
+                    return formatStatValue(stat, value, {
+                        precision: "detailed",
+                        notation: "collapsed",
+                    });
                 }}
                 contentStyle={{
                     backgroundColor: theme.palette.background.paper,
