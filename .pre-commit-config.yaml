@@ -16,12 +16,17 @@ repos:
       hooks:
           - id: oxlint
             verbose: false
+            # Mirror .oxlintrc.json ignorePatterns: oxlint exits 1 if every
+            # file it is handed is ignored ("No files found to lint").
+            exclude: ^src/(routeTree\.gen\.ts|vite-env\.d\.ts)$
 
     - repo: https://github.com/oxc-project/mirrors-oxfmt
       rev: v0.60.0
       hooks:
           - id: oxfmt
             verbose: false
+            # Mirror .oxfmtrc.json ignorePatterns
+            exclude: ^(src/routeTree\.gen\.ts|coverage/)
 
     - repo: local
       hooks:
