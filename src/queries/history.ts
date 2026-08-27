@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { flashlightFetch } from "#helpers/flashlight/fetch.ts";
 import { isNormalizedUUID } from "#helpers/uuid.ts";
+import { makeQueryRequest } from "#queries/plan.ts";
 import { MS_PER_MINUTE } from "#time.ts";
 
 import { apiToPlayerDataPIT } from "./playerdata.ts";
@@ -17,12 +18,14 @@ interface HistoryQueryOptions {
     readonly start: Date;
     readonly end: Date;
     readonly limit: number;
+    readonly enabled?: boolean;
 }
 export const getHistoryQueryOptions = ({
     uuid,
     start,
     end,
     limit,
+    enabled,
 }: HistoryQueryOptions) => {
     const currentTime = Date.now();
     const currentTimeIsInWindow =
@@ -32,6 +35,7 @@ export const getHistoryQueryOptions = ({
     const endISOString = end.toISOString();
 
     return queryOptions({
+        enabled,
         staleTime: currentTimeIsInWindow ? MS_PER_MINUTE : Infinity,
         queryKey: ["history", uuid, startISOString, endISOString, limit],
         queryFn: async (): Promise<History> => {
@@ -81,3 +85,8 @@ export const getHistoryQueryOptions = ({
         },
     });
 };
+
+export const historyRequest = (params: HistoryQueryOptions) =>
+    makeQueryRequest(params, getHistoryQueryOptions(params));
+
+export type HistoryRequest = ReturnType<typeof historyRequest>;

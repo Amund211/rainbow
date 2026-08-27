@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { flashlightFetch } from "#helpers/flashlight/fetch.ts";
 import { isNormalizedUUID } from "#helpers/uuid.ts";
+import { makeQueryRequest } from "#queries/plan.ts";
 import { ALL_GAMEMODE_KEYS } from "#stats/keys.ts";
 import type { GamemodeKey } from "#stats/keys.ts";
 import { MS_PER_MINUTE } from "#time.ts";
@@ -111,16 +112,22 @@ const apiToGameResult = (api: APIGameResult): GameResult | null => {
 interface SessionAtQueryOptions {
     readonly uuid: string;
     readonly time: Date;
+    readonly enabled?: boolean;
 }
 
 // How often to refetch while a session is still ongoing. Games last a few
 // minutes, so a minute keeps the LIVE badge honest without hammering the API.
 const ONGOING_REFETCH_MS = MS_PER_MINUTE;
 
-export const getSessionAtQueryOptions = ({ uuid, time }: SessionAtQueryOptions) => {
+export const getSessionAtQueryOptions = ({
+    uuid,
+    time,
+    enabled,
+}: SessionAtQueryOptions) => {
     const timeISOString = time.toISOString();
 
     return queryOptions({
+        enabled,
         // An ended session is immutable, so cache it forever. An ongoing one
         // keeps changing behind the LIVE badge, so let it go stale and refetch
         // on an interval — otherwise the "live" numbers freeze at first load.
@@ -159,3 +166,6 @@ export const getSessionAtQueryOptions = ({ uuid, time }: SessionAtQueryOptions) 
         },
     });
 };
+
+export const sessionAtRequest = (params: SessionAtQueryOptions) =>
+    makeQueryRequest(params, getSessionAtQueryOptions(params));

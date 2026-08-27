@@ -111,7 +111,7 @@ export const Route = createFileRoute("/session/$uuid")({
         void queryClient.prefetchQuery(
             getHistoryQueryOptions({ uuid, ...trackingInterval, limit: 2 }),
         );
-        void queryClient.prefetchQuery(getUsernameQueryOptions(uuid));
+        void queryClient.prefetchQuery(getUsernameQueryOptions({ uuid }));
     },
     validateSearch: sessionSearchSchema,
     // oxlint-disable-next-line eslint/no-use-before-define

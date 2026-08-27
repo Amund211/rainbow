@@ -78,7 +78,7 @@ export const Route = createFileRoute("/wrapped/$uuid")({
                 timezone: getDefaultTimeZone(),
             }),
         );
-        void queryClient.prefetchQuery(getUsernameQueryOptions(uuid));
+        void queryClient.prefetchQuery(getUsernameQueryOptions({ uuid }));
     },
     validateSearch: wrappedSearchSchema,
     // oxlint-disable-next-line eslint/no-use-before-define

@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { flashlightFetch } from "#helpers/flashlight/fetch.ts";
 import { isNormalizedUUID } from "#helpers/uuid.ts";
+import { makeQueryRequest } from "#queries/plan.ts";
 import { MS_PER_MINUTE } from "#time.ts";
 
 import { apiToPlayerDataPIT } from "./playerdata.ts";
@@ -41,8 +42,14 @@ interface SessionsQueryOptions {
     readonly uuid: string;
     readonly start: Date;
     readonly end: Date;
+    readonly enabled?: boolean;
 }
-export const getSessionsQueryOptions = ({ uuid, start, end }: SessionsQueryOptions) => {
+export const getSessionsQueryOptions = ({
+    uuid,
+    start,
+    end,
+    enabled,
+}: SessionsQueryOptions) => {
     const currentTime = Date.now();
     const currentTimeIsInWindow =
         currentTime >= start.getTime() && currentTime <= end.getTime();
@@ -51,6 +58,7 @@ export const getSessionsQueryOptions = ({ uuid, start, end }: SessionsQueryOptio
     const endISOString = end.toISOString();
 
     return queryOptions({
+        enabled,
         staleTime: currentTimeIsInWindow ? MS_PER_MINUTE : Infinity,
         queryKey: ["sessions", uuid, startISOString, endISOString],
         queryFn: async (): Promise<Sessions> => {
@@ -97,3 +105,8 @@ export const getSessionsQueryOptions = ({ uuid, start, end }: SessionsQueryOptio
         },
     });
 };
+
+export const sessionsRequest = (params: SessionsQueryOptions) =>
+    makeQueryRequest(params, getSessionsQueryOptions(params));
+
+export type SessionsRequest = ReturnType<typeof sessionsRequest>;

@@ -68,7 +68,7 @@ export const Route = createFileRoute("/history/explore")({
             void queryClient.prefetchQuery(
                 getHistoryQueryOptions({ uuid, start, end, limit }),
             );
-            void queryClient.prefetchQuery(getUsernameQueryOptions(uuid));
+            void queryClient.prefetchQuery(getUsernameQueryOptions({ uuid }));
         }
     },
     validateSearch: historyExploreSearchSchema,

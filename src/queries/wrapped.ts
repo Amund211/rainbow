@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { flashlightFetch } from "#helpers/flashlight/fetch.ts";
 import { isNormalizedUUID } from "#helpers/uuid.ts";
+import { makeQueryRequest } from "#queries/plan.ts";
 import { MS_PER_MINUTE } from "#time.ts";
 
 import { apiToPlayerDataPIT } from "./playerdata.ts";
@@ -156,17 +157,20 @@ interface WrappedQueryOptions {
     readonly uuid: string;
     readonly year: number;
     readonly timezone: string; // IANA timezone (e.g., "Europe/Oslo", "America/New_York")
+    readonly enabled?: boolean;
 }
 
 export const getWrappedQueryOptions = ({
     uuid,
     year,
     timezone,
+    enabled,
 }: WrappedQueryOptions) => {
     const currentYear = new Date().getFullYear();
     const currentTimeIsInWindow = currentYear === year;
 
     return queryOptions({
+        enabled,
         staleTime: currentTimeIsInWindow ? MS_PER_MINUTE * 5 : Infinity,
         queryKey: ["wrapped", uuid, year, timezone],
         queryFn: async (): Promise<WrappedData> => {
@@ -249,3 +253,6 @@ export const getWrappedQueryOptions = ({
         },
     });
 };
+
+export const wrappedRequest = (params: WrappedQueryOptions) =>
+    makeQueryRequest(params, getWrappedQueryOptions(params));
