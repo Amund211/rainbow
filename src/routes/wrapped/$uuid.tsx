@@ -44,9 +44,10 @@ import { UserSearch } from "#components/UserSearch.tsx";
 import { usePlayerVisits } from "#contexts/PlayerVisits/hooks.ts";
 import { ExportImageMount } from "#helpers/exportImage.tsx";
 import { normalizeUUID } from "#helpers/uuid.ts";
+import { prefetchPlan } from "#queries/plan.ts";
 import type { Session } from "#queries/sessions.ts";
-import { getUsernameQueryOptions, useUUIDToUsername } from "#queries/username.ts";
-import { getWrappedQueryOptions } from "#queries/wrapped.ts";
+import { usernameRequest, useUUIDToUsername } from "#queries/username.ts";
+import { wrappedRequest } from "#queries/wrapped.ts";
 import type { WrappedData } from "#queries/wrapped.ts";
 import { wrappedSearchSchema } from "#schemas/wrappedSearch.ts";
 import { computeStat } from "#stats/index.ts";
@@ -59,26 +60,43 @@ const getDefaultTimeZone = (): string => {
     return new Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
 
+/**
+ * Every query this page reads.
+ *
+ * The loader prefetches all of it, and the components below fetch only what
+ * they are handed from here — so a query cannot be added to the page without
+ * being prefetched too. Add queries here, never in a component.
+ */
+export const makeWrappedQueryPlan = (
+    rawUUID: string,
+    { year }: { readonly year: number },
+) => {
+    const uuid = normalizeUUID(rawUUID);
+    // The page redirects away when the uuid won't normalize, so nothing fetches.
+    const enabled = uuid !== null;
+
+    return {
+        wrapped: wrappedRequest({
+            uuid: uuid ?? "",
+            year,
+            // Part of the query key, so it is resolved once here rather than
+            // separately by the loader and the component.
+            timezone: getDefaultTimeZone(),
+            enabled,
+        }),
+        username: usernameRequest({ uuid: uuid ?? "", enabled }),
+    };
+};
+
 export const Route = createFileRoute("/wrapped/$uuid")({
     loaderDeps: ({ search: { year } }) => {
         return { year };
     },
-    loader: ({
-        params: { uuid: rawUUID },
-        deps: { year },
-        context: { queryClient },
-    }) => {
-        const uuid = normalizeUUID(rawUUID);
-        if (uuid === null) return;
-
-        void queryClient.prefetchQuery(
-            getWrappedQueryOptions({
-                uuid,
-                year,
-                timezone: getDefaultTimeZone(),
-            }),
-        );
-        void queryClient.prefetchQuery(getUsernameQueryOptions({ uuid }));
+    context: ({ params: { uuid }, deps }) => ({
+        queries: makeWrappedQueryPlan(uuid, deps),
+    }),
+    loader: ({ context: { queryClient, queries } }) => {
+        prefetchPlan(queryClient, queries);
     },
     validateSearch: wrappedSearchSchema,
     // oxlint-disable-next-line eslint/no-use-before-define
@@ -2016,19 +2034,14 @@ function RouteComponent() {
     const { uuid: rawUUID } = Route.useParams();
     const uuid = normalizeUUID(rawUUID);
     const { year } = Route.useLoaderDeps();
+    const { queries } = Route.useRouteContext();
 
     const navigate = Route.useNavigate();
     const uuidToUsername = useUUIDToUsername(uuid !== null ? [uuid] : []);
     const username = uuid !== null ? uuidToUsername[uuid] : undefined;
     const { visitPlayer } = usePlayerVisits();
 
-    const { data: wrappedData, isLoading } = useQuery(
-        getWrappedQueryOptions({
-            uuid: uuid ?? "",
-            year,
-            timezone: getDefaultTimeZone(),
-        }),
-    );
+    const { data: wrappedData, isLoading } = useQuery(queries.wrapped.options);
 
     // Export functionality
     const [exportApi, setExportApi] = React.useState<{
