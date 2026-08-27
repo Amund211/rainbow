@@ -17,7 +17,7 @@ import {
 
 import { useSynchronizeCharts } from "#contexts/ChartSynchronizer/hooks.ts";
 import { useAssume } from "#hooks/useAssumption.ts";
-import { getHistoryQueryOptions } from "#queries/history.ts";
+import type { HistoryRequest } from "#queries/history.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
 import { formatStatValue } from "#stats/format.ts";
 import type { GamemodeKey, StatKey, VariantKey } from "#stats/keys.ts";
@@ -38,13 +38,12 @@ interface LineStyle {
 type LineStyleFn = (gamemode: GamemodeKey, index: number) => LineStyle;
 
 interface HistoryChartProps {
-    start: Date;
-    end: Date;
-    uuids: readonly string[];
+    // One request per player, all over the same window. Built by the route's
+    // query plan, so what is drawn and what is fetched cannot disagree.
+    requests: readonly HistoryRequest[];
     gamemodes: readonly GamemodeKey[];
     stats: readonly StatKey[];
     variants: readonly VariantKey[];
-    limit: number;
 }
 
 type TimeDenomination = "year" | "month" | "day" | "hour";
@@ -206,20 +205,17 @@ export const HistoryChartTitle: React.FC<HistoryChartTitleProps> = ({
     );
 };
 export const HistoryChart: React.FC<HistoryChartProps> = ({
-    start,
-    end,
-    uuids,
+    requests,
     gamemodes,
     stats,
     variants,
-    limit,
 }) => {
     const theme = useTheme();
     const historyQueries = useQueries({
-        queries: uuids.map((uuid) =>
-            getHistoryQueryOptions({ uuid, start, end, limit }),
-        ),
+        queries: requests.map((request) => request.options),
     });
+
+    const uuids = requests.map((request) => request.uuid);
 
     const histories = historyQueries
         .filter((query) => query.status === "success")
@@ -252,6 +248,9 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
     }
 
     const currentDate = new Date();
+
+    // Every request covers the same window, so any of them gives the axis domain.
+    const [{ start, end }] = requests;
 
     const smallestTimeDenomination = getSmallestTimeDenomination(start, end);
 
@@ -358,27 +357,21 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
 };
 
 interface SimpleHistoryChartProps {
-    start: Date;
-    end: Date;
-    uuid: string;
+    // The window to plot and the query to plot it from, as one object.
+    request: HistoryRequest;
     gamemode: GamemodeKey;
     stat: StatKey;
     variant: VariantKey;
-    limit: number;
 }
 
 export const SimpleHistoryChart: React.FC<SimpleHistoryChartProps> = ({
-    start,
-    end,
-    uuid,
+    request,
     gamemode,
     stat,
     variant,
-    limit,
 }) => {
-    const { data: history } = useQuery(
-        getHistoryQueryOptions({ uuid, start, end, limit }),
-    );
+    const { uuid, start, end } = request;
+    const { data: history } = useQuery(request.options);
 
     const theme = useTheme();
 

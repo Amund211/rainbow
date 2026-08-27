@@ -45,11 +45,13 @@ import { addExtrapolatedSessions } from "#helpers/session.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
 import { useAssume } from "#hooks/useAssumption.ts";
 import { timeIntervalsFromDefinition } from "#intervals.ts";
-import type { TimeInterval } from "#intervals.ts";
-import { getHistoryQueryOptions } from "#queries/history.ts";
-import { getSessionsQueryOptions } from "#queries/sessions.ts";
-import type { Sessions } from "#queries/sessions.ts";
-import { getUsernameQueryOptions, useUUIDToUsername } from "#queries/username.ts";
+import type { TimeInterval, TimeIntervalDefinition } from "#intervals.ts";
+import { historyRequest } from "#queries/history.ts";
+import type { HistoryRequest } from "#queries/history.ts";
+import { prefetchPlan } from "#queries/plan.ts";
+import { sessionsRequest } from "#queries/sessions.ts";
+import type { Sessions, SessionsRequest } from "#queries/sessions.ts";
+import { usernameRequest, useUUIDToUsername } from "#queries/username.ts";
 import { sessionSearchSchema } from "#schemas/sessionSearch.ts";
 import {
     formatStatValue,
@@ -74,44 +76,65 @@ import {
 import type { StatProgression } from "#stats/progression.ts";
 import { MS_PER_DAY, MS_PER_HOUR } from "#time.ts";
 
-export const Route = createFileRoute("/session/$uuid")({
-    loaderDeps: ({ search: { timeIntervalDefinition, trackingStart } }) => {
-        const timeIntervals = timeIntervalsFromDefinition({
-            // If missing -> today's date
-            date: new Date(),
-            ...timeIntervalDefinition,
-        });
-        return {
-            timeIntervalDefinition,
-            trackingInterval: {
-                start: trackingStart,
-                end: timeIntervals.day.end,
-            },
-            timeIntervals,
-        };
-    },
-    loader: ({
-        params: { uuid: rawUUID },
-        deps: { timeIntervals, trackingInterval },
-        context: { queryClient },
-    }) => {
-        const uuid = normalizeUUID(rawUUID);
-        if (uuid === null) return;
+interface SessionLoaderDeps {
+    readonly timeIntervalDefinition: TimeIntervalDefinition;
+    readonly trackingStart: Date;
+}
 
-        const { day, week, month } = timeIntervals;
-        // TODO: Rate limiting
-        for (const { start, end } of [day, week, month]) {
-            void queryClient.prefetchQuery(
-                getHistoryQueryOptions({ uuid, start, end, limit: 2 }),
-            );
-            void queryClient.prefetchQuery(
-                getHistoryQueryOptions({ uuid, start, end, limit: 100 }),
-            );
-        }
-        void queryClient.prefetchQuery(
-            getHistoryQueryOptions({ uuid, ...trackingInterval, limit: 2 }),
-        );
-        void queryClient.prefetchQuery(getUsernameQueryOptions({ uuid }));
+/**
+ * Every query this page reads.
+ *
+ * The loader prefetches all of it, and the components below fetch only what
+ * they are handed from here — so a query cannot be added to the page without
+ * being prefetched too. Add queries here, never in a component.
+ */
+export const makeSessionQueryPlan = (
+    rawUUID: string,
+    { timeIntervalDefinition, trackingStart }: SessionLoaderDeps,
+) => {
+    const uuid = normalizeUUID(rawUUID);
+    // The page redirects away when the uuid won't normalize, so nothing fetches.
+    const enabled = uuid !== null;
+
+    const { day, week, month } = timeIntervalsFromDefinition({
+        // If missing -> today's date
+        date: new Date(),
+        ...timeIntervalDefinition,
+    });
+
+    const history = ({ start, end }: TimeInterval, limit: number) =>
+        historyRequest({ uuid: uuid ?? "", start, end, limit, enabled });
+
+    return {
+        // Two limits per interval: the stat cards only need the endpoints,
+        // while the sparklines need the curve between them.
+        dayStat: history(day, 2),
+        dayChart: history(day, 100),
+        weekStat: history(week, 2),
+        weekChart: history(week, 100),
+        monthStat: history(month, 2),
+        monthChart: history(month, 100),
+        tracking: history({ start: trackingStart, end: day.end }, 2),
+        sessions: sessionsRequest({
+            uuid: uuid ?? "",
+            start: month.start,
+            end: month.end,
+            enabled,
+        }),
+        username: usernameRequest({ uuid: uuid ?? "", enabled }),
+    };
+};
+
+export const Route = createFileRoute("/session/$uuid")({
+    loaderDeps: ({ search: { timeIntervalDefinition, trackingStart } }) => ({
+        timeIntervalDefinition,
+        trackingStart,
+    }),
+    context: ({ params: { uuid }, deps }) => ({
+        queries: makeSessionQueryPlan(uuid, deps),
+    }),
+    loader: ({ context: { queryClient, queries } }) => {
+        prefetchPlan(queryClient, queries);
     },
     validateSearch: sessionSearchSchema,
     // oxlint-disable-next-line eslint/no-use-before-define
@@ -122,11 +145,10 @@ const RouterLinkIconButton = createLink(IconButton);
 const RouterLinkToggleButton = createLink(ToggleButton);
 
 interface SessionsProps {
-    uuid: string;
+    monthHistory: HistoryRequest;
+    monthSessions: SessionsRequest;
     gamemode: GamemodeKey;
     stat: StatKey;
-    start: Date;
-    end: Date;
     tableMode: "total" | "rate";
     showExtrapolatedSessions: boolean;
 }
@@ -169,33 +191,21 @@ const getRelatedStats = (stat: StatKey): StatKey[] => {
 };
 
 const Sessions: React.FC<SessionsProps> = ({
-    uuid,
+    monthHistory,
+    monthSessions,
     gamemode,
     stat,
-    start,
-    end,
     tableMode,
     showExtrapolatedSessions,
 }) => {
     const navigate = useNavigate();
     const assume = useAssume();
 
-    const { data: history } = useQuery(
-        getHistoryQueryOptions({
-            uuid,
-            start,
-            end,
-            limit: 2,
-        }),
-    );
+    const { uuid, start, end } = monthHistory;
 
-    const { data: flashlightSessions } = useQuery(
-        getSessionsQueryOptions({
-            uuid,
-            start,
-            end,
-        }),
-    );
+    const { data: history } = useQuery(monthHistory.options);
+
+    const { data: flashlightSessions } = useQuery(monthSessions.options);
 
     const renderHeader = (showExtrapolatedToggle?: React.ReactNode) => (
         <Stack
@@ -653,32 +663,32 @@ const Sessions: React.FC<SessionsProps> = ({
 };
 
 interface SessionStatCardProps {
-    uuid: string;
-    timeInterval: TimeInterval & { type: "day" | "week" | "month" };
+    // Endpoints of the interval for the headline value, and the curve between
+    // them for the sparkline. Both describe the same window.
+    statHistory: HistoryRequest;
+    chartHistory: HistoryRequest;
+    intervalType: "day" | "week" | "month";
     stat: StatKey;
     gamemode: GamemodeKey;
 }
 
 const SessionStatCard: React.FC<SessionStatCardProps> = ({
-    uuid,
-    timeInterval,
+    statHistory,
+    chartHistory,
+    intervalType,
     stat,
     gamemode,
 }) => {
-    const { data: queryData } = useQuery(
-        getHistoryQueryOptions({
-            uuid,
-            start: timeInterval.start,
-            end: timeInterval.end,
-            limit: 2,
-        }),
-    );
+    const { data: queryData } = useQuery(statHistory.options);
+
+    // The window this card describes. Both requests were built from it.
+    const timeInterval: TimeInterval = statHistory;
 
     const intervalTypeName = {
         day: "Daily",
         week: "Weekly",
         month: "Monthly",
-    }[timeInterval.type];
+    }[intervalType];
 
     const cardTitle = (
         <Stack
@@ -750,13 +760,10 @@ const SessionStatCard: React.FC<SessionStatCardProps> = ({
                                 </Tooltip>
                             </Stack>
                             <SimpleHistoryChart
-                                start={timeInterval.start}
-                                end={timeInterval.end}
-                                uuid={uuid}
+                                request={chartHistory}
                                 gamemode={gamemode}
                                 stat={stat}
                                 variant="session"
-                                limit={100}
                             />
                         </Stack>
                     </Stack>
@@ -797,13 +804,10 @@ const SessionStatCard: React.FC<SessionStatCardProps> = ({
                                 <Typography variant="body1">No data found</Typography>
                             </Stack>
                             <SimpleHistoryChart
-                                start={timeInterval.start}
-                                end={timeInterval.end}
-                                uuid={uuid}
+                                request={chartHistory}
                                 gamemode={gamemode}
                                 stat={stat}
                                 variant="session"
-                                limit={100}
                             />
                         </Stack>
                     </Stack>
@@ -897,13 +901,10 @@ const SessionStatCard: React.FC<SessionStatCardProps> = ({
                             </Tooltip>
                         </Stack>
                         <SimpleHistoryChart
-                            start={timeInterval.start}
-                            end={timeInterval.end}
-                            uuid={uuid}
+                            request={chartHistory}
                             gamemode={gamemode}
                             stat={stat}
                             variant="session"
-                            limit={100}
                         />
                     </Stack>
                 </Stack>
@@ -1037,8 +1038,7 @@ const ProgressionCaption: React.FC<ProgressionCaptionProps> = ({ progression }) 
 };
 
 interface StatProgressionCardProps {
-    uuid: string;
-    trackingInterval: TimeInterval;
+    tracking: HistoryRequest;
     stat: StatKey;
     gamemode: GamemodeKey;
 }
@@ -1068,19 +1068,12 @@ const formatDays = (days: number): string => {
 };
 
 const StatProgressionCard: React.FC<StatProgressionCardProps> = ({
-    uuid,
-    trackingInterval,
+    tracking,
     stat,
     gamemode,
 }) => {
     // History data to calculate stat progression speed
-    const { data: trackingHistory } = useQuery(
-        getHistoryQueryOptions({
-            uuid,
-            ...trackingInterval,
-            limit: 2,
-        }),
-    );
+    const { data: trackingHistory } = useQuery(tracking.options);
 
     if (stat === "winstreak") {
         return null;
@@ -1121,7 +1114,7 @@ const StatProgressionCard: React.FC<StatProgressionCardProps> = ({
         return noDataComponent;
     }
 
-    const currentDate = trackingInterval.end;
+    const currentDate = tracking.end;
     const now = new Date();
 
     const currentDateIsToday =
@@ -1132,7 +1125,7 @@ const StatProgressionCard: React.FC<StatProgressionCardProps> = ({
 
     const progression = computeStatProgression(
         trackingHistory,
-        trackingInterval.end,
+        tracking.end,
         stat,
         gamemode,
     );
@@ -1259,11 +1252,8 @@ function RouteComponent() {
         showExtrapolatedSessions,
     } = Route.useSearch();
 
-    const {
-        timeIntervalDefinition,
-        timeIntervals: { day, week, month },
-        trackingInterval,
-    } = Route.useLoaderDeps();
+    const { timeIntervalDefinition } = Route.useLoaderDeps();
+    const { queries } = Route.useRouteContext();
     const navigate = Route.useNavigate();
     const uuidToUsername = useUUIDToUsername(uuid !== null ? [uuid] : []);
     const username = uuid !== null ? uuidToUsername[uuid] : undefined;
@@ -1487,29 +1477,40 @@ function RouteComponent() {
                 </Select>
             </Stack>
             <ChartSynchronizerProvider
-                queryKey={`${uuid}-${JSON.stringify({ day, week, month })}-${gamemode}-${stat}`}
+                // Identity of the sparklines being synchronized: the queries
+                // they read (player and window) plus what they plot.
+                queryKey={JSON.stringify([
+                    queries.dayChart.options.queryKey,
+                    queries.weekChart.options.queryKey,
+                    queries.monthChart.options.queryKey,
+                    gamemode,
+                    stat,
+                ])}
             >
                 <Grid container spacing={1}>
                     <Grid size={cardSize}>
                         <SessionStatCard
-                            uuid={uuid}
-                            timeInterval={{ ...day, type: "day" }}
+                            statHistory={queries.dayStat}
+                            chartHistory={queries.dayChart}
+                            intervalType="day"
                             gamemode={gamemode}
                             stat={stat}
                         />
                     </Grid>
                     <Grid size={cardSize}>
                         <SessionStatCard
-                            uuid={uuid}
-                            timeInterval={{ ...week, type: "week" }}
+                            statHistory={queries.weekStat}
+                            chartHistory={queries.weekChart}
+                            intervalType="week"
                             gamemode={gamemode}
                             stat={stat}
                         />
                     </Grid>
                     <Grid size={cardSize}>
                         <SessionStatCard
-                            uuid={uuid}
-                            timeInterval={{ ...month, type: "month" }}
+                            statHistory={queries.monthStat}
+                            chartHistory={queries.monthChart}
+                            intervalType="month"
                             gamemode={gamemode}
                             stat={stat}
                         />
@@ -1517,18 +1518,16 @@ function RouteComponent() {
                 </Grid>
             </ChartSynchronizerProvider>
             <StatProgressionCard
-                uuid={uuid}
-                trackingInterval={trackingInterval}
+                tracking={queries.tracking}
                 gamemode={gamemode}
                 stat={stat}
             />
             <Box>
                 <Sessions
-                    uuid={uuid}
+                    monthHistory={queries.monthStat}
+                    monthSessions={queries.sessions}
                     gamemode={gamemode}
                     stat={stat}
-                    start={month.start}
-                    end={month.end}
                     tableMode={sessionTableMode}
                     showExtrapolatedSessions={showExtrapolatedSessions}
                 />
@@ -1576,9 +1575,9 @@ function RouteComponent() {
                                             gamemodes: [gamemode],
                                             stats: [stat],
                                             variantSelection,
-                                            start: month.start,
-                                            end: month.end,
-                                            limit: 100,
+                                            start: queries.monthChart.start,
+                                            end: queries.monthChart.end,
+                                            limit: queries.monthChart.limit,
                                         }}
                                     >
                                         <QueryStats />
@@ -1636,13 +1635,10 @@ function RouteComponent() {
                             }}
                         >
                             <HistoryChart
-                                start={month.start}
-                                end={month.end}
-                                uuids={[uuid]}
+                                requests={[queries.monthChart]}
                                 gamemodes={[gamemode]}
                                 stats={[stat]}
                                 variants={variants}
-                                limit={100}
                             />
                         </Stack>
                     </CardContent>

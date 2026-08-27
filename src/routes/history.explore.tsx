@@ -39,8 +39,9 @@ import {
     startOfWeek,
     startOfYear,
 } from "#intervals.ts";
-import { getHistoryQueryOptions } from "#queries/history.ts";
-import { getUsernameQueryOptions, useUUIDToUsername } from "#queries/username.ts";
+import { historyRequest } from "#queries/history.ts";
+import { prefetchPlan } from "#queries/plan.ts";
+import { usernameRequest, useUUIDToUsername } from "#queries/username.ts";
 import { historyExploreSearchSchema } from "#schemas/historySearch.ts";
 import { ALL_GAMEMODE_KEYS, ALL_STAT_KEYS } from "#stats/keys.ts";
 import type { GamemodeKey, StatKey } from "#stats/keys.ts";
@@ -50,6 +51,34 @@ const normalizeUUIDsSkippingInvalid = (uuids: readonly string[]) => {
     return uuids.map((uuid) => normalizeUUID(uuid)).filter((uuid) => uuid !== null);
 };
 
+interface HistoryExploreLoaderDeps {
+    readonly uuids: readonly string[];
+    readonly start: Date;
+    readonly end: Date;
+    readonly limit: number;
+}
+
+/**
+ * Every query this page reads.
+ *
+ * The loader prefetches all of it, and the components below fetch only what
+ * they are handed from here — so a query cannot be added to the page without
+ * being prefetched too. Add queries here, never in a component.
+ */
+export const makeHistoryExploreQueryPlan = ({
+    uuids: rawUUIDs,
+    start,
+    end,
+    limit,
+}: HistoryExploreLoaderDeps) => {
+    const uuids = normalizeUUIDsSkippingInvalid(rawUUIDs);
+
+    return {
+        history: uuids.map((uuid) => historyRequest({ uuid, start, end, limit })),
+        usernames: uuids.map((uuid) => usernameRequest({ uuid })),
+    };
+};
+
 export const Route = createFileRoute("/history/explore")({
     loaderDeps: ({ search: { uuids, start, end, limit } }) => ({
         uuids,
@@ -57,19 +86,9 @@ export const Route = createFileRoute("/history/explore")({
         end,
         limit,
     }),
-
-    loader: ({
-        deps: { uuids: rawUUIDs, start, end, limit },
-        context: { queryClient },
-    }) => {
-        const uuids = normalizeUUIDsSkippingInvalid(rawUUIDs);
-        // TODO: Rate limiting
-        for (const uuid of uuids) {
-            void queryClient.prefetchQuery(
-                getHistoryQueryOptions({ uuid, start, end, limit }),
-            );
-            void queryClient.prefetchQuery(getUsernameQueryOptions({ uuid }));
-        }
+    context: ({ deps }) => ({ queries: makeHistoryExploreQueryPlan(deps) }),
+    loader: ({ context: { queryClient, queries } }) => {
+        prefetchPlan(queryClient, queries);
     },
     validateSearch: historyExploreSearchSchema,
     // oxlint-disable-next-line eslint/no-use-before-define
@@ -88,14 +107,15 @@ function Index() {
         variantSelection,
         start,
         end,
-        limit,
     } = Route.useSearch();
+    const { queries } = Route.useRouteContext();
     // Stable identity: UserMultiSelect passes `uuids` straight to MUI's
     // Autocomplete as its `value`, and MUI clears the search input whenever that
-    // identity changes -- even mid-typing.
+    // identity changes -- even mid-typing. The plan is built once per match, so
+    // deriving from it keeps this stable across unrelated re-renders.
     const uuids = React.useMemo(
-        () => normalizeUUIDsSkippingInvalid(rawUUIDs),
-        [rawUUIDs],
+        () => queries.history.map((request) => request.uuid),
+        [queries],
     );
     const navigate = Route.useNavigate();
     const { visitPlayer } = usePlayerVisits();
@@ -560,13 +580,10 @@ function Index() {
                         }}
                     >
                         <HistoryChart
-                            start={start}
-                            end={end}
-                            uuids={uuids}
+                            requests={queries.history}
                             gamemodes={gamemodes}
                             stats={stats}
                             variants={variants}
-                            limit={limit}
                         />
                     </Stack>
                 </CardContent>
