@@ -12,7 +12,7 @@ interface PrefetchableQueryOptions {
     readonly enabled?: unknown;
 }
 
-export interface QueryRequest {
+interface QueryRequest {
     readonly prefetch: (queryClient: QueryClient) => void;
 }
 

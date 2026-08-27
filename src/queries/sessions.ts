@@ -44,7 +44,8 @@ interface SessionsQueryOptions {
     readonly end: Date;
     readonly enabled?: boolean;
 }
-export const getSessionsQueryOptions = ({
+// Not exported: callers go through `sessionsRequest`.
+const getSessionsQueryOptions = ({
     uuid,
     start,
     end,

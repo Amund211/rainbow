@@ -20,7 +20,9 @@ interface HistoryQueryOptions {
     readonly limit: number;
     readonly enabled?: boolean;
 }
-export const getHistoryQueryOptions = ({
+// Not exported: routes and components go through `historyRequest`, so the
+// options for a query are built in exactly one place.
+const getHistoryQueryOptions = ({
     uuid,
     start,
     end,

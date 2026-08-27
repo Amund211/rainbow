@@ -17,7 +17,8 @@ interface UsernameQueryOptions {
     readonly enabled?: boolean;
 }
 
-export const getUsernameQueryOptions = ({ uuid, enabled }: UsernameQueryOptions) =>
+// Not exported: callers go through `usernameRequest` or `useUUIDToUsername`.
+const getUsernameQueryOptions = ({ uuid, enabled }: UsernameQueryOptions) =>
     queryOptions({
         enabled,
         staleTime: MS_PER_HOUR,

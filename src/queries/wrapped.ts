@@ -160,7 +160,8 @@ interface WrappedQueryOptions {
     readonly enabled?: boolean;
 }
 
-export const getWrappedQueryOptions = ({
+// Not exported: callers go through `wrappedRequest`.
+const getWrappedQueryOptions = ({
     uuid,
     year,
     timezone,
