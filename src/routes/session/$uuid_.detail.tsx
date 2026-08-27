@@ -91,14 +91,15 @@ import {
     trailingStreak,
 } from "#helpers/sessionDetail.ts";
 import { normalizeUUID } from "#helpers/uuid.ts";
+import { prefetchPlan } from "#queries/plan.ts";
 import type {
     GameOutcome,
     GameResult,
     GameSegment,
     SessionAt,
 } from "#queries/sessionAt.ts";
-import { getSessionAtQueryOptions } from "#queries/sessionAt.ts";
-import { useUUIDToUsername } from "#queries/username.ts";
+import { getSessionAtQueryOptions, sessionAtRequest } from "#queries/sessionAt.ts";
+import { usernameRequest, useUUIDToUsername } from "#queries/username.ts";
 import { detailSearchSchema } from "#schemas/detailSearch.ts";
 import {
     formatStatValue,
@@ -112,7 +113,35 @@ import { bedwarsLevelFromExp } from "#stats/stars.ts";
 import { rainbowGradient } from "#theme/tokens.ts";
 import { MS_PER_HOUR, MS_PER_MINUTE } from "#time.ts";
 
+/**
+ * Every query this page reads.
+ *
+ * The loader prefetches all of it, and the components below fetch only what
+ * they are handed from here — so a query cannot be added to the page without
+ * being prefetched too. Add queries here, never in a component.
+ */
+export const makeSessionDetailQueryPlan = (
+    rawUUID: string,
+    { date }: { readonly date: Date },
+) => {
+    const uuid = normalizeUUID(rawUUID);
+    // The page redirects away when the uuid won't normalize, so nothing fetches.
+    const enabled = uuid !== null;
+
+    return {
+        sessionAt: sessionAtRequest({ uuid: uuid ?? "", time: date, enabled }),
+        username: usernameRequest({ uuid: uuid ?? "", enabled }),
+    };
+};
+
 export const Route = createFileRoute("/session/$uuid_/detail")({
+    loaderDeps: ({ search: { date } }) => ({ date }),
+    context: ({ params: { uuid }, deps }) => ({
+        queries: makeSessionDetailQueryPlan(uuid, deps),
+    }),
+    loader: ({ context: { queryClient, queries } }) => {
+        prefetchPlan(queryClient, queries);
+    },
     validateSearch: detailSearchSchema,
     // oxlint-disable-next-line eslint/no-use-before-define
     component: RouteComponent,
@@ -2209,13 +2238,8 @@ function RouteComponent() {
 
     const uuid = normalizeUUID(rawUUID);
 
-    const { data, isFetching, isError } = useQuery({
-        ...getSessionAtQueryOptions({
-            uuid: uuid ?? "",
-            time: date,
-        }),
-        enabled: uuid !== null,
-    });
+    const { queries } = Route.useRouteContext();
+    const { data, isFetching, isError } = useQuery(queries.sessionAt.options);
 
     const uuidToUsername = useUUIDToUsername(uuid !== null ? [uuid] : []);
     const username = uuid !== null ? uuidToUsername[uuid] : undefined;
@@ -2225,6 +2249,10 @@ function RouteComponent() {
     // Normalize the URL date to the session's actual start time so the
     // URL is canonical and shareable. Pre-seed the cache for the
     // canonical query key to avoid a duplicate fetch after navigate.
+    //
+    // The canonical time is only known once the data lands, so this key cannot
+    // come from the query plan. Building options directly is fine for a cache
+    // write — the plan owns what the page *reads*.
     const sessionStart = data?.session?.start.queriedAt;
     React.useEffect(() => {
         if (sessionStart === undefined) return;
