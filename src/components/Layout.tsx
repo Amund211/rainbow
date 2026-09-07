@@ -69,6 +69,7 @@ function useShownPlayer(): string | null {
         case "__root__":
         case "/":
         case "/about":
+        case "/dev/pow":
         case "/downloads":
         case "/settings":
         case "/session/":

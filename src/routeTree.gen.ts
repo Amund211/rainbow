@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index.tsx'
 import { Route as AboutRouteImport } from './routes/about.tsx'
 import { Route as DownloadsRouteImport } from './routes/downloads.tsx'
 import { Route as SettingsRouteImport } from './routes/settings.tsx'
+import { Route as DevPowRouteImport } from './routes/dev.pow.tsx'
 import { Route as HistoryExploreRouteImport } from './routes/history.explore.tsx'
 import { Route as SessionIndexRouteImport } from './routes/session/index.tsx'
 import { Route as SessionUuidRouteImport } from './routes/session/$uuid.tsx'
@@ -38,6 +39,11 @@ const DownloadsRoute = DownloadsRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevPowRoute = DevPowRouteImport.update({
+  id: '/dev/pow',
+  path: '/dev/pow',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryExploreRoute = HistoryExploreRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/downloads': typeof DownloadsRoute
   '/settings': typeof SettingsRoute
+  '/dev/pow': typeof DevPowRoute
   '/history/explore': typeof HistoryExploreRoute
   '/session/$uuid': typeof SessionUuidRoute
   '/wrapped/$uuid': typeof WrappedUuidRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/downloads': typeof DownloadsRoute
   '/settings': typeof SettingsRoute
+  '/dev/pow': typeof DevPowRoute
   '/history/explore': typeof HistoryExploreRoute
   '/session/$uuid': typeof SessionUuidRoute
   '/wrapped/$uuid': typeof WrappedUuidRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/downloads': typeof DownloadsRoute
   '/settings': typeof SettingsRoute
+  '/dev/pow': typeof DevPowRoute
   '/history/explore': typeof HistoryExploreRoute
   '/session/$uuid': typeof SessionUuidRoute
   '/wrapped/$uuid': typeof WrappedUuidRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/downloads'
     | '/settings'
+    | '/dev/pow'
     | '/history/explore'
     | '/session/$uuid'
     | '/wrapped/$uuid'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/downloads'
     | '/settings'
+    | '/dev/pow'
     | '/history/explore'
     | '/session/$uuid'
     | '/wrapped/$uuid'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/downloads'
     | '/settings'
+    | '/dev/pow'
     | '/history/explore'
     | '/session/$uuid'
     | '/wrapped/$uuid'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   DownloadsRoute: typeof DownloadsRoute
   SettingsRoute: typeof SettingsRoute
+  DevPowRoute: typeof DevPowRoute
   HistoryExploreRoute: typeof HistoryExploreRoute
   SessionUuidRoute: typeof SessionUuidRoute
   WrappedUuidRoute: typeof WrappedUuidRoute
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev/pow': {
+      id: '/dev/pow'
+      path: '/dev/pow'
+      fullPath: '/dev/pow'
+      preLoaderRoute: typeof DevPowRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history/explore': {
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   DownloadsRoute: DownloadsRoute,
   SettingsRoute: SettingsRoute,
+  DevPowRoute: DevPowRoute,
   HistoryExploreRoute: HistoryExploreRoute,
   SessionUuidRoute: SessionUuidRoute,
   WrappedUuidRoute: WrappedUuidRoute,
