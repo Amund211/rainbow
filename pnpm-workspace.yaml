@@ -1,8 +1,8 @@
 allowBuilds:
-    "@sentry/cli": true
-    esbuild: true
-    fsevents: true
-    msw: true
+  "@sentry/cli": true
+  esbuild: true
+  fsevents: true
+  msw: true
 
 blockExoticSubdeps: true
 
@@ -10,14 +10,17 @@ minimumReleaseAge: 10080
 
 trustPolicy: no-downgrade
 trustPolicyExclude:
-    # Reviewed trust-downgrade exceptions: pnpm compares trust evidence (npm
-    # provenance) by publish date, and these versions were published after an
-    # attested release of the same package. Both are structurally pinned and
-    # cannot reach an attested version, so they are reviewed and excluded. Pinned
-    # to exact versions so any future bump re-triggers the trust check.
-    #
-    # reselect@5.1.1: recharts pins it exactly ("reselect": "5.1.1").
-    # semver@6.3.1:   @babel/core requires "semver": "^6.3.1"; the 6.x line never
-    #                 carried provenance and is legacy-maintenance only.
-    - "reselect@5.1.1"
-    - "semver@6.3.1"
+  # Reviewed trust-downgrade exceptions: pnpm compares trust evidence (npm
+  # provenance) by publish date, and these versions were published after an
+  # attested release of the same package. Both are structurally pinned and
+  # cannot reach an attested version, so they are reviewed and excluded. Pinned
+  # to exact versions so any future bump re-triggers the trust check.
+  #
+  # reselect@5.1.1: recharts pins it exactly ("reselect": "5.1.1").
+  # semver@6.3.1:   @babel/core requires "semver": "^6.3.1"; the 6.x line never
+  #                 carried provenance and is legacy-maintenance only.
+  - "reselect@5.1.1"
+  - "semver@6.3.1"
+minimumReleaseAgeExclude:
+  # Renovate security update: vite@8.3.3
+  - vite@8.3.3
