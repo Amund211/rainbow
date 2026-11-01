@@ -11,7 +11,7 @@
 // so they can diverge per scheme if we ever want different light/dark values.
 //
 // NB: CSS theme variables (`cssVariables: true`) are intentionally *not* enabled
-// — recharts feeds `theme.palette.*` values straight into SVG presentation
+// — the charts feed `theme.palette.*` values straight into SVG presentation
 // attributes, which don't resolve `var(--...)`. Keeping plain colour strings
 // avoids breaking the charts.
 

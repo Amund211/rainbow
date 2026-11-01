@@ -1,22 +1,15 @@
-import { Typography, useTheme } from "@mui/material";
+import { Box, Stack, Typography, useTheme } from "@mui/material";
+import { areaY, defineChart, dot, lineY, rect } from "@tanstack/charts";
+import { createChartCursor, cursorHost } from "@tanstack/charts/cursor";
+import { decorative } from "@tanstack/charts/mark/decorative";
+import { Chart } from "@tanstack/charts/react";
+import { scaleLinear } from "@tanstack/charts/scales/linear";
+import { tooltip } from "@tanstack/charts/tooltip";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import React from "react";
-import type { ReactNode } from "react";
-import {
-    Area,
-    AreaChart,
-    CartesianGrid,
-    Legend,
-    Line,
-    LineChart,
-    ReferenceArea,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from "recharts";
 
+import { chartStyles, monotoneCurve } from "#charts/style.ts";
 import { useSynchronizeCharts } from "#contexts/ChartSynchronizer/hooks.ts";
-import { useAssume } from "#hooks/useAssumption.ts";
 import { useNow } from "#hooks/useNow.ts";
 import { getHistoryQueryOptions } from "#queries/history.ts";
 import { useUUIDToUsername } from "#queries/username.ts";
@@ -25,7 +18,48 @@ import type { GamemodeKey, StatKey, VariantKey } from "#stats/keys.ts";
 import { getFullStatLabel, getGamemodeLabel, getVariantLabel } from "#stats/labels.ts";
 
 import { generateChartData } from "./data.ts";
+import type { ChartData } from "./data.ts";
 import { makeDataKey } from "./dataKeys.ts";
+import type { DataKey } from "./dataKeys.ts";
+
+// Shared by every history chart so hovering one highlights the same time in the others.
+const historyCursor = createChartCursor<number, number>();
+const historyCursorBinding = {
+    use: cursorHost,
+    controller: historyCursor,
+    mode: "focus",
+    match: "x",
+} as const;
+
+// Spans the full plot height regardless of the data's y domain.
+const FRAME_SCALE = {
+    channel: "y",
+    scale: scaleLinear().domain([0, 1]),
+    axis: false,
+} as const;
+
+const futureMarker = (
+    now: number,
+    end: number,
+    paint: Readonly<{ fill: string; stroke: string }>,
+) =>
+    decorative(
+        rect(now < end ? [{ x1: now, x2: end }] : [], {
+            x1: "x1",
+            x2: "x2",
+            y1: () => 0,
+            y2: () => 1,
+            yScale: "frame",
+            fill: paint.fill,
+            fillOpacity: 0.12,
+            stroke: paint.stroke,
+            inset: 0,
+        }),
+    );
+
+// Mirrors Recharts' connectNulls: drop gaps instead of breaking the path.
+const rowsWithValue = (chartData: ChartData, dataKey: DataKey): ChartData =>
+    chartData.filter((row) => row[dataKey] !== null && row[dataKey] !== undefined);
 
 // Dash patterns cycled through once the colour palette wraps, so overlapping
 // series stay distinguishable.
@@ -230,9 +264,6 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
 
     const uuidToUsername = useUUIDToUsername(uuids);
 
-    const assume = useAssume();
-    const currentDate = useNow("minute");
-
     if (uuids.length === 0) {
         return <div>Select at least one user</div>;
     }
@@ -253,11 +284,6 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
         return <div>No data</div>;
     }
 
-    const smallestTimeDenomination = getSmallestTimeDenomination(start, end);
-
-    // Linechart requires a mutable array for some reason. Make a copy here so we can mutate it.
-    const mutableChartData = [...chartData];
-
     // Comparing gamemodes (a single player/stat/variant) colours each line by
     // the gamemode's identity colour. Every other combination cycles the brand
     // rainbow, with dash patterns disambiguating once it wraps — this keeps
@@ -277,7 +303,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
     };
 
     // oxlint-disable-next-line eslint/no-use-before-define
-    const { lines, statByDataKey } = renderLines({
+    const series = buildSeries({
         uuids,
         gamemodes,
         stats,
@@ -287,73 +313,182 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
     });
 
     return (
-        <LineChart
-            data={mutableChartData}
-            responsive
-            width="100%"
-            height="100%"
-            style={{ minHeight: 300, minWidth: 100 }}
-            syncId="history-chart"
-            syncMethod="value"
-        >
-            <XAxis
-                type="number"
-                domain={[start.getTime(), end.getTime()]}
-                scale="linear"
-                dataKey="queriedAt"
-                stroke={theme.palette.divider}
-                tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
-                tickFormatter={(time: number) => {
-                    return renderTimeShort(time, smallestTimeDenomination);
-                }}
-                ticks={Array.from({ length: 10 }).map((_, i) => {
-                    const startTime = start.getTime();
-                    const endTime = end.getTime();
-                    return startTime + ((endTime - startTime) / 9) * i;
-                })}
-            />
-            <YAxis
-                stroke={theme.palette.divider}
-                tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
-            />
-            <CartesianGrid stroke={theme.palette.divider} strokeDasharray="2 4" />
-            {lines}
-            {/* Future marker */}
-            <ReferenceArea
-                x1={currentDate.getTime()}
-                x2={end.getTime()}
-                stroke={theme.palette.divider}
-                fill={theme.palette.textMuted}
-                fillOpacity={0.12}
-            />
-            <Legend wrapperStyle={{ color: theme.palette.text.secondary }} />
-            <Tooltip
-                // oxlint-disable-next-line typescript/promise-function-async
-                labelFormatter={(label: ReactNode) => {
-                    if (typeof label === "number") {
-                        return renderTimeFull(label);
+        // oxlint-disable-next-line eslint/no-use-before-define
+        <HistoryLineChart
+            chartData={chartData}
+            series={series}
+            start={start}
+            end={end}
+        />
+    );
+};
+
+interface HistoryLineChartProps {
+    chartData: ChartData;
+    series: readonly Series[];
+    start: Date;
+    end: Date;
+}
+
+const HistoryLineChart: React.FC<HistoryLineChartProps> = ({
+    chartData,
+    series,
+    start,
+    end,
+}) => {
+    const styles = chartStyles(useTheme());
+    const currentDate = useNow("minute");
+
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    const smallestTimeDenomination = getSmallestTimeDenomination(start, end);
+    const seriesByKey = new Map<string, Series>(series.map((s) => [s.dataKey, s]));
+
+    // Keep Recharts' default [0, auto] domain: always include zero.
+    let yMax = 0;
+    for (const row of chartData) {
+        for (const s of series) {
+            yMax = Math.max(yMax, row[s.dataKey] ?? 0);
+        }
+    }
+
+    const definition = defineChart({
+        marks: [
+            futureMarker(currentDate.getTime(), endTime, styles.futureMarker),
+            ...series.map((s) =>
+                decorative(
+                    lineY(rowsWithValue(chartData, s.dataKey), {
+                        x: "queriedAt",
+                        y: (row) => row[s.dataKey],
+                        stroke: s.style.stroke,
+                        strokeDasharray: s.style.strokeDasharray,
+                        strokeWidth: 1.5,
+                        curve: monotoneCurve,
+                    }),
+                ),
+            ),
+            // The dots own focus, so they show where data exists and grow on hover.
+            ...series.map((s) =>
+                dot(rowsWithValue(chartData, s.dataKey), {
+                    id: s.dataKey,
+                    // Without a z group, group-x focus only returns one mark's point.
+                    z: () => s.dataKey,
+                    x: "queriedAt",
+                    y: (row) => row[s.dataKey],
+                    r: 2.5,
+                    fill: s.style.stroke,
+                    states: [
+                        {
+                            when: { focus: "group" },
+                            style: {
+                                r: 5,
+                                stroke: styles.theme.background,
+                                strokeWidth: 2,
+                            },
+                        },
+                    ],
+                }),
+            ),
+        ],
+        scales: {
+            x: {
+                scale: scaleLinear().domain([startTime, endTime]),
+                axis: {
+                    line: styles.axisLine,
+                    ticks: {
+                        values: Array.from(
+                            { length: 10 },
+                            (_, i) => startTime + ((endTime - startTime) / 9) * i,
+                        ),
+                        format: (time) =>
+                            renderTimeShort(time, smallestTimeDenomination),
+                    },
+                },
+            },
+            y: {
+                scale: scaleLinear().domain([0, yMax === 0 ? 1 : yMax]),
+                nice: true,
+                grid: styles.grid,
+                axis: { line: styles.axisLine },
+            },
+            frame: FRAME_SCALE,
+        },
+        theme: styles.theme,
+        clip: true,
+        focus: "group-x",
+        maxFocusDistance: Number.POSITIVE_INFINITY,
+        // The focused dots' own state replaces the default ring.
+        focusRing: false,
+        cursor: historyCursorBinding,
+        tooltip: {
+            use: tooltip,
+            // Follow the cursor vertically so the tooltip doesn't jump between distant lines.
+            anchor: { x: "value", y: "pointer" },
+            placement: ["right", "left"],
+            offset: 12,
+            content: (points) => ({
+                title: points[0] === undefined ? "" : renderTimeFull(points[0].xValue),
+                rows: points.flatMap((point) => {
+                    const s = seriesByKey.get(point.markId);
+                    if (s === undefined) {
+                        return [];
                     }
-                    assume(false, "Tooltip label is not a number", () => ({
-                        time: label,
-                        timeTypeof: typeof label,
-                    }));
-                    return label;
+                    return [
+                        {
+                            label: s.name,
+                            value: formatStatValue(s.stat, point.yValue, {
+                                precision: "detailed",
+                            }),
+                            color: s.style.stroke,
+                        },
+                    ];
+                }),
+            }),
+        },
+    });
+
+    return (
+        <Stack sx={{ flex: 1, minHeight: 300, minWidth: 100, gap: 1 }}>
+            <Box sx={{ flex: 1, minHeight: 0 }}>
+                <Chart
+                    definition={definition}
+                    ariaLabel="Stat history"
+                    style={{ ...styles.host, height: "100%" }}
+                />
+            </Box>
+            <Stack
+                direction="row"
+                sx={{
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    columnGap: 2,
+                    rowGap: 0.5,
                 }}
-                formatter={(value, _name, item) => {
-                    const stat = statByDataKey.get(String(item.dataKey));
-                    return typeof value === "number" && stat !== undefined
-                        ? formatStatValue(stat, value, { precision: "detailed" })
-                        : value;
-                }}
-                contentStyle={{
-                    backgroundColor: theme.palette.background.paper,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: 8,
-                }}
-                itemStyle={{ color: theme.palette.text.primary }}
-                labelStyle={{ color: theme.palette.text.secondary }}
-            />
-        </LineChart>
+            >
+                {series.map((s) => (
+                    <Stack
+                        key={s.dataKey}
+                        direction="row"
+                        sx={{ alignItems: "center", gap: 0.75 }}
+                    >
+                        <svg width={18} height={4} aria-hidden>
+                            <line
+                                x1={0}
+                                y1={2}
+                                x2={18}
+                                y2={2}
+                                stroke={s.style.stroke}
+                                strokeWidth={2}
+                                strokeDasharray={s.style.strokeDasharray}
+                            />
+                        </svg>
+                        <Typography variant="caption" color="textSecondary">
+                            {s.name}
+                        </Typography>
+                    </Stack>
+                ))}
+            </Stack>
+        </Stack>
     );
 };
 
@@ -381,6 +516,7 @@ export const SimpleHistoryChart: React.FC<SimpleHistoryChartProps> = ({
     );
 
     const theme = useTheme();
+    const styles = chartStyles(theme);
 
     const chartData = React.useMemo(() => {
         if (!history) {
@@ -392,9 +528,6 @@ export const SimpleHistoryChart: React.FC<SimpleHistoryChartProps> = ({
     const uuidToUsername = useUUIDToUsername([uuid]);
 
     const currentDate = useNow("minute");
-
-    // Linechart requires a mutable array for some reason. Make a copy here so we can mutate it.
-    const mutableChartData = [...chartData];
 
     const dataKey = makeDataKey({
         uuid,
@@ -411,108 +544,95 @@ export const SimpleHistoryChart: React.FC<SimpleHistoryChartProps> = ({
     const seriesColor = theme.palette.gamemode[gamemode];
     // NOTE: Assume the id format is CSS-selector-safe
     const gradientId = `spark-${React.useId()}`;
+    const name = contextAwareStatDisplayName(
+        {
+            // TODO: Display error state if missing uuid
+            value: uuidToUsername[uuid] ?? "",
+            shown: false,
+        },
+        { value: stat, shown: true },
+        { value: gamemode, shown: true },
+        { value: variant, shown: true },
+    );
+
+    const definition = defineChart({
+        marks: [
+            decorative(
+                areaY(rowsWithValue(chartData, dataKey), {
+                    x: "queriedAt",
+                    y1: 0,
+                    y2: (row) => row[dataKey],
+                    fill: `url(#${gradientId})`,
+                    fillOpacity: 1,
+                    curve: monotoneCurve,
+                }),
+            ),
+            // Separate line: an area stroke would also trace the sides and baseline.
+            lineY(rowsWithValue(chartData, dataKey), {
+                x: "queriedAt",
+                y: (row) => row[dataKey],
+                stroke: seriesColor,
+                strokeWidth: 1,
+                curve: monotoneCurve,
+            }),
+            futureMarker(currentDate.getTime(), end.getTime(), styles.futureMarker),
+            // Chart outline
+            decorative(
+                rect([{ x1: start.getTime(), x2: end.getTime() }], {
+                    x1: "x1",
+                    x2: "x2",
+                    y1: () => 0,
+                    y2: () => 1,
+                    yScale: "frame",
+                    fillOpacity: 0,
+                    stroke: theme.palette.divider,
+                    inset: 0,
+                }),
+            ),
+        ],
+        scales: {
+            x: { scale: scaleLinear().domain([start.getTime(), end.getTime()]) },
+            y: {
+                scale:
+                    yMax === undefined ? scaleLinear : scaleLinear().domain([0, yMax]),
+            },
+            frame: FRAME_SCALE,
+        },
+        guides: false,
+        margin: 1,
+        gradients: [
+            {
+                id: gradientId,
+                x1: 0,
+                y1: 0,
+                x2: 0,
+                y2: 1,
+                stops: [
+                    { offset: 0, color: seriesColor, opacity: 0.32 },
+                    { offset: 1, color: seriesColor, opacity: 0 },
+                ],
+            },
+        ],
+        theme: styles.theme,
+        clip: true,
+        focus: "nearest-x",
+        maxFocusDistance: Number.POSITIVE_INFINITY,
+        cursor: historyCursorBinding,
+        tooltip: {
+            use: tooltip,
+            // TODO: Nicer tooltip
+            format: (point) =>
+                formatStatValue(stat, point.yValue, { precision: "detailed" }),
+        },
+    });
 
     return (
-        <AreaChart
-            data={mutableChartData}
-            responsive
-            width="100%"
+        <Chart
+            definition={definition}
             height={50}
-            style={{ minWidth: 100 }}
-            syncId="history-chart"
-            syncMethod="value"
-        >
-            <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={seriesColor} stopOpacity={0.32} />
-                    <stop offset="100%" stopColor={seriesColor} stopOpacity={0} />
-                </linearGradient>
-            </defs>
-            <XAxis
-                type="number"
-                domain={[start.getTime(), end.getTime()]}
-                hide
-                scale="linear"
-                dataKey="queriedAt"
-            />
-            <YAxis type="number" domain={[0, yMax ?? "auto"]} hide scale="linear" />
-
-            {/* Chart outline */}
-            <ReferenceArea
-                x1={start.getTime()}
-                x2={end.getTime()}
-                stroke={theme.palette.divider}
-                fillOpacity={0}
-            />
-            {/* Chart data */}
-            <Area
-                key={dataKey}
-                name={contextAwareStatDisplayName(
-                    {
-                        // TODO: Display error state if missing uuid
-                        value: uuidToUsername[uuid] ?? "",
-                        shown: false,
-                    },
-                    {
-                        value: stat,
-                        shown: true,
-                    },
-                    {
-                        value: gamemode,
-                        shown: true,
-                    },
-                    {
-                        value: variant,
-                        shown: true,
-                    },
-                )}
-                type="monotone"
-                dataKey={dataKey}
-                stroke={seriesColor}
-                fill={`url(#${gradientId})`}
-                dot={false}
-                connectNulls
-            />
-            {/* Future marker */}
-            <ReferenceArea
-                x1={currentDate.getTime()}
-                x2={end.getTime()}
-                stroke={theme.palette.divider}
-                fill={theme.palette.textMuted}
-                fillOpacity={0.12}
-            />
-
-            <Tooltip
-                // TODO: Nicer tooltip
-                content={({ active, payload }) => {
-                    if (!active || payload.length === 0) {
-                        return null;
-                    }
-
-                    const item: unknown = payload[0];
-                    if (typeof item !== "object" || item === null) {
-                        return null;
-                    }
-
-                    if (!("value" in item)) {
-                        return null;
-                    }
-
-                    const { value } = item;
-                    if (typeof value !== "number") {
-                        return null;
-                    }
-
-                    return formatStatValue(stat, value, { precision: "detailed" });
-                }}
-                contentStyle={{
-                    backgroundColor: theme.palette.background.paper,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: 8,
-                }}
-                itemStyle={{ color: theme.palette.text.primary }}
-            />
-        </AreaChart>
+            ariaLabel={name}
+            style={{ ...styles.host, minWidth: 100 }}
+        />
     );
 };
 
@@ -525,105 +645,46 @@ interface LinesProps {
     readonly lineStyle: LineStyleFn;
 }
 
-const renderLines = ({
+interface Series {
+    readonly dataKey: DataKey;
+    readonly name: string;
+    // Carried per series so the tooltip never reverse-parses the dataKey
+    // (uuids and the "4v4" gamemode make splitting fragile).
+    readonly stat: StatKey;
+    readonly style: LineStyle;
+}
+
+const buildSeries = ({
     uuids,
     gamemodes,
     stats,
     variants,
     uuidToUsername,
     lineStyle,
-}: LinesProps): {
-    lines: React.ReactNode[];
-    statByDataKey: Map<string, StatKey>;
-} => {
+}: LinesProps): Series[] => {
     let index = 0;
-    // Authoritative dataKey → stat lookup, built where each line is created so
-    // the tooltip formatter never has to reverse-parse the dataKey string
-    // (uuids and the "4v4" gamemode make splitting fragile).
-    const statByDataKey = new Map<string, StatKey>();
-    const lines = uuids.flatMap((uuid) => {
-        return stats.flatMap((stat) => {
-            return variants.flatMap((variant) => {
-                if (stat === "stars" || stat === "experience") {
-                    // Only create one line for stars, not one for each gamemode
-                    const dataKey = makeDataKey({
-                        uuid,
-                        gamemode: "overall",
-                        stat,
-                        variant,
-                    });
-                    statByDataKey.set(dataKey, stat);
-                    return (
-                        <Line
-                            key={dataKey}
-                            name={contextAwareStatDisplayName(
-                                {
-                                    // TODO: Display error state if missing uuid
-                                    value: uuidToUsername[uuid] ?? "",
-                                    shown: uuids.length > 1,
-                                },
-                                {
-                                    value: stat,
-                                    shown: stats.length > 1,
-                                },
-                                {
-                                    value: "overall",
-                                    shown: gamemodes.length > 1,
-                                },
-                                {
-                                    value: variant,
-                                    shown: variants.length > 1,
-                                },
-                            )}
-                            type="monotone"
-                            dataKey={dataKey}
-                            connectNulls
-                            // oxlint-disable-next-line react/jsx-props-no-spreading
-                            {...lineStyle("overall", index++)}
-                        />
-                    );
-                }
-
-                return gamemodes.map((gamemode) => {
-                    const dataKey = makeDataKey({
-                        uuid,
-                        gamemode,
-                        stat,
-                        variant,
-                    });
-                    statByDataKey.set(dataKey, stat);
-                    return (
-                        <Line
-                            key={dataKey}
-                            name={contextAwareStatDisplayName(
-                                {
-                                    // TODO: Display error state if missing uuid
-                                    value: uuidToUsername[uuid] ?? "",
-                                    shown: uuids.length > 1,
-                                },
-                                {
-                                    value: stat,
-                                    shown: stats.length > 1,
-                                },
-                                {
-                                    value: gamemode,
-                                    shown: gamemodes.length > 1,
-                                },
-                                {
-                                    value: variant,
-                                    shown: variants.length > 1,
-                                },
-                            )}
-                            type="monotone"
-                            dataKey={dataKey}
-                            // oxlint-disable-next-line react/jsx-props-no-spreading
-                            {...lineStyle(gamemode, index++)}
-                            connectNulls
-                        />
-                    );
-                });
-            });
-        });
-    });
-    return { lines, statByDataKey };
+    return uuids.flatMap((uuid) =>
+        stats.flatMap((stat) =>
+            variants.flatMap((variant) => {
+                // Only create one line for stars, not one for each gamemode
+                const lineGamemodes: readonly GamemodeKey[] =
+                    stat === "stars" || stat === "experience" ? ["overall"] : gamemodes;
+                return lineGamemodes.map((gamemode) => ({
+                    dataKey: makeDataKey({ uuid, gamemode, stat, variant }),
+                    name: contextAwareStatDisplayName(
+                        {
+                            // TODO: Display error state if missing uuid
+                            value: uuidToUsername[uuid] ?? "",
+                            shown: uuids.length > 1,
+                        },
+                        { value: stat, shown: stats.length > 1 },
+                        { value: gamemode, shown: gamemodes.length > 1 },
+                        { value: variant, shown: variants.length > 1 },
+                    ),
+                    stat,
+                    style: lineStyle(gamemode, index++),
+                }));
+            }),
+        ),
+    );
 };
