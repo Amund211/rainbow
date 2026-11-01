@@ -43,19 +43,17 @@ import {
 import { alpha } from "@mui/material/styles";
 import type { Palette, Theme } from "@mui/material/styles";
 import { captureException } from "@sentry/react";
+import { areaY, defineChart, dot, lineY } from "@tanstack/charts";
+import { decorative } from "@tanstack/charts/mark/decorative";
+import { Chart } from "@tanstack/charts/react";
+import { scaleLinear } from "@tanstack/charts/scales/linear";
+import { scalePoint } from "@tanstack/charts/scales/point";
+import { tooltip as chartTooltip } from "@tanstack/charts/tooltip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import React from "react";
-import {
-    Area,
-    CartesianGrid,
-    ComposedChart,
-    Line,
-    Tooltip as ChartTooltip,
-    XAxis,
-    YAxis,
-} from "recharts";
 
+import { chartStyles, monotoneCurve } from "#charts/style.ts";
 import { PlayerHead } from "#components/player.tsx";
 import { TrendIcon } from "#components/TrendIcon.tsx";
 import { formatDuration } from "#helpers/duration.ts";
@@ -1391,6 +1389,106 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
     // NOTE: Assume the id format is CSS-selector-safe
     const gradientId = `fkdr-fill-${React.useId()}`;
     const points = fkdrTrajectory(session, segments);
+    const styles = chartStyles(theme);
+    const primary = theme.palette.primary.main;
+    const lifetimeColor = theme.palette.text.secondary;
+
+    const definition = defineChart({
+        marks: [
+            // Lifetime first so the session line + dots render on top.
+            lineY(points, {
+                id: "lifetime",
+                // Without a z group, group-x focus only returns one mark's point.
+                z: () => "lifetime",
+                x: "label",
+                y: "lifetimeFkdr",
+                stroke: lifetimeColor,
+                strokeWidth: 1.5,
+                strokeDasharray: "4 4",
+                curve: monotoneCurve,
+            }),
+            decorative(
+                areaY(points, {
+                    x: "label",
+                    y1: 0,
+                    y2: "sessionFkdr",
+                    fill: `url(#${gradientId})`,
+                    fillOpacity: 1,
+                    curve: monotoneCurve,
+                }),
+            ),
+            lineY(points, {
+                id: "session",
+                z: () => "session",
+                x: "label",
+                y: "sessionFkdr",
+                stroke: primary,
+                strokeWidth: 2.5,
+                curve: monotoneCurve,
+            }),
+            decorative(
+                dot(points, {
+                    x: "label",
+                    y: "sessionFkdr",
+                    r: 4,
+                    fill: theme.palette.background.paper,
+                    stroke: primary,
+                    strokeWidth: 2,
+                }),
+            ),
+        ],
+        scales: {
+            x: {
+                scale: () => scalePoint(),
+                axis: { line: styles.axisLine },
+            },
+            y: {
+                scale: scaleLinear,
+                nice: true,
+                grid: styles.grid,
+                axis: {
+                    line: styles.axisLine,
+                    ticks: { format: (v) => v.toFixed(1) },
+                },
+            },
+        },
+        gradients: [
+            {
+                id: gradientId,
+                x1: 0,
+                y1: 0,
+                x2: 0,
+                y2: 1,
+                stops: [
+                    { offset: 0, color: primary, opacity: 0.32 },
+                    { offset: 1, color: primary, opacity: 0 },
+                ],
+            },
+        ],
+        margin: { top: 8, right: 8 },
+        theme: styles.theme,
+        focus: "group-x",
+        maxFocusDistance: Number.POSITIVE_INFINITY,
+        tooltip: {
+            use: chartTooltip,
+            content: (focused) => ({
+                title: focused[0]?.xValue ?? "",
+                rows: focused.map((point) =>
+                    point.markId === "session"
+                        ? {
+                              label: "Session",
+                              value: formatStatValue("fkdr", point.yValue),
+                              color: primary,
+                          }
+                        : {
+                              label: "Lifetime",
+                              value: formatStatValue("fkdr", point.yValue),
+                              color: lifetimeColor,
+                          },
+                ),
+            }),
+        },
+    });
 
     if (points.length < 2) {
         return (
@@ -1402,11 +1500,6 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
             </Panel>
         );
     }
-
-    // Recharts wants a mutable array.
-    const data = [...points];
-    const primary = theme.palette.primary.main;
-    const lifetimeColor = theme.palette.text.secondary;
 
     return (
         <Panel sx={{ height: "100%" }}>
@@ -1470,84 +1563,12 @@ const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ session, segments }) 
                     </Stack>
                 </Stack>
             </Stack>
-            <Box sx={{ width: "100%", height: 240 }}>
-                <ComposedChart
-                    data={data}
-                    responsive
-                    width="100%"
-                    height="100%"
-                    style={{ minWidth: 100 }}
-                    margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-                >
-                    <defs>
-                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={primary} stopOpacity={0.32} />
-                            <stop offset="100%" stopColor={primary} stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                        stroke={theme.palette.divider}
-                        strokeDasharray="2 4"
-                    />
-                    <XAxis
-                        dataKey="label"
-                        stroke={theme.palette.divider}
-                        tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
-                    />
-                    <YAxis
-                        domain={[0, "auto"]}
-                        stroke={theme.palette.divider}
-                        tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
-                        tickFormatter={(v: number) => v.toFixed(1)}
-                        width={40}
-                    />
-                    {/* Lifetime first so the session line + dots render on top. */}
-                    <Line
-                        name="Lifetime"
-                        type="monotone"
-                        dataKey="lifetimeFkdr"
-                        stroke={lifetimeColor}
-                        strokeWidth={1.5}
-                        strokeDasharray="4 4"
-                        dot={false}
-                        activeDot={false}
-                        isAnimationActive={false}
-                    />
-                    <Area
-                        name="Session"
-                        type="monotone"
-                        dataKey="sessionFkdr"
-                        stroke={primary}
-                        strokeWidth={2.5}
-                        fill={`url(#${gradientId})`}
-                        dot={{
-                            r: 4,
-                            fill: theme.palette.background.paper,
-                            stroke: primary,
-                            strokeWidth: 2,
-                        }}
-                        activeDot={{ r: 5 }}
-                        isAnimationActive={false}
-                    />
-                    <ChartTooltip
-                        labelFormatter={(label) =>
-                            typeof label === "string" ? label : ""
-                        }
-                        formatter={(value) =>
-                            typeof value === "number"
-                                ? formatStatValue("fkdr", value)
-                                : String(value)
-                        }
-                        contentStyle={{
-                            backgroundColor: theme.palette.background.paper,
-                            border: `1px solid ${theme.palette.divider}`,
-                            borderRadius: 8,
-                        }}
-                        itemStyle={{ color: theme.palette.text.primary }}
-                        labelStyle={{ color: theme.palette.text.secondary }}
-                    />
-                </ComposedChart>
-            </Box>
+            <Chart
+                definition={definition}
+                height={240}
+                ariaLabel="FKDR trajectory"
+                style={{ ...styles.host, minWidth: 100 }}
+            />
         </Panel>
     );
 };
